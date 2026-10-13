@@ -191,4 +191,3 @@ def complete(
         "status": "uploaded_queued_for_extraction",
         "note": "Extraction and human review are not yet confirmation of a verified observation.",
     })
-PY
