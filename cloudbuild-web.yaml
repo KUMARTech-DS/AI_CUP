@@ -1,0 +1,17 @@
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - Dockerfile.web
+      - --build-arg
+      - NEXT_PUBLIC_API_URL=https://suffai-api-791365622326.asia-south1.run.app
+      - -t
+      - asia-south1-docker.pkg.dev/suffai-dev/suffai/suffai-web:latest
+      - .
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - asia-south1-docker.pkg.dev/suffai-dev/suffai/suffai-web:latest
+images:
+  - asia-south1-docker.pkg.dev/suffai-dev/suffai/suffai-web:latest
