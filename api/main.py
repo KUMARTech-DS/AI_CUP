@@ -12,7 +12,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.routers import auth, brands, chat, geo, health, integrity, segments
+from api.routers import auth, brands, chat, geo, health, integrity, segments, garment_images
 from config import settings
 
 app = FastAPI(
@@ -40,6 +40,7 @@ app.include_router(segments.router)
 app.include_router(geo.router)
 app.include_router(brands.router)
 app.include_router(chat.router)
+app.include_router(garment_images.router)
 
 
 @app.get("/")
