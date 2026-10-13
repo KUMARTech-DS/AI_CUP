@@ -7,13 +7,31 @@ Suffai API — Cloud Run BFF.
 
 from __future__ import annotations
 
+import logging
 import os
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.routers import auth, brands, chat, geo, health, integrity, segments, garment_images
 from config import settings
+
+log = logging.getLogger("suffai.api")
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    if settings.DATABASE_URL:
+        try:
+            from services.ops_db import ensure_adv_schema
+
+            ok = ensure_adv_schema()
+            log.info("Cloud SQL ADV/ops schema ensure=%s", ok)
+        except Exception as exc:
+            log.warning("Cloud SQL schema bootstrap skipped: %s", exc)
+    yield
+
 
 app = FastAPI(
     title="Suffai Fashion Intelligence API",
@@ -22,6 +40,7 @@ app = FastAPI(
         "Governed B2B analytics on GCP. Laundry service observations are not "
         "garment purchases. Brand share requires verified consented garments."
     ),
+    lifespan=lifespan,
 )
 
 origins = [o.strip() for o in settings.WEB_ORIGIN.split(",") if o.strip()]
@@ -39,6 +58,11 @@ app.include_router(integrity.router)
 app.include_router(segments.router)
 app.include_router(geo.router)
 app.include_router(brands.router)
+app.include_router(garments.router)
+app.include_router(campaigns.router)
+app.include_router(research.router)
+app.include_router(exports.router)
+app.include_router(activation.router)
 app.include_router(chat.router)
 app.include_router(garment_images.router)
 

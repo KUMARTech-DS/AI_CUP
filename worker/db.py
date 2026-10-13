@@ -1,0 +1,276 @@
+"""Persist extraction results to Cloud SQL PostgreSQL."""
+
+from __future__ import annotations
+
+import json
+import logging
+import uuid
+from contextlib import contextmanager
+from datetime import datetime, timezone
+from typing import Any, Dict, Iterator, Optional
+
+import psycopg
+from psycopg.rows import dict_row
+from psycopg.types.json import Json
+
+from worker.settings import settings
+
+log = logging.getLogger("suffai-extraction.db")
+
+
+class DatabaseNotConfigured(RuntimeError):
+    pass
+
+
+def _require_database_url() -> str:
+    if not settings.DATABASE_URL:
+        raise DatabaseNotConfigured(
+            "DATABASE_URL is not set on suffai-extraction. "
+            "Example: postgresql://USER:PASS@/DB?host=/cloudsql/PROJECT:REGION:INSTANCE"
+        )
+    return settings.DATABASE_URL
+
+
+@contextmanager
+def connect() -> Iterator[psycopg.Connection]:
+    conn = psycopg.connect(_require_database_url(), row_factory=dict_row)
+    try:
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def _now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def mark_job_processing(
+    *,
+    idempotency_key: str,
+    image_id: Optional[str],
+    model_version: str,
+) -> Optional[str]:
+    """Set job to PROCESSING; create row if image_id exists and job missing. Returns job id."""
+    with connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE extraction_jobs
+                SET status = 'PROCESSING',
+                    attempt_count = attempt_count + 1,
+                    model_version = %s,
+                    started_at = COALESCE(started_at, %s),
+                    error_code = NULL
+                WHERE idempotency_key = %s
+                RETURNING id::text
+                """,
+                (model_version, _now(), idempotency_key),
+            )
+            row = cur.fetchone()
+            if row:
+                return row["id"]
+
+            if not image_id:
+                return None
+
+            job_id = str(uuid.uuid4())
+            try:
+                cur.execute(
+                    """
+                    INSERT INTO extraction_jobs (
+                      id, image_id, status, attempt_count, idempotency_key,
+                      model_version, started_at
+                    ) VALUES (%s, %s::uuid, 'PROCESSING', 1, %s, %s, %s)
+                    RETURNING id::text
+                    """,
+                    (job_id, image_id, idempotency_key, model_version, _now()),
+                )
+                created = cur.fetchone()
+                return created["id"] if created else job_id
+            except psycopg.Error as exc:
+                # FK missing — job table not writable yet; continue without job row
+                log.warning("extraction_jobs insert skipped: %s", exc)
+                return None
+
+
+def persist_garment_extraction(
+    *,
+    idempotency_key: str,
+    image_id: Optional[str],
+    garment_instance_id: Optional[str],
+    result: Dict[str, Any],
+    status: str,
+    error_code: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Write raw_result to extraction_jobs and attributes to garment_instances."""
+    model_version = result.get("model_version")
+    raw_payload = {
+        "normalized": {k: v for k, v in result.items() if k != "raw_model_json"},
+        "raw_model_json": result.get("raw_model_json"),
+    }
+
+    out: Dict[str, Any] = {"job_id": None, "garment_updated": False}
+
+    with connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE extraction_jobs
+                SET status = %s,
+                    model_version = %s,
+                    raw_result = %s,
+                    error_code = %s,
+                    completed_at = %s
+                WHERE idempotency_key = %s
+                RETURNING id::text
+                """,
+                (
+                    status,
+                    model_version,
+                    Json(raw_payload),
+                    error_code,
+                    _now(),
+                    idempotency_key,
+                ),
+            )
+            job = cur.fetchone()
+            if job:
+                out["job_id"] = job["id"]
+            elif image_id:
+                job_id = str(uuid.uuid4())
+                try:
+                    cur.execute(
+                        """
+                        INSERT INTO extraction_jobs (
+                          id, image_id, status, attempt_count, idempotency_key,
+                          model_version, raw_result, error_code, started_at, completed_at
+                        ) VALUES (
+                          %s, %s::uuid, %s, 1, %s, %s, %s, %s, %s, %s
+                        )
+                        RETURNING id::text
+                        """,
+                        (
+                            job_id,
+                            image_id,
+                            status,
+                            idempotency_key,
+                            model_version,
+                            Json(raw_payload),
+                            error_code,
+                            _now(),
+                            _now(),
+                        ),
+                    )
+                    created = cur.fetchone()
+                    out["job_id"] = created["id"] if created else job_id
+                except psycopg.Error as exc:
+                    log.warning("extraction_jobs final write skipped: %s", exc)
+
+            if garment_instance_id and status in {"NEEDS_REVIEW", "COMPLETED"}:
+                secondary = result.get("secondary_colors") or []
+                if not isinstance(secondary, list):
+                    secondary = []
+                style_tags = result.get("style_tags") or []
+                if not isinstance(style_tags, list):
+                    style_tags = []
+                # garment_instances.review_status uses lowercase (needs_review / completed)
+                garment_review = (result.get("review_status") or status).lower()
+
+                cur.execute(
+                    """
+                    UPDATE garment_instances
+                    SET commodity_type = %s,
+                        material_type = %s,
+                        material_blend = %s,
+                        primary_color = %s,
+                        secondary_colors = %s,
+                        size_raw = %s,
+                        size_normalized = %s,
+                        size_system = %s,
+                        brand_name_raw = %s,
+                        brand_sku = %s,
+                        pattern = %s,
+                        style_tags = %s,
+                        attribute_evidence = %s,
+                        review_status = %s,
+                        model_version = %s,
+                        updated_at = %s
+                    WHERE id = %s::uuid
+                      AND deleted_at IS NULL
+                    RETURNING id::text
+                    """,
+                    (
+                        result.get("commodity_type"),
+                        result.get("material_type"),
+                        Json(result.get("material_blend"))
+                        if result.get("material_blend") is not None
+                        else None,
+                        result.get("primary_color"),
+                        secondary,
+                        result.get("size_raw"),
+                        result.get("size_normalized"),
+                        result.get("size_system"),
+                        result.get("brand_name"),
+                        result.get("brand_sku"),
+                        result.get("pattern"),
+                        style_tags,
+                        Json(result.get("attribute_evidence") or {}),
+                        garment_review,
+                        model_version,
+                        _now(),
+                        garment_instance_id,
+                    ),
+                )
+                updated = cur.fetchone()
+                out["garment_updated"] = bool(updated)
+                if not updated:
+                    log.warning(
+                        "garment_instances id=%s not updated (missing or deleted)",
+                        garment_instance_id,
+                    )
+
+    return out
+
+
+def persist_campaign_extraction(
+    *,
+    campaign_id: str,
+    result: Dict[str, Any],
+    status: str,
+) -> bool:
+    """Merge extracted attributes into campaigns.metadata JSONB."""
+    patch = {
+        "extracted_attributes": {k: v for k, v in result.items() if k != "raw_model_json"},
+        "extraction_status": status,
+        "extracted_at": _now().isoformat(),
+        "model_version": result.get("model_version"),
+    }
+    with connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE campaigns
+                SET metadata = COALESCE(metadata, '{}'::jsonb) || %s::jsonb
+                WHERE id = %s::uuid
+                  AND deleted_at IS NULL
+                RETURNING id::text
+                """,
+                (json.dumps(patch), campaign_id),
+            )
+            row = cur.fetchone()
+            return bool(row)
+
+
+def database_ready() -> bool:
+    try:
+        with connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT 1 AS ok")
+                return True
+    except Exception as exc:
+        log.warning("database_ready=false: %s", exc)
+        return False

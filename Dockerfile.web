@@ -1,16 +1,23 @@
 # Cloud Run: suffai-web (Next.js standalone)
+# Guarantees /app/public exists even if web/public was missing from the upload.
+
 FROM node:20-alpine AS deps
 WORKDIR /app
-COPY web/package.json web/package-lock.json* ./
+COPY web/package.json ./
 RUN npm install
 
 FROM node:20-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY web/ ./
+# Cloud Build / git often omit empty dirs — force public/ into the image
+RUN mkdir -p /app/public && echo "ok" > /app/public/.keep
 ARG NEXT_PUBLIC_API_URL=http://localhost:8080
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
-RUN npm run build
+ENV NEXT_TELEMETRY_DISABLED=1
+RUN npm run build \
+ && mkdir -p /app/public \
+ && test -d /app/.next/standalone
 
 FROM node:20-alpine AS runner
 WORKDIR /app
@@ -20,6 +27,9 @@ RUN addgroup -S nextjs && adduser -S nextjs -G nextjs
 
 COPY --from=builder --chown=nextjs:nextjs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nextjs /app/.next/static ./.next/static
+# Trailing slash copies contents; source dir always exists from builder RUN above
+COPY --from=builder --chown=nextjs:nextjs /app/public/ ./public/
+
 USER nextjs
 EXPOSE 8080
 CMD ["node", "server.js"]

@@ -1,10 +1,13 @@
 """
-Garment image extraction worker (Cloud Run + Pub/Sub push).
+Garment / campaign image extraction worker (Cloud Run + Pub/Sub push).
 
-State machine (Blueprint §9):
+Pipeline:
+  1) Read image from GCS
+  2) Extract attributes with Vertex AI Gemini (ENABLE_VERTEX=true)
+  3) Persist to Cloud SQL (extraction_jobs + garment_instances / campaigns.metadata)
+
+State machine:
   PENDING_UPLOAD → UPLOADED → QUEUED → PROCESSING → NEEDS_REVIEW | COMPLETED | FAILED
-
-Vertex AI is opt-in via ENABLE_VERTEX=true. Default: schema-stub abstain path for local/CI.
 """
 
 from __future__ import annotations
@@ -13,15 +16,34 @@ import base64
 import json
 import logging
 import os
-from typing import Any, Dict
+import traceback
+from typing import Any, Dict, Optional
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
+
+from worker import db
+from worker.gcs_io import read_image
+from worker.settings import settings
+from worker.vertex_extract import extract_attributes
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("suffai-extraction")
 
-app = FastAPI(title="Suffai Extraction Worker", version="1.0.0")
+app = FastAPI(title="Suffai Extraction Worker", version="1.1.0")
+
+
+class ExtractRequest(BaseModel):
+    """Direct invoke (Cloud Run / curl) — same fields as Pub/Sub payload."""
+
+    gcs_object_key: str
+    gcs_bucket: Optional[str] = None
+    image_id: Optional[str] = None
+    garment_instance_id: Optional[str] = None
+    campaign_id: Optional[str] = None
+    idempotency_key: Optional[str] = None
+    target_type: str = Field(default="garment", description="garment | campaign")
 
 
 def _abstain_result(reason: str) -> Dict[str, Any]:
@@ -31,23 +53,153 @@ def _abstain_result(reason: str) -> Dict[str, Any]:
         "primary_color": "unknown",
         "size_normalized": None,
         "brand_name": "unknown",
-        "brand_id": None,
+        "brand_sku": None,
         "pattern": "unknown",
         "attribute_evidence": {
             "note": {"source": "worker_stub", "confidence": 0.0, "reason": reason}
         },
         "review_status": "needs_review",
-        "model_version": os.getenv("VERTEX_MODEL", "stub-v1"),
+        "model_version": settings.VERTEX_MODEL if settings.ENABLE_VERTEX else "stub-v1",
+    }
+
+
+def run_extraction(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Core pipeline used by Pub/Sub and POST /v1/extract."""
+    object_key = payload.get("gcs_object_key") or payload.get("object_key")
+    bucket = payload.get("gcs_bucket") or payload.get("bucket")
+    image_id = payload.get("image_id")
+    garment_instance_id = payload.get("garment_instance_id")
+    campaign_id = payload.get("campaign_id")
+    target_type = (payload.get("target_type") or "garment").lower()
+    idempotency_key = (
+        payload.get("idempotency_key")
+        or payload.get("message_id")
+        or f"extract:{object_key}"
+    )
+
+    if not object_key:
+        raise ValueError("gcs_object_key is required")
+
+    # 1) Mark PROCESSING in Cloud SQL (best-effort)
+    if settings.DATABASE_URL:
+        try:
+            db.mark_job_processing(
+                idempotency_key=idempotency_key,
+                image_id=image_id,
+                model_version=settings.VERTEX_MODEL,
+            )
+        except db.DatabaseNotConfigured:
+            pass
+        except Exception as exc:
+            log.warning("mark_job_processing failed: %s", exc)
+
+    # 2) Read image from GCS
+    image = read_image(object_key, bucket=bucket)
+
+    # 3) Vertex Gemini (or abstain stub)
+    if settings.ENABLE_VERTEX:
+        result = extract_attributes(image)
+        status = result.get("review_status") or "NEEDS_REVIEW"
+        if status not in {"NEEDS_REVIEW", "COMPLETED", "FAILED"}:
+            status = "NEEDS_REVIEW"
+    else:
+        result = _abstain_result("ENABLE_VERTEX=false; abstain without paid API call")
+        status = "NEEDS_REVIEW"
+
+    persist_info: Dict[str, Any] = {"skipped": True}
+    # 4) Write to Cloud SQL
+    if not settings.DATABASE_URL:
+        persist_info = {
+            "skipped": True,
+            "reason": "DATABASE_URL not configured on worker",
+        }
+    else:
+        try:
+            if target_type == "campaign" and campaign_id:
+                ok = db.persist_campaign_extraction(
+                    campaign_id=campaign_id,
+                    result=result,
+                    status=status,
+                )
+                persist_info = {"campaign_updated": ok, "campaign_id": campaign_id}
+            else:
+                persist_info = db.persist_garment_extraction(
+                    idempotency_key=idempotency_key,
+                    image_id=image_id,
+                    garment_instance_id=garment_instance_id,
+                    result=result,
+                    status=status,
+                )
+        except Exception as exc:
+            log.exception("Cloud SQL persist failed")
+            # Best-effort mark FAILED
+            try:
+                db.persist_garment_extraction(
+                    idempotency_key=idempotency_key,
+                    image_id=image_id,
+                    garment_instance_id=None,
+                    result={**result, "notes": f"persist_failed: {exc}"},
+                    status="FAILED",
+                    error_code="DB_PERSIST_FAILED",
+                )
+            except Exception:
+                pass
+            raise
+
+    # Do not return raw image bytes
+    safe_result = {k: v for k, v in result.items() if k != "raw_model_json"}
+    return {
+        "status": status,
+        "idempotency_key": idempotency_key,
+        "gcs_uri": image.gs_uri,
+        "content_type": image.content_type,
+        "size_bytes": image.size_bytes,
+        "target_type": target_type,
+        "image_id": image_id,
+        "garment_instance_id": garment_instance_id,
+        "campaign_id": campaign_id,
+        "persist": persist_info,
+        "result": safe_result,
+        "vertex_enabled": settings.ENABLE_VERTEX,
     }
 
 
 @app.get("/health")
 def health():
+    db_ok = False
+    if settings.DATABASE_URL:
+        db_ok = db.database_ready()
     return {
         "status": "ok",
         "service": "suffai-extraction",
-        "vertex_enabled": os.getenv("ENABLE_VERTEX", "false").lower() == "true",
+        "version": "1.1.0",
+        "vertex_enabled": settings.ENABLE_VERTEX,
+        "vertex_model": settings.VERTEX_MODEL,
+        "vertex_location": settings.VERTEX_LOCATION,
+        "gcs_image_bucket": settings.GCS_IMAGE_BUCKET or None,
+        "database_configured": bool(settings.DATABASE_URL),
+        "database_ready": db_ok,
+        "project": settings.PROJECT_ID or None,
     }
+
+
+@app.post("/v1/extract")
+def extract_http(body: ExtractRequest):
+    """
+    Manual / integration test endpoint (does not require Pub/Sub).
+    Requires worker env: GCS_IMAGE_BUCKET, ENABLE_VERTEX, DATABASE_URL, GOOGLE_CLOUD_PROJECT.
+    """
+    try:
+        return run_extraction(body.model_dump())
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except Exception as exc:
+        log.exception("extract_http failed")
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
 @app.post("/")
@@ -68,32 +220,43 @@ async def pubsub_push(request: Request):
         log.exception("bad payload: %s", exc)
         return JSONResponse({"status": "bad_payload"}, status_code=200)
 
-    image_id = payload.get("image_id")
-    gcs_object = payload.get("gcs_object_key")
-    idempotency_key = payload.get("idempotency_key") or message_id
+    if isinstance(payload, dict) and "idempotency_key" not in payload:
+        payload["idempotency_key"] = payload.get("idempotency_key") or message_id
+        payload["message_id"] = message_id
 
-    log.info(
-        "queued extraction image_id=%s object=%s idem=%s",
-        image_id,
-        gcs_object,
-        idempotency_key,
-    )
-
-    # Production: download from GCS_IMAGE_BUCKET, call Vertex with strict JSON schema,
-    # write extraction_jobs + garment attributes to Cloud SQL, DLQ on hard failure.
-    if os.getenv("ENABLE_VERTEX", "false").lower() == "true":
-        result = _abstain_result("Vertex path scaffolded — wire client after project approval")
-    else:
-        result = _abstain_result("ENABLE_VERTEX=false; abstain without paid API call")
-
-    return {
-        "status": "NEEDS_REVIEW",
-        "idempotency_key": idempotency_key,
-        "result": result,
-    }
+    try:
+        result = run_extraction(payload if isinstance(payload, dict) else {})
+        return result
+    except Exception as exc:
+        # Ack with 200 only for poison non-retryable? Prefer 500 so Pub/Sub retries / DLQ.
+        log.error("extraction failed message_id=%s err=%s\n%s", message_id, exc, traceback.format_exc())
+        # Non-retryable client errors → 200 to avoid infinite retry
+        if isinstance(exc, (ValueError, FileNotFoundError)):
+            if settings.DATABASE_URL:
+                try:
+                    db.persist_garment_extraction(
+                        idempotency_key=str(
+                            (payload or {}).get("idempotency_key") or message_id
+                        ),
+                        image_id=(payload or {}).get("image_id"),
+                        garment_instance_id=None,
+                        result=_abstain_result(str(exc)),
+                        status="FAILED",
+                        error_code="CLIENT_ERROR",
+                    )
+                except Exception:
+                    pass
+            return JSONResponse(
+                {"status": "FAILED", "error": str(exc), "message_id": message_id},
+                status_code=200,
+            )
+        return JSONResponse(
+            {"status": "FAILED", "error": str(exc), "message_id": message_id},
+            status_code=500,
+        )
 
 
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", "8081")))
+    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", settings.PORT)))

@@ -85,6 +85,29 @@ def route_chat_query(query: str, ctx: dict[str, Any]) -> dict[str, Any]:
             "refused": False,
         }
 
+    if "opportunit" in q or "new product" in q or "should we prioritize" in q or "kurta" in q:
+        return {
+            "answer": (
+                "Use Product Research (`POST /v1/product-opportunities`) for ranked "
+                "commodity opportunities with component scores. I won't invent supply gaps "
+                "without catalog coverage."
+            ),
+            "tool": "product_opportunities_hint",
+            "result": None,
+            "refused": False,
+        }
+
+    if "campaign" in q and ("fit" in q or "segment" in q or "rank" in q):
+        return {
+            "answer": (
+                "Campaign fit ranking is available via Campaign Lab "
+                "(`POST /v1/campaigns/{id}/evaluate`). Scores are relevance, not conversion lift."
+            ),
+            "tool": "campaign_hint",
+            "result": None,
+            "refused": False,
+        }
+
     if "rfm" in q or "segment" in q or "champion" in q:
         result = tool_rfm_summary(ctx)
         top = result["distribution"][:5]

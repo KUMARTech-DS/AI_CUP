@@ -9,6 +9,9 @@ const NAV = [
   { href: "/brand", label: "Brand & Competition" },
   { href: "/research", label: "Product Research" },
   { href: "/campaigns", label: "Campaign Lab" },
+  { href: "/activation", label: "Activation" },
+  { href: "/capture", label: "Capture" },
+  { href: "/review", label: "Review" },
   { href: "/chat", label: "Ask Suffai" },
 ];
 

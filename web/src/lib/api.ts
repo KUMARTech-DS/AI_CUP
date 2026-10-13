@@ -41,6 +41,22 @@ export async function apiPost<T>(path: string, body: unknown): Promise<Envelope<
   return res.json();
 }
 
+export async function apiPatch<T>(path: string, body: unknown): Promise<Envelope<T>> {
+  const headers: Record<string, string> = {
+    Accept: "application/json",
+    "Content-Type": "application/json",
+  };
+  const t = token();
+  if (t) headers.Authorization = `Bearer ${t}`;
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify(body),
+    cache: "no-store",
+  });
+  return res.json();
+}
+
 export function setSession(accessToken: string, user: unknown) {
   window.localStorage.setItem("suffai_token", accessToken);
   window.localStorage.setItem("suffai_user", JSON.stringify(user));

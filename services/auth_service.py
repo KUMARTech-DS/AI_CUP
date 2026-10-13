@@ -50,6 +50,15 @@ def issue_access_token(user: Dict[str, Any], *, hours: int = 12) -> str:
 
 
 def decode_access_token(token: str) -> Optional[Dict[str, Any]]:
+    # Prefer Identity Platform when enabled
+    from services.identity_platform import verify_identity_platform_token
+
+    ip_user = verify_identity_platform_token(token)
+    if ip_user:
+        return ip_user
+
+    if not settings.DEMO_AUTH_ENABLED:
+        return None
     try:
         return jwt.decode(
             token,
