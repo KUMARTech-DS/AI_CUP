@@ -14,20 +14,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.routers import (
-    activation,
-    auth,
-    brands,
-    campaigns,
-    chat,
-    exports,
-    garments,
-    geo,
-    health,
-    integrity,
-    research,
-    segments,
-)
+from api.routers import auth, brands, chat, geo, health, integrity, segments, garment_images
 from config import settings
 
 log = logging.getLogger("suffai.api")
@@ -77,6 +64,7 @@ app.include_router(research.router)
 app.include_router(exports.router)
 app.include_router(activation.router)
 app.include_router(chat.router)
+app.include_router(garment_images.router)
 
 
 @app.get("/")

@@ -1,0 +1,16 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'asia-south1-docker.pkg.dev/suffai-dev/suffai/suffai-web:latest'
+      - '-f'
+      - 'Dockerfile.web'
+      - '--build-arg'
+      - 'NEXT_PUBLIC_API_URL=https://suffai-api-52n6qbdzga-el.a.run.app'
+      - '.'
+
+images:
+  - 'asia-south1-docker.pkg.dev/suffai-dev/suffai/suffai-web:latest'
+
+timeout: '1200s'
