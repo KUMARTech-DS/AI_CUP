@@ -18,6 +18,7 @@ COPY config ./config
 COPY services ./services
 COPY suffai ./suffai
 COPY api ./api
+COPY db ./db
 COPY data_offline ./data_offline
 COPY data_derived ./data_derived
 COPY contracts ./contracts

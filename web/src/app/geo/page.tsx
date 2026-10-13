@@ -11,7 +11,22 @@ import {
   CartesianGrid,
 } from "recharts";
 import { RequireAuth } from "@/components/RequireAuth";
-import { apiPost, Envelope } from "@/lib/api";
+import { PinChoropleth } from "@/components/PinChoropleth";
+import { API_BASE, apiGet, apiPost, Envelope } from "@/lib/api";
+
+async function downloadGeoCsv() {
+  const token = typeof window !== "undefined" ? localStorage.getItem("suffai_token") : null;
+  const res = await fetch(`${API_BASE}/v1/exports/geo.csv`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "geo_aggregates.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 type GeoData = {
   tiles: {
@@ -36,8 +51,24 @@ type GeoData = {
   };
 };
 
+type Choropleth = {
+  type: string;
+  disclaimer?: string;
+  features: {
+    type: string;
+    properties: {
+      pin_code?: string;
+      area?: string;
+      metric_value?: number | null;
+      suppressed?: boolean;
+    };
+    geometry: { type: string; coordinates: number[][][] };
+  }[];
+};
+
 export default function GeoPage() {
   const [data, setData] = useState<GeoData | null>(null);
+  const [choropleth, setChoropleth] = useState<Choropleth | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -47,6 +78,11 @@ export default function GeoPage() {
         else setData(res.data);
       })
       .catch(() => setError("Failed to load geo aggregates from API"));
+    apiGet<Choropleth>("/v1/geo/choropleth")
+      .then((res) => {
+        if (!res.errors?.length && res.data) setChoropleth(res.data);
+      })
+      .catch(() => undefined);
   }, []);
 
   const tiles = (data?.tiles || [])
@@ -67,6 +103,9 @@ export default function GeoPage() {
             Quantities are laundry service observations — not clothing purchases.
           </p>
         </div>
+        <button className="btn secondary" type="button" onClick={() => downloadGeoCsv()}>
+          Export CSV
+        </button>
       </div>
 
       {error && <div className="alert danger">{error}</div>}
@@ -90,6 +129,14 @@ export default function GeoPage() {
           <div className="value">{data?.meta.privacy_k ?? 30}</div>
         </div>
       </div>
+
+      {choropleth && (
+        <div className="panel" style={{ marginBottom: "1rem" }}>
+          <h3 style={{ marginTop: 0 }}>PIN choropleth</h3>
+          <p className="sub">Active customers joined to approximate PIN polygons (k-suppressed cells muted).</p>
+          <PinChoropleth features={choropleth.features} disclaimer={choropleth.disclaimer} />
+        </div>
+      )}
 
       <div className="split-2">
         <div className="panel">

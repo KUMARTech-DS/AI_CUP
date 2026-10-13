@@ -1,0 +1,23 @@
+# gcloud builds submit --config=deploy/cloudbuild-web.yaml \
+#   --substitutions=_API_URL=https://suffai-api-xxxxx-as.a.run.app .
+substitutions:
+  _REGION: asia-south1
+  _IMAGE: suffai-web
+  _API_URL: http://localhost:8080
+
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -t
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/suffai/${_IMAGE}:latest
+      - -f
+      - Dockerfile.web
+      - --build-arg
+      - NEXT_PUBLIC_API_URL=${_API_URL}
+      - .
+
+images:
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/suffai/${_IMAGE}:latest
+
+timeout: 1800s

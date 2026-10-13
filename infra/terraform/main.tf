@@ -81,6 +81,24 @@ module "cloud_run" {
   enabled    = var.enable_resources
 }
 
+variable "scheduler_sa_email" {
+  type        = string
+  description = "Service account for Cloud Scheduler → Cloud Run Jobs OIDC"
+  default     = ""
+}
+
+module "scheduler" {
+  source              = "./modules/scheduler"
+  project_id          = var.project_id
+  region              = var.region
+  enabled             = var.enable_resources
+  scheduler_sa_email  = var.scheduler_sa_email
+}
+
 output "notice" {
   value = "Terraform skeleton only. Set enable_resources=true after project/region/billing approval."
+}
+
+output "scheduler_jobs" {
+  value = module.scheduler.job_names
 }

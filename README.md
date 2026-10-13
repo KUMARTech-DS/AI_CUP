@@ -52,7 +52,9 @@ python3 scripts/run_integrity_report.py
 
 ## Deploy to GCP
 
-**Console UI walkthrough (recommended):** see [docs/GCP_CONSOLE_DEPLOY_AND_TEST.md](docs/GCP_CONSOLE_DEPLOY_AND_TEST.md) — service names, Dockerfiles, env vars, and browser test steps.
+**Step-by-step (recommended):** [docs/GCP_DEPLOY_STEP_BY_STEP.md](docs/GCP_DEPLOY_STEP_BY_STEP.md) — Blueprint-aligned phases (Cloud Run units, Cloud SQL, BigQuery, Pub/Sub, Scheduler, Identity Platform).
+
+**Console UI detail / troubleshooting:** [docs/GCP_CONSOLE_DEPLOY_AND_TEST.md](docs/GCP_CONSOLE_DEPLOY_AND_TEST.md).
 
 1. Confirm **project ID, region/residency, billing** (required before apply).
 2. Copy `deploy/env.example` → set secrets in Secret Manager (not git).
@@ -105,4 +107,10 @@ archive/streamlit/   Deprecated local Streamlit prototypes
 | `JWT_SECRET` | Demo auth (replace with Identity Platform) |
 | `ENABLE_VERTEX` | Extraction paid API latch (default false) |
 
-See [docs/ASSUMPTIONS.md](docs/ASSUMPTIONS.md).
+See [docs/ASSUMPTIONS.md](docs/ASSUMPTIONS.md) and [docs/PRD_COVERAGE.md](docs/PRD_COVERAGE.md).
+
+## PRD features (v2.1) — redeploy note
+
+Existing geo / auth / segments / chat contracts are unchanged. New additive APIs power Capture, Review, Brand catalog, Research, Campaign Lab, and CSV export.
+
+Redeploy **`suffai-api`** and **`suffai-web`** only (worker already has GCS→Vertex→SQL). Optional env: `EXTRACTION_WORKER_URL`, `GCS_IMAGE_BUCKET`, `PUBSUB_IMAGE_TOPIC`.

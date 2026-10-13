@@ -199,16 +199,18 @@ If you want to deploy services one-by-one from the UI:
 In Cloud Shell, from the project root:
 
 ```bash
-export PROJECT_ID=$(gcloud config get-value project)
-export REGION=asia-south1
-
-gcloud builds submit \
-  --tag ${REGION}-docker.pkg.dev/${PROJECT_ID}/suffai/suffai-api:latest \
-  --timeout=1200s \
-  -f Dockerfile.api .
+# From repo root (folder that contains Dockerfile.api)
+gcloud builds submit --config=deploy/cloudbuild-api.yaml .
 ```
 
-> Cloud Shell / Cloud Build UI equivalent: **Cloud Build** → **Triggers** → **Run** / **Submit**, with Dockerfile path `Dockerfile.api`.
+If it fails, fetch the real Docker error (the "status: 1" line alone is not enough):
+
+```bash
+gcloud builds list --limit=1 --format='value(id)'
+gcloud builds log "$(gcloud builds list --limit=1 --format='value(id)')" | tail -80
+```
+
+> Prefer `deploy/cloudbuild-*.yaml` over ad-hoc `/dev/stdin` configs — Cloud Shell heredocs often break variable expansion.
 
 
 
@@ -282,30 +284,14 @@ Call this `API_URL` for the rest of the guide.
 In Cloud Shell:
 
 ```bash
-export PROJECT_ID=$(gcloud config get-value project)
-export REGION=asia-south1
-export API_URL="https://suffai-api-XXXXXXXX-as.a.run.app"   # paste real URL
+# Paste your real API URL
+export API_URL="https://suffai-api-XXXXXXXX-as.a.run.app"
 
 gcloud builds submit \
-  --config=/dev/stdin <<EOF
-steps:
-- name: gcr.io/cloud-builders/docker
-  args:
-    - build
-    - -t
-    - ${REGION}-docker.pkg.dev/${PROJECT_ID}/suffai/suffai-web:latest
-    - -f
-    - Dockerfile.web
-    - --build-arg
-    - NEXT_PUBLIC_API_URL=${API_URL}
-    - .
-images:
-- ${REGION}-docker.pkg.dev/${PROJECT_ID}/suffai/suffai-web:latest
-timeout: 1200s
-EOF
+  --config=deploy/cloudbuild-web.yaml \
+  --substitutions=_API_URL=${API_URL} \
+  .
 ```
-
-Or use repo file `cloudbuild.yaml` after substituting `_API_URL` (see §7.4).
 
 #### 7.2.2 Create Cloud Run service `suffai-web`
 
@@ -371,10 +357,14 @@ API_PUBLIC_URL=https://suffai-api-XXXXXXXX-as.a.run.app
 #### Build
 
 ```bash
-gcloud builds submit \
-  --tag ${REGION}-docker.pkg.dev/${PROJECT_ID}/suffai/suffai-extraction:latest \
-  --timeout=1200s \
-  -f Dockerfile.worker .
+# From repo root
+gcloud builds submit --config=deploy/cloudbuild-worker.yaml .
+```
+
+On failure:
+
+```bash
+gcloud builds log "$(gcloud builds list --limit=1 --format='value(id)')" | tail -80
 ```
 
 
@@ -791,6 +781,10 @@ VERTEX_MODEL=gemini-2.0-flash
 | Cloud Build can’t push      | Enable Artifact Registry API; grant Cloud Build SA writer on repo `suffai`       |
 | Worker 403 from Pub/Sub     | Grant push SA `roles/run.invoker` on `suffai-extraction`                         |
 | Out of memory on API        | Raise Cloud Run memory to `1–2 GiB` (RFM over ~20k orders)                       |
+| `build step … status: 1`    | Only an exit code — run `gcloud builds log <BUILD_ID> \| tail -80` for the real error |
+| Worker pip failures         | Use `Dockerfile.worker` + `requirements-worker.txt` via `deploy/cloudbuild-worker.yaml` |
+| Web `COPY … /app/public` fails | Re-sync latest `Dockerfile.web` (it `mkdir -p /app/public` in the builder). Rebuild with `deploy/cloudbuild-web.yaml` |
+| Heredoc `/dev/stdin` fails  | Prefer `deploy/cloudbuild-*.yaml` configs                                       |
 
 
 ---
@@ -825,3 +819,50 @@ Console
 ```
 
 When this checklist is green, the GCP demo path for Geo / RFM / Ask Suffai is live; Brand/Campaign unlock after the garment image pipeline.
+
+---
+
+## 16. Production hardening (Identity / BigQuery / CDC / ADV)
+
+### 16.1 Identity Platform
+
+1. **Identity Platform** → enable Email/Password (or federated IdP).
+2. Create a Web API key; restrict by HTTP referrer to `WEB_URL/*`.
+3. On `suffai-api` set:
+   - `IDENTITY_PLATFORM_ENABLED=true`
+   - `IDENTITY_PLATFORM_PROJECT={PROJECT_ID}`
+   - `IDENTITY_WEB_API_KEY={browser key}`
+   - `IDENTITY_TENANT_MAP_JSON` mapping emails/domains → `{brand, role, tenant_id}`
+   - Prefer `DEMO_AUTH_ENABLED=false` in prod
+4. Optional custom claims under `suffai` on Firebase users: `{brand, brand_id, tenant_id, role}`.
+5. Web login auto-switches to Identity when config reports IP enabled + API key.
+
+### 16.2 BigQuery + CDC Cloud Run Jobs
+
+```bash
+gcloud builds submit --config=deploy/cloudbuild-job.yaml
+
+gcloud run jobs create suffai-bq-sync \
+  --image=asia-south1-docker.pkg.dev/$PROJECT_ID/suffai/suffai-job:latest \
+  --region=asia-south1 \
+  --set-env-vars=GOOGLE_CLOUD_PROJECT=$PROJECT_ID,USE_BIGQUERY_MARTS=true \
+  --command=python --args=-m,jobs.bq_sync
+
+gcloud run jobs create suffai-cdc \
+  --image=asia-south1-docker.pkg.dev/$PROJECT_ID/suffai/suffai-job:latest \
+  --region=asia-south1 \
+  --set-env-vars=GOOGLE_CLOUD_PROJECT=$PROJECT_ID,MONGO_URI=... \
+  --command=python --args=-m,jobs.cdc_ingest
+```
+
+Wire schedules from `deploy/scheduler.yaml` (or Terraform `modules/scheduler`). On `suffai-api` set `USE_BIGQUERY_MARTS=true` to serve geo tiles from `mart_geo_trends`.
+
+### 16.3 Cloud SQL dual-write
+
+Apply `db/migrations/001_operational.sql` then `002_adv_privacy_ops.sql`. Attach Cloud SQL to `suffai-api` / `suffai-extraction` and set `DATABASE_URL`. API bootstraps ADV/ops tables on startup; `GarmentStore` mirrors JSON docs into `ops_json_documents`.
+
+### 16.4 ADV-01 + privacy
+
+- UI: `/activation` (conversions, observational uplift, media webhook, inventory).
+- Env: `ENABLE_ADV`, `MEDIA_ACTIVATION_WEBHOOK`, `PRIVACY_DIFFERENCING_ENABLED`, `EXPORT_REQUIRE_ROLE`.
+- Geo choropleth: `GET /v1/geo/choropleth` + PIN GeoJSON under `suffai/geo/pin_polygons.geojson` (replace with licensed boundaries before production map claims).
