@@ -21,6 +21,7 @@ resource "google_cloud_run_v2_service" "api" {
   project  = var.project_id
 
   template {
+    timeout = "300s"
     containers {
       image = var.api_image
       ports { container_port = 8080 }
@@ -32,10 +33,18 @@ resource "google_cloud_run_v2_service" "api" {
         name  = "PORT"
         value = "8080"
       }
+      env {
+        name  = "ENABLE_VERTEX"
+        value = "true"
+      }
+      env {
+        name  = "VERTEX_LOCATION"
+        value = var.region
+      }
       resources {
         limits = {
-          cpu    = "1"
-          memory = "1Gi"
+          cpu    = "2"
+          memory = "2Gi"
         }
       }
     }

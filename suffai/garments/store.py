@@ -1,8 +1,7 @@
-"""Operational garment / campaign store (JSON under data_derived; Cloud SQL optional later)."""
+"""Operational garment / campaign store (Cloud SQL when DATABASE_URL is set, else JSON files)."""
 
 from __future__ import annotations
 
-import json
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -11,6 +10,33 @@ from typing import Any, Optional
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def verified_brand_observations(garments: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Reviewed (completed) garments with an identifiable brand."""
+    return [
+        g for g in garments
+        if g.get("review_status") in {"completed", "COMPLETED"}
+        and (g.get("brand_id") or (g.get("brand_name_raw") and g.get("brand_name_raw") != "unknown"))
+        and not g.get("deleted_at")
+    ]
+
+
+def coverage_summary(garments: list[dict[str, Any]]) -> dict[str, Any]:
+    live = [g for g in garments if not g.get("deleted_at")]
+    verified = verified_brand_observations(live)
+    return {
+        "garment_instances_total": len(live),
+        "verified_branded_observations": len(verified),
+        "needs_review": sum(1 for g in live if g.get("review_status") == "needs_review"),
+        "brand_analytics_available": len(verified) > 0,
+        "empty_state": (
+            None
+            if verified
+            else "No verified consented garment brand observations yet. "
+                 "Brand share and competitor benchmarks remain unavailable."
+        ),
+    }
 
 
 class GarmentStore:
@@ -29,40 +55,16 @@ class GarmentStore:
     )
 
     def __init__(self, derived_dir: str | Path):
+        from services.docstore import get_backend
+
         self.root = Path(derived_dir)
-        self.root.mkdir(parents=True, exist_ok=True)
-        for name in self.COLLECTIONS:
-            path = self.root / f"{name}.json"
-            if not path.exists():
-                path.write_text("[]\n", encoding="utf-8")
+        self.backend = get_backend(self.root)
 
     def _load(self, name: str) -> list[dict[str, Any]]:
-        return json.loads((self.root / f"{name}.json").read_text(encoding="utf-8"))
+        return self.backend.load(name)
 
     def _save(self, name: str, rows: list[dict[str, Any]]) -> None:
-        (self.root / f"{name}.json").write_text(
-            json.dumps(rows, indent=2, default=str) + "\n", encoding="utf-8"
-        )
-        # Dual-write to Cloud SQL ops mirror when DATABASE_URL is set
-        try:
-            from services.ops_db import configured, mirror_collection
-
-            if configured():
-                id_keys = (
-                    "garment_instance_id",
-                    "image_id",
-                    "consent_id",
-                    "job_id",
-                    "campaign_id",
-                    "evaluation_id",
-                    "view_id",
-                    "sku_id",
-                    "correction_id",
-                    "id",
-                )
-                mirror_collection(name, rows, id_keys=id_keys)
-        except Exception:
-            pass
+        self.backend.save(name, rows)
 
     def audit(self, action: str, **detail: Any) -> None:
         rows = self._load("audit_events")
@@ -136,12 +138,7 @@ class GarmentStore:
         return None
 
     def list_verified_brand_observations(self) -> list[dict[str, Any]]:
-        return [
-            g for g in self.list_garment_instances()
-            if g.get("review_status") in {"completed", "COMPLETED"}
-            and (g.get("brand_id") or (g.get("brand_name_raw") and g.get("brand_name_raw") != "unknown"))
-            and not g.get("deleted_at")
-        ]
+        return verified_brand_observations(self.list_garment_instances())
 
     def register_garment_instance(self, payload: dict[str, Any]) -> dict[str, Any]:
         required = [
@@ -195,6 +192,7 @@ class GarmentStore:
             "brand_name_raw": payload.get("brand_name_raw") or "unknown",
             "brand_sku": payload.get("brand_sku"),
             "pattern": payload.get("pattern") or "unknown",
+            "gender": payload.get("gender") or "unknown",
             "style_tags": payload.get("style_tags") or [],
             "attribute_evidence": payload.get("attribute_evidence") or {},
             "review_status": payload.get("review_status") or "pending_upload",
@@ -330,20 +328,7 @@ class GarmentStore:
         return target
 
     def brand_coverage_summary(self) -> dict[str, Any]:
-        all_g = self.list_garment_instances()
-        verified = self.list_verified_brand_observations()
-        return {
-            "garment_instances_total": len(all_g),
-            "verified_branded_observations": len(verified),
-            "needs_review": sum(1 for g in all_g if g.get("review_status") == "needs_review"),
-            "brand_analytics_available": len(verified) > 0,
-            "empty_state": (
-                None
-                if verified
-                else "No verified consented garment brand observations yet. "
-                     "Brand share and competitor benchmarks remain unavailable."
-            ),
-        }
+        return coverage_summary(self.list_garment_instances())
 
     # ----- campaigns -----
     def create_campaign(self, *, tenant_id: str, image_object_key: str, metadata: dict | None = None) -> dict[str, Any]:

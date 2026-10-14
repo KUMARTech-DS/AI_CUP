@@ -14,7 +14,27 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+<<<<<<< HEAD
 from api.routers import auth, brands, chat, geo, health, integrity, segments, garment_images
+=======
+from api.routers import (
+    auth,
+    brands,
+    chat,
+    customers,
+    geo,
+    health,
+    integrity,
+    segments,
+    garment_images,
+    garments,
+    campaigns,
+    research,
+    exports,
+    activation,
+    sku_rank,
+) 
+>>>>>>> 214670e (all the changes)
 from config import settings
 
 log = logging.getLogger("suffai.api")
@@ -24,10 +44,11 @@ log = logging.getLogger("suffai.api")
 async def lifespan(_app: FastAPI):
     if settings.DATABASE_URL:
         try:
-            from services.ops_db import ensure_adv_schema
+            from services.ops_db import ensure_adv_schema, ensure_customer_schema
 
             ok = ensure_adv_schema()
-            log.info("Cloud SQL ADV/ops schema ensure=%s", ok)
+            cust_ok = ensure_customer_schema()
+            log.info("Cloud SQL ADV/ops schema ensure=%s customers=%s", ok, cust_ok)
         except Exception as exc:
             log.warning("Cloud SQL schema bootstrap skipped: %s", exc)
     yield
@@ -56,6 +77,7 @@ app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(integrity.router)
 app.include_router(segments.router)
+app.include_router(customers.router)
 app.include_router(geo.router)
 app.include_router(brands.router)
 app.include_router(garments.router)
@@ -65,6 +87,10 @@ app.include_router(exports.router)
 app.include_router(activation.router)
 app.include_router(chat.router)
 app.include_router(garment_images.router)
+<<<<<<< HEAD
+=======
+app.include_router(sku_rank.router)
+>>>>>>> 214670e (all the changes)
 
 
 @app.get("/")

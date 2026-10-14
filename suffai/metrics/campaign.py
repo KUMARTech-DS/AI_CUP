@@ -16,6 +16,8 @@ def _extract_tags(metadata: dict[str, Any]) -> dict[str, Any]:
         "primary_color": str(attrs.get("primary_color") or attrs.get("color") or "unknown").lower(),
         "material_type": str(attrs.get("material_type") or attrs.get("material") or "unknown").lower(),
         "brand_name": str(attrs.get("brand_name") or attrs.get("brand") or "unknown"),
+        "gender": str(attrs.get("gender") or attrs.get("target_gender") or "unknown").lower(),
+        "age_band": str(attrs.get("age_band") or attrs.get("target_age_band") or "unknown").lower(),
     }
 
 
@@ -27,14 +29,18 @@ def evaluate_campaign_fit(
     eligible_order_ids: set[str],
     rfm_snapshots: list[dict[str, Any]],
     my_brand: str,
+    customers_by_id: dict[str, dict[str, Any]] | None = None,
     k: int = PRIVACY_K,
 ) -> list[dict[str, Any]]:
     """
-    Fit = 30% category + 20% color/material + 20% geo demand + 15% segment
-        + 10% seasonality proxy + 5% coverage (PRD §11).
+    Fit = 25% category + 15% color/material + 15% geo demand + 15% segment
+        + 10% gender + 10% age_band + 5% seasonality + 5% coverage.
     """
+    from suffai.metrics.demographics import age_band, demographic_summary
+
     tags = _extract_tags(metadata)
     seg_by_cust = {s["customer_id"]: s["rfm_segment"] for s in rfm_snapshots}
+    cust_index = customers_by_id or {}
 
     # Aggregate demand by pin × segment × commodity token
     buckets: dict[tuple[str, str], dict[str, Any]] = {}
@@ -45,10 +51,17 @@ def evaluate_campaign_fit(
         cid = line.get("customer_id")
         seg = seg_by_cust.get(cid, "Unknown") if cid else "Unknown"
         key = (pin, seg)
-        b = buckets.setdefault(key, {"qty": 0, "customers": set(), "names": defaultdict(int)})
+        b = buckets.setdefault(
+            key,
+            {"qty": 0, "customers": set(), "names": defaultdict(int), "genders": defaultdict(int), "age_bands": defaultdict(int)},
+        )
         b["qty"] += int(line.get("quantity") or 0)
         if cid:
             b["customers"].add(cid)
+            prof = cust_index.get(cid) or {}
+            g = str(prof.get("gender") or "unknown").lower()
+            b["genders"][g] += 1
+            b["age_bands"][age_band(prof.get("age"))] += 1
         name = str(line.get("commodity_name") or "").lower()
         b["names"][name] += int(line.get("quantity") or 0)
 
@@ -91,15 +104,31 @@ def evaluate_campaign_fit(
         geo_idx = pin_totals[pin] / max_pin
         # Segment affinity: Champions/Loyal get slight boost for brand campaigns
         seg_aff = 0.8 if seg in {"Champions", "Loyal", "Potential Loyalist"} else 0.5
+        target_gender = tags["gender"]
+        gender_total = sum(b["genders"].values()) or 1
+        gender_aff = (
+            b["genders"].get(target_gender, 0) / gender_total
+            if target_gender != "unknown"
+            else 0.5
+        )
+        target_age = tags["age_band"]
+        age_total = sum(b["age_bands"].values()) or 1
+        age_aff = (
+            b["age_bands"].get(target_age, 0) / age_total
+            if target_age != "unknown"
+            else 0.5
+        )
         seasonality = 0.5  # no calendar labels in fixtures
         coverage = min(1.0, n_cust / float(k * 2))
 
         score = 100.0 * (
-            0.30 * cat_aff
-            + 0.20 * cm_aff
-            + 0.20 * geo_idx
+            0.25 * cat_aff
+            + 0.15 * cm_aff
+            + 0.15 * geo_idx
             + 0.15 * seg_aff
-            + 0.10 * seasonality
+            + 0.10 * gender_aff
+            + 0.10 * age_aff
+            + 0.05 * seasonality
             + 0.05 * coverage
         )
         evaluations.append({
@@ -115,12 +144,16 @@ def evaluate_campaign_fit(
                 "color_material_affinity": round(cm_aff, 3),
                 "geo_demand_index": round(geo_idx, 3),
                 "segment_affinity": round(seg_aff, 3),
+                "gender_affinity": round(gender_aff, 3),
+                "age_band_affinity": round(age_aff, 3),
                 "seasonality": seasonality,
                 "coverage": round(coverage, 3),
             },
+            "demographics": demographic_summary(cust_index, b["customers"], k=k),
             "explanation": (
-                f"Fit for {my_brand} creative tagged {commodity_token}/{color}/{material} "
-                f"in {pin} × {seg}. Relevance score only — not predicted conversion."
+                f"Fit for {my_brand} creative tagged {commodity_token}/{color}/{material}/"
+                f"{target_gender}/{target_age} in {pin} × {seg}. "
+                "Relevance score only — not predicted conversion."
             ),
             "campaign_id": campaign_id,
             "metric_version": METRIC_VERSION,

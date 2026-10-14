@@ -23,8 +23,11 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-from worker import db
+from suffai.garments.bq_schema import garment_row_from_extraction
+from worker import bq_write, db
+from worker.events import is_storage_object, storage_event_to_payload
 from worker.gcs_io import read_image
+from worker.object_naming import resolve_source_ids
 from worker.settings import settings
 from worker.vertex_extract import extract_attributes
 
@@ -44,6 +47,12 @@ class ExtractRequest(BaseModel):
     campaign_id: Optional[str] = None
     idempotency_key: Optional[str] = None
     target_type: str = Field(default="garment", description="garment | campaign")
+    user_uuid: Optional[str] = None
+    order_uuid: Optional[str] = None
+    item_uuid: Optional[str] = None
+    source_customer_id: Optional[str] = None
+    source_order_id: Optional[str] = None
+    source_order_item_id: Optional[str] = None
 
 
 def _abstain_result(reason: str) -> Dict[str, Any]:
@@ -55,6 +64,7 @@ def _abstain_result(reason: str) -> Dict[str, Any]:
         "brand_name": "unknown",
         "brand_sku": None,
         "pattern": "unknown",
+        "gender": "unknown",
         "attribute_evidence": {
             "note": {"source": "worker_stub", "confidence": 0.0, "reason": reason}
         },
@@ -76,6 +86,10 @@ def run_extraction(payload: Dict[str, Any]) -> Dict[str, Any]:
         or payload.get("message_id")
         or f"extract:{object_key}"
     )
+    source_ids = resolve_source_ids(payload, object_key)
+    user_uuid = source_ids["user_uuid"]
+    order_uuid = source_ids["order_uuid"]
+    item_uuid = source_ids["item_uuid"]
 
     if not object_key:
         raise ValueError("gcs_object_key is required")
@@ -105,6 +119,27 @@ def run_extraction(payload: Dict[str, Any]) -> Dict[str, Any]:
     else:
         result = _abstain_result("ENABLE_VERTEX=false; abstain without paid API call")
         status = "NEEDS_REVIEW"
+
+    # 4) BigQuery: system of record for garment metadata read by dashboards
+    bq_info: Dict[str, Any] = {"skipped": True}
+    if target_type != "campaign" and bq_write.enabled():
+        row = garment_row_from_extraction(
+            observation_id=idempotency_key,
+            result=result,
+            status=status,
+            user_uuid=user_uuid,
+            order_uuid=order_uuid,
+            item_uuid=item_uuid,
+            gcs_uri=image.gs_uri,
+            gcs_object_key=image.object_key,
+            content_type=image.content_type,
+            size_bytes=image.size_bytes,
+            image_id=image_id,
+            source=payload.get("source") or "extraction",
+        )
+        bq_info = bq_write.insert_garment_row(row)
+    elif target_type != "campaign":
+        bq_info = {"skipped": True, "reason": "ENABLE_BIGQUERY=false or BQ_PROJECT unset"}
 
     persist_info: Dict[str, Any] = {"skipped": True}
     # 4) Write to Cloud SQL
@@ -144,7 +179,9 @@ def run_extraction(payload: Dict[str, Any]) -> Dict[str, Any]:
                 )
             except Exception:
                 pass
-            raise
+            if bq_info.get("skipped"):
+                raise
+            persist_info = {"skipped": True, "reason": f"Cloud SQL persist failed: {exc}"}
 
     # Do not return raw image bytes
     safe_result = {k: v for k, v in result.items() if k != "raw_model_json"}
@@ -152,12 +189,18 @@ def run_extraction(payload: Dict[str, Any]) -> Dict[str, Any]:
         "status": status,
         "idempotency_key": idempotency_key,
         "gcs_uri": image.gs_uri,
+        "gcs_path": image.object_key,
         "content_type": image.content_type,
         "size_bytes": image.size_bytes,
         "target_type": target_type,
         "image_id": image_id,
         "garment_instance_id": garment_instance_id,
         "campaign_id": campaign_id,
+        "user_uuid": user_uuid,
+        "order_uuid": order_uuid,
+        "item_uuid": item_uuid,
+        "garment_id": bq_info.get("garment_id"),
+        "bigquery": bq_info,
         "persist": persist_info,
         "result": safe_result,
         "vertex_enabled": settings.ENABLE_VERTEX,
@@ -177,6 +220,12 @@ def health():
         "vertex_model": settings.VERTEX_MODEL,
         "vertex_location": settings.VERTEX_LOCATION,
         "gcs_image_bucket": settings.GCS_IMAGE_BUCKET or None,
+        "bigquery_enabled": bq_write.enabled(),
+        "bigquery_table": (
+            f"{settings.BQ_PROJECT}.{settings.BQ_STAGING_DATASET}.fact_garment_observation"
+            if bq_write.enabled()
+            else None
+        ),
         "database_configured": bool(settings.DATABASE_URL),
         "database_ready": db_ok,
         "project": settings.PROJECT_ID or None,
@@ -202,23 +251,69 @@ def extract_http(body: ExtractRequest):
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
+def _record_failure_in_bigquery(payload: Dict[str, Any], message_id: str, exc: Exception) -> None:
+    """Non-retryable failures (missing object, bad type) still leave an audit row."""
+    if not bq_write.enabled() or payload.get("target_type") == "campaign":
+        return
+    object_key = payload.get("gcs_object_key") or payload.get("object_key")
+    ids = resolve_source_ids(payload, object_key)
+    bucket = payload.get("gcs_bucket") or settings.GCS_IMAGE_BUCKET
+    try:
+        bq_write.insert_garment_row(
+            garment_row_from_extraction(
+                observation_id=str(payload.get("idempotency_key") or message_id),
+                result={**_abstain_result(str(exc)), "notes": str(exc)},
+                status="FAILED",
+                gcs_uri=f"gs://{bucket}/{object_key}" if bucket and object_key else None,
+                gcs_object_key=object_key,
+                image_id=payload.get("image_id"),
+                source=payload.get("source") or "extraction",
+                **ids,
+            )
+        )
+    except Exception as bq_exc:
+        log.warning("BigQuery failure row skipped: %s", bq_exc)
+
+
 @app.post("/")
 async def pubsub_push(request: Request):
-    """Pub/Sub push endpoint — idempotent extraction job."""
+    """
+    Push endpoint for:
+      * Pub/Sub messages published by suffai-api (extraction payload JSON)
+      * Cloud Storage → Pub/Sub notifications (object resource JSON + eventType attribute)
+      * Eventarc storage.object.v1.finalized CloudEvents (object resource JSON body)
+    """
     envelope = await request.json()
-    message = envelope.get("message") or {}
-    data_b64 = message.get("data")
-    message_id = message.get("messageId") or message.get("message_id") or "unknown"
+    payload: Any
+    if "message" not in envelope and is_storage_object(envelope):
+        message_id = request.headers.get("ce-id") or "unknown"
+        ce_type = request.headers.get("ce-type")
+        payload, reason = storage_event_to_payload(envelope, {"eventType": ce_type} if ce_type else {})
+    else:
+        message = envelope.get("message") or {}
+        attributes = message.get("attributes") or {}
+        data_b64 = message.get("data")
+        message_id = message.get("messageId") or message.get("message_id") or "unknown"
 
-    if not data_b64:
-        log.warning("empty pubsub payload message_id=%s", message_id)
-        return JSONResponse({"status": "ignored"}, status_code=200)
+        if data_b64:
+            try:
+                payload = json.loads(base64.b64decode(data_b64).decode("utf-8"))
+            except Exception as exc:
+                log.exception("bad payload: %s", exc)
+                return JSONResponse({"status": "bad_payload"}, status_code=200)
+        elif attributes.get("objectId"):
+            payload = {}
+        else:
+            log.warning("empty pubsub payload message_id=%s", message_id)
+            return JSONResponse({"status": "ignored"}, status_code=200)
 
-    try:
-        payload = json.loads(base64.b64decode(data_b64).decode("utf-8"))
-    except Exception as exc:
-        log.exception("bad payload: %s", exc)
-        return JSONResponse({"status": "bad_payload"}, status_code=200)
+        reason = "ok"
+        if attributes.get("eventType") or is_storage_object(payload):
+            payload, reason = storage_event_to_payload(payload or {}, attributes)
+
+    if payload is None:
+        log.info("storage event ignored message_id=%s reason=%s", message_id, reason)
+        return JSONResponse({"status": "ignored", "reason": reason}, status_code=200)
 
     if isinstance(payload, dict) and "idempotency_key" not in payload:
         payload["idempotency_key"] = payload.get("idempotency_key") or message_id
@@ -246,6 +341,7 @@ async def pubsub_push(request: Request):
                     )
                 except Exception:
                     pass
+            _record_failure_in_bigquery(payload if isinstance(payload, dict) else {}, message_id, exc)
             return JSONResponse(
                 {"status": "FAILED", "error": str(exc), "message_id": message_id},
                 status_code=200,

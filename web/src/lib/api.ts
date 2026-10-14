@@ -57,6 +57,17 @@ export async function apiPatch<T>(path: string, body: unknown): Promise<Envelope
   return res.json();
 }
 
+export async function apiUpload<T>(
+  path: string,
+  form: FormData,
+): Promise<{ status: number; body: Envelope<T> }> {
+  const headers: Record<string, string> = { Accept: "application/json" };
+  const t = token();
+  if (t) headers.Authorization = `Bearer ${t}`;
+  const res = await fetch(`${API_BASE}${path}`, { method: "POST", headers, body: form, cache: "no-store" });
+  return { status: res.status, body: await res.json() };
+}
+
 export function setSession(accessToken: string, user: unknown) {
   window.localStorage.setItem("suffai_token", accessToken);
   window.localStorage.setItem("suffai_user", JSON.stringify(user));

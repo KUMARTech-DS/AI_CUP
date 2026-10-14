@@ -80,7 +80,7 @@ export default function ActivationPage() {
   async function onMediaPush() {
     setError(null);
     setMsg(null);
-    const res = await apiPost("/v1/activation/media/push", {
+    const res = await apiPost<{ delivery?: unknown }>("/v1/activation/media/push", {
       campaign_id: campaignId,
       segment_keys: [segmentKey],
       channel: "external_dsp",

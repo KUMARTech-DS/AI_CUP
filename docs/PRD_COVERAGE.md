@@ -11,6 +11,7 @@
 | BRD-01 | Brand benchmarks | `GET /v1/brands/{id}/benchmarks` + catalog endpoints |
 | RES-01 | Product opportunities | `POST /v1/product-opportunities`, web `/research` |
 | CMP-01 | Campaign fit | `POST /v1/campaigns`, `/{id}/evaluate`, web `/campaigns` |
+| SKU-RANK v1.2 | SKU ranking (1–20 images × PIN) | `POST /api/v1/sku/rank`, `GET /api/v1/sku/areas` (`api/routers/sku_rank.py`), scorer `suffai/metrics/sku_rank.py`, images `suffai/garments/sku_vision.py` (ephemeral, Vertex inline), web `/ads-lab` |
 | CHAT-01 | Governed chat | `POST /v1/chat/query`, web `/chat` |
 | EXP-01 | CSV export + saved views + CDC schedule | `GET /v1/exports/geo.csv` (role-gated), saved views, `GET /v1/activation/snapshots/schedule-status`, Cloud Scheduler jobs |
 | ADV-01 | Conversion / uplift / media / inventory | `api/routers/activation.py`, web `/activation` (observational uplift — not causal claim) |

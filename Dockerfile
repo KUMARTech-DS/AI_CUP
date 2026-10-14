@@ -6,8 +6,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PORT=8080 \
     ENVIRONMENT=prod \
-    DATA_DIR=/app/data_offline \
-    DERIVED_DIR=/app/data_derived
+    DERIVED_DIR=/tmp/suffai-derived
 
 WORKDIR /app
 COPY requirements.txt .
@@ -16,8 +15,7 @@ COPY config ./config
 COPY services ./services
 COPY suffai ./suffai
 COPY api ./api
-COPY data_offline ./data_offline
-COPY data_derived ./data_derived
+COPY db ./db
 
 EXPOSE 8080
 CMD exec uvicorn api.main:app --host 0.0.0.0 --port ${PORT}

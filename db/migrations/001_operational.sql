@@ -88,6 +88,7 @@ CREATE TABLE IF NOT EXISTS garment_instances (
   brand_name_raw TEXT,
   brand_sku TEXT,
   pattern TEXT,
+  gender TEXT,
   style_tags TEXT[],
   attribute_evidence JSONB,
   review_status TEXT NOT NULL DEFAULT 'needs_review',

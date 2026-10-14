@@ -91,20 +91,22 @@ def register_query(
         "ts": datetime.now(timezone.utc).isoformat(),
     }
 
+    from services import ops_db
+
+    use_sql = ops_db.configured()
     risk = {"differencing_risk": False, "reason": None, "paired_fingerprint": None}
-    prior = _load_log(settings.PRIVACY_QUERY_LOG_PATH)
+    if use_sql:
+        prior = ops_db.recent_privacy_queries(tenant_id)
+    else:
+        prior = _load_log(settings.PRIVACY_QUERY_LOG_PATH)
     if settings.PRIVACY_DIFFERENCING_ENABLED and len(cohort) >= settings.PRIVACY_K:
         risk = _detect_risk(set(tokens), prior, tenant_id)
 
-    prior.append(entry)
-    _save_log(settings.PRIVACY_QUERY_LOG_PATH, prior)
-
-    try:
-        from services.ops_db import mirror_privacy_query
-
-        mirror_privacy_query(entry, risk)
-    except Exception:
-        pass
+    if use_sql:
+        ops_db.mirror_privacy_query(entry, risk, strict=True)
+    else:
+        prior.append(entry)
+        _save_log(settings.PRIVACY_QUERY_LOG_PATH, prior)
 
     return {**risk, "fingerprint": fp, "cohort_size": len(cohort)}
 

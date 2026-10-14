@@ -15,17 +15,25 @@ def test_normalize_and_review_status_needs_review():
             "material_type": "unknown",
             "primary_color": "navy",
             "brand_name": "unknown",
+            "gender": "Male",
             "attribute_evidence": {
                 "commodity_type": {"source": "visual_inference", "confidence": 0.7},
                 "material_type": {"source": "care_label_ocr", "confidence": 0.2},
                 "primary_color": {"source": "visual_inference", "confidence": 0.8},
                 "brand_name": {"source": "unknown", "confidence": 0.0},
+                "gender": {"source": "visual_inference", "confidence": 0.9},
             },
         },
         model_version="gemini-test",
     )
+    assert result["gender"] == "male"
     assert min_confidence(result) < 0.9
     assert decide_review_status(result) == "NEEDS_REVIEW"
+
+
+def test_normalize_gender_unknown_when_invalid():
+    result = normalize_result({"gender": "not-a-value"}, model_version="gemini-test")
+    assert result["gender"] == "unknown"
 
 
 def test_normalize_high_confidence_completed():

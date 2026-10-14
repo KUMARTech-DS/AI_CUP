@@ -3,8 +3,7 @@ FROM python:3.11-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    DATA_DIR=/app/data_offline \
-    DERIVED_DIR=/app/data_derived
+    DERIVED_DIR=/tmp/suffai-derived
 
 WORKDIR /app
 
@@ -15,8 +14,6 @@ COPY config ./config
 COPY services ./services
 COPY suffai ./suffai
 COPY jobs ./jobs
-COPY data_offline ./data_offline
-COPY data_derived ./data_derived
 
 # Default: full warehouse sync. Override args for CDC:
 #   gcloud run jobs execute suffai-cdc --args=python,-m,jobs.cdc_ingest

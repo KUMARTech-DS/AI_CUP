@@ -3,18 +3,27 @@
 from __future__ import annotations
 
 import hashlib
-import uuid
 from pathlib import Path
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, File, Form, Header, UploadFile
 from pydantic import BaseModel, Field
 
-from api.deps import get_garment_store, require_user
+from api.deps import (
+    clear_garment_cache,
+    find_garment,
+    get_customer_index,
+    get_garment_store,
+    get_garments,
+    require_user,
+)
 from config import settings
 from suffai.api.envelope import err, ok
-from suffai.gcp_io import publish_extraction_event, signed_upload_url, trigger_worker_http
-from suffai.garments.store import GarmentStore
+from suffai.gcp_io import publish_extraction_event, signed_upload_url, trigger_worker_http, upload_bytes
+from suffai.garments.object_naming import build_garment_object_key
+from suffai.garments.store import GarmentStore, coverage_summary
+from suffai.metrics.demographics import enrich_garments_with_customers
+from suffai.warehouse import repository
 
 router = APIRouter(prefix="/v1/garments", tags=["garments"])
 
@@ -98,11 +107,15 @@ def initiate_upload(
     except ValueError as exc:
         return err("INVALID_FILTER", str(exc))
 
-    object_key = (
-        f"garments/{body.source_order_id}/"
-        f"{body.source_order_commodity_line_id}/{body.physical_item_index}/"
-        f"{uuid.uuid4().hex}.jpg"
-    )
+    try:
+        object_key = build_garment_object_key(
+            body.source_customer_id,
+            body.source_order_id,
+            body.source_order_item_id,
+            content_type=body.content_type,
+        )
+    except ValueError as exc:
+        return err("INVALID_FILTER", str(exc))
     image = store.register_image(
         garment_instance_id=garment["garment_instance_id"],
         consent_id=body.consent_id,
@@ -130,14 +143,18 @@ async def upload_local(
     image_id: Optional[str] = Form(None),
     user: Dict[str, Any] = Depends(require_user),
 ):
-    """Demo fallback when GCS signed URL mode is local."""
+    """Fallback when a signed URL isn't available: proxies the upload into GCS (local disk only in dev)."""
     data = await file.read()
     if not data:
         return err("INVALID_FILTER", "Empty file")
-    dest_root = settings.IMAGE_STORE_DIR
-    dest = dest_root / gcs_object_key
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_bytes(data)
+    bucket = settings.GCS_IMAGE_BUCKET or settings.GCS_BUCKET
+    if bucket:
+        dest = upload_bytes(bucket, gcs_object_key, data, file.content_type or "image/jpeg")
+    else:
+        local = settings.IMAGE_STORE_DIR / gcs_object_key
+        local.parent.mkdir(parents=True, exist_ok=True)
+        local.write_bytes(data)
+        dest = str(local)
     sha = hashlib.sha256(data).hexdigest()
 
     store = get_garment_store()
@@ -146,7 +163,7 @@ async def upload_local(
     for img in images:
         if img.get("gcs_object_key") == gcs_object_key or (image_id and img.get("image_id") == image_id):
             img["sha256"] = sha
-            img["local_path"] = str(dest)
+            img["stored_at"] = dest
             break
     store._save("garment_images", images)
 
@@ -161,7 +178,7 @@ async def upload_local(
             if job.get("status") == "PENDING_UPLOAD":
                 store.update_extraction_job(job["job_id"], status="UPLOADED")
 
-    return ok({"gcs_object_key": gcs_object_key, "sha256": sha, "bytes": len(data), "stored": str(dest)})
+    return ok({"gcs_object_key": gcs_object_key, "sha256": sha, "bytes": len(data), "stored": dest})
 
 
 @router.post("/extractions")
@@ -178,6 +195,7 @@ def start_extraction(
 
     object_key = body.gcs_object_key or image.get("gcs_object_key")
     garment_id = body.garment_instance_id or image.get("garment_instance_id")
+    garment = store.get_garment(garment_id) if garment_id else None
     key = idempotency_key or f"extract-{body.image_id}"
     job = store.create_extraction_job(image_id=body.image_id, idempotency_key=key, status="QUEUED")
     store.update_extraction_job(job["job_id"], status="QUEUED")
@@ -189,6 +207,12 @@ def start_extraction(
         "gcs_bucket": body.gcs_bucket or settings.GCS_IMAGE_BUCKET or settings.GCS_BUCKET,
         "idempotency_key": key,
         "target_type": "garment",
+        "user_uuid": (garment or {}).get("source_customer_id"),
+        "order_uuid": (garment or {}).get("source_order_id"),
+        "item_uuid": (garment or {}).get("source_order_item_id"),
+        "source_customer_id": (garment or {}).get("source_customer_id"),
+        "source_order_id": (garment or {}).get("source_order_id"),
+        "source_order_item_id": (garment or {}).get("source_order_item_id"),
     }
     pub = publish_extraction_event(payload)
     worker = trigger_worker_http(payload)
@@ -202,6 +226,7 @@ def start_extraction(
                 "material_type": "unknown",
                 "primary_color": "unknown",
                 "brand_name_raw": "unknown",
+                "gender": "unknown",
                 "attribute_evidence": {
                     "note": {"source": "api_stub", "confidence": 0.0, "reason": "worker/pubsub unavailable"}
                 },
@@ -240,27 +265,36 @@ def list_garments(
     review_status: Optional[str] = None,
     user: Dict[str, Any] = Depends(require_user),
 ):
-    store = get_garment_store()
-    rows = store.list_garment_instances()
+    all_rows = get_garments()
+    rows = all_rows
     if review_status:
         rows = [g for g in rows if g.get("review_status") == review_status]
     # Never return PII beyond source ids already stored for ops
+    rows = enrich_garments_with_customers(rows[:200], get_customer_index())
     safe = []
-    for g in rows[:200]:
+    for g in rows:
         safe.append({
             "garment_instance_id": g.get("garment_instance_id"),
+            "source_customer_id": g.get("source_customer_id"),
             "source_order_id": g.get("source_order_id"),
+            "source_order_item_id": g.get("source_order_item_id"),
+            "gcs_uri": g.get("gcs_uri"),
             "order_pin_code": g.get("order_pin_code"),
             "commodity_type": g.get("commodity_type"),
             "material_type": g.get("material_type"),
             "primary_color": g.get("primary_color"),
             "size_normalized": g.get("size_normalized"),
             "brand_name_raw": g.get("brand_name_raw"),
+            "gender": g.get("gender"),
+            "customer_gender": g.get("customer_gender"),
+            "customer_age_band": g.get("customer_age_band"),
+            "customer_pin": g.get("customer_pin"),
+            "customer_device_type": g.get("customer_device_type"),
             "review_status": g.get("review_status"),
             "attribute_evidence": g.get("attribute_evidence"),
             "updated_at": g.get("updated_at"),
         })
-    return ok({"garments": safe, "coverage": store.brand_coverage_summary()})
+    return ok({"garments": safe, "coverage": coverage_summary(all_rows)})
 
 
 @router.patch("/{garment_id}/attributes")
@@ -269,12 +303,24 @@ def patch_attributes(
     body: PatchAttributesBody,
     user: Dict[str, Any] = Depends(require_user),
 ):
+    actor = str(user.get("sub") or user.get("email") or "brand_user")
+    if repository.enabled():
+        garment = find_garment(garment_id)
+        if garment and garment.get("source") == "bigquery":
+            try:
+                row = repository.append_review_row(
+                    garment, body.attributes, review_status=body.review_status, actor=actor
+                )
+            except Exception as exc:
+                return err("INSUFFICIENT_DATA", f"Review not saved to BigQuery: {exc}")
+            clear_garment_cache()
+            return ok({**garment, **body.attributes, "review_status": row["review_status"]})
     store = get_garment_store()
     try:
         updated = store.apply_attributes(
             garment_id,
             body.attributes,
-            actor_user_id=str(user.get("sub") or user.get("email") or "brand_user"),
+            actor_user_id=actor,
             review_status=body.review_status,
         )
     except ValueError as exc:

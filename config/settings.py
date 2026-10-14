@@ -82,6 +82,8 @@ class Settings:
         os.getenv("PRIVACY_QUERY_LOG_PATH", ROOT_DIR / "data_derived" / "privacy_query_log.json")
     )
     EXPORT_REQUIRE_ROLE = os.getenv("EXPORT_REQUIRE_ROLE", "brand_analyst")
+    # SKU ranking consent eligibility: opt_out drops revoked customers; opt_in keeps only granted
+    SKU_RANK_CONSENT_MODE = os.getenv("SKU_RANK_CONSENT_MODE", "opt_out")
 
     # ADV-01 activation
     MEDIA_ACTIVATION_WEBHOOK = os.getenv("MEDIA_ACTIVATION_WEBHOOK", "")

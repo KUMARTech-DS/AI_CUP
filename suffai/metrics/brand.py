@@ -14,11 +14,42 @@ def brand_benchmarks(
     *,
     my_brand: str,
     geo_ids: list[str] | None = None,
+    customers_by_id: dict[str, dict[str, Any]] | None = None,
+    genders: list[str] | None = None,
+    age_bands: list[str] | None = None,
+    device_types: list[str] | None = None,
     k: int = PRIVACY_K,
 ) -> dict[str, Any]:
+    from suffai.metrics.demographics import (
+        demographic_summary,
+        enrich_garments_with_customers,
+        filter_customer_ids,
+    )
+
     rows = verified_garments
     if geo_ids:
         rows = [g for g in rows if (g.get("order_pin_code") or "UNKNOWN") in geo_ids]
+
+    cust_index = customers_by_id or {}
+    if cust_index and (genders or age_bands or device_types):
+        cohort = {
+            g.get("source_customer_id") or g.get("user_uuid")
+            for g in rows
+            if g.get("source_customer_id") or g.get("user_uuid")
+        }
+        allowed = filter_customer_ids(
+            cust_index,
+            cohort,
+            genders=genders,
+            age_bands=age_bands,
+            device_types=device_types,
+        )
+        rows = [
+            g for g in rows
+            if (g.get("source_customer_id") or g.get("user_uuid")) in allowed
+        ]
+
+    rows = enrich_garments_with_customers(rows, cust_index) if cust_index else rows
 
     by_brand: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for g in rows:
@@ -28,13 +59,21 @@ def brand_benchmarks(
         by_brand[name].append(g)
 
     total = sum(len(v) for v in by_brand.values()) or 0
-    customers = {g.get("source_customer_id") for g in rows if g.get("source_customer_id")}
+    customers = {
+        g.get("source_customer_id") or g.get("user_uuid")
+        for g in rows
+        if g.get("source_customer_id") or g.get("user_uuid")
+    }
     cell = suppress_cell(len(customers), total, k=k)
 
     benches = []
     for brand, items in sorted(by_brand.items(), key=lambda x: -len(x[1])):
         n = len(items)
-        cust = {i.get("source_customer_id") for i in items if i.get("source_customer_id")}
+        cust = {
+            i.get("source_customer_id") or i.get("user_uuid")
+            for i in items
+            if i.get("source_customer_id") or i.get("user_uuid")
+        }
         c = suppress_cell(len(cust), n, k=k)
         benches.append({
             "brand": brand,
@@ -65,10 +104,16 @@ def brand_benchmarks(
             "material_type": attr_mix("material_type"),
             "primary_color": attr_mix("primary_color"),
             "size_normalized": attr_mix("size_normalized"),
+            "gender": attr_mix("gender"),  # garment intended gender
+            "customer_gender": attr_mix("customer_gender"),
+            "customer_age_band": attr_mix("customer_age_band"),
+            "customer_device_type": attr_mix("customer_device_type"),
         },
+        "customer_demographics": demographic_summary(cust_index, customers, k=k),
         "metric_version": METRIC_VERSION,
         "definition": (
             "Competitive share = share of verified consented reviewed garment observations "
-            "with identifiable brand. Not laundry volume or purchase market share."
+            "with identifiable brand. Not laundry volume or purchase market share. "
+            "Customer demographics join customer_uuid = garment source_customer_id / user_uuid."
         ),
     }

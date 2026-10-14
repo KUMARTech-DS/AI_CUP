@@ -2,7 +2,20 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { RequireAuth } from "@/components/RequireAuth";
+import { DemoMix, Demographics } from "@/components/DemoMix";
+import { DemoFilters, DemoFilterState, EMPTY_DEMO_FILTERS, demoFilterQuery } from "@/components/DemoFilters";
 import { apiGet, apiPost, getUser } from "@/lib/api";
+
+const MIX_LABELS: Record<string, string> = {
+  commodity_type: "Commodity",
+  material_type: "Material",
+  primary_color: "Color",
+  size_normalized: "Size",
+  gender: "Garment gender",
+  customer_gender: "Customer gender",
+  customer_age_band: "Customer age band",
+  customer_device_type: "Customer device",
+};
 
 type Bench = {
   brand: string;
@@ -20,20 +33,26 @@ export default function BrandPage() {
   const [mix, setMix] = useState<Record<string, { value: string; count: number }[]>>({});
   const [sku, setSku] = useState({ brand_sku: "", category: "", color: "", material: "", size: "" });
   const [skuMsg, setSkuMsg] = useState<string | null>(null);
+  const [filters, setFilters] = useState<DemoFilterState>(EMPTY_DEMO_FILTERS);
+  const [demographics, setDemographics] = useState<Demographics | null>(null);
 
-  function load() {
+  function load(f: DemoFilterState = EMPTY_DEMO_FILTERS) {
     if (!user?.brand_id) return;
-    apiGet<Record<string, unknown>>(`/v1/brands/${user.brand_id}/benchmarks`).then((res) => {
+    apiGet<Record<string, unknown>>(
+      `/v1/brands/${user.brand_id}/benchmarks${demoFilterQuery(f)}`,
+    ).then((res) => {
       const cov = (res.data as { coverage?: Record<string, unknown> })?.coverage || null;
       setCoverage(cov);
       if (res.errors?.length) {
         setMessage(res.errors[0].message);
         setBenches([]);
         setMix({});
+        setDemographics(null);
       } else {
         setMessage((res.data as { definition?: string })?.definition || "Verified garment benchmarks");
         setBenches(((res.data as { benchmarks?: Bench[] }).benchmarks) || []);
         setMix(((res.data as { my_attribute_mix?: typeof mix }).my_attribute_mix) || {});
+        setDemographics((res.data as { customer_demographics?: Demographics }).customer_demographics || null);
       }
     });
   }
@@ -77,6 +96,8 @@ export default function BrandPage() {
         </div>
       </div>
 
+      <DemoFilters value={filters} onChange={setFilters} onApply={load} />
+
       <div className="panel" style={{ marginBottom: "1rem" }}>
         {benches.length === 0 ? (
           <div className="alert danger">{message}</div>
@@ -102,9 +123,9 @@ export default function BrandPage() {
               </tbody>
             </table>
             <div className="split-2" style={{ marginTop: "1rem" }}>
-              {Object.entries(mix).map(([key, rows]) => (
+              {Object.entries(mix).filter(([, rows]) => (rows || []).length > 0).map(([key, rows]) => (
                 <div key={key}>
-                  <h4>{key}</h4>
+                  <h4>{MIX_LABELS[key] || key}</h4>
                   <ul>
                     {(rows || []).slice(0, 6).map((r) => (
                       <li key={r.value}>{r.value}: {r.count}</li>
@@ -117,7 +138,9 @@ export default function BrandPage() {
         )}
       </div>
 
-      <div className="panel">
+      <DemoMix demographics={demographics} title="Customers behind verified garment observations" />
+
+      <div className="panel" style={{ marginTop: "1rem" }}>
         <h3 style={{ marginTop: 0 }}>Brand catalog SKUs</h3>
         <p className="sub">Supply-side catalog for research underserved-gap component.</p>
         <form onSubmit={onCatalog} className="split-2">

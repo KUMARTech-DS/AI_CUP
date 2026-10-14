@@ -5,8 +5,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PORT=8080 \
     ENVIRONMENT=prod \
-    DATA_DIR=/app/data_offline \
-    DERIVED_DIR=/app/data_derived \
+    DERIVED_DIR=/tmp/suffai-derived \
     DEMO_AUTH_ENABLED=true
 
 WORKDIR /app
@@ -18,9 +17,8 @@ COPY config ./config
 COPY services ./services
 COPY suffai ./suffai
 COPY api ./api
+COPY worker ./worker
 COPY db ./db
-COPY data_offline ./data_offline
-COPY data_derived ./data_derived
 COPY contracts ./contracts
 
 EXPOSE 8080

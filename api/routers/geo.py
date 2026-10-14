@@ -6,10 +6,13 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
-from api.deps import get_normalized, get_rfm, require_user
+from api.deps import get_customer_index, get_garments, get_normalized, get_rfm, require_user
 from suffai.api.envelope import err, ok
 from suffai.geo.polygons import choropleth_features, load_pin_polygons
+from suffai.metrics.command_center import command_center
+from suffai.metrics.demographics import filter_customer_ids
 from suffai.metrics.eligibility import eligible_orders
+from suffai.metrics.garment_geo import garment_pin_summary
 from suffai.metrics.geo import geo_active_customers, geo_query
 from suffai.privacy.differencing import register_query
 from suffai.warehouse.bq_reader import load_geo_tiles_from_marts
@@ -23,6 +26,9 @@ class GeoQueryRequest(BaseModel):
     date_from: Optional[str] = None
     date_to: Optional[str] = None
     rfm_segments: Optional[List[str]] = None
+    genders: Optional[List[str]] = None
+    age_bands: Optional[List[str]] = None
+    device_types: Optional[List[str]] = None
     metrics: List[str] = Field(default_factory=lambda: ["active_customers", "commodity_popularity"])
 
 
@@ -58,6 +64,23 @@ def choropleth(metric: str = "active_customers", user: Dict[str, Any] = Depends(
     return ok(fc, coverage={"features": len(fc.get("features") or []), "source": source})
 
 
+@router.get("/command-center")
+def command_center_view(user: Dict[str, Any] = Depends(require_user)):
+    """Per-PIN hub profiles, store markers and demand heat cells for the spatial command center."""
+    norm = get_normalized()
+    result = command_center(
+        orders=norm["orders"],
+        lines=norm["order_commodity_lines"],
+        stores=norm["stores"],
+        customers=norm["customers"],
+        complaints=norm.get("complaints") or [],
+        garments=get_garments(),
+        polygons=load_pin_polygons(),
+        my_brand=str(user.get("brand") or ""),
+    )
+    return ok(result, coverage={"hubs": len(result["hubs"]), "window": result["window"]})
+
+
 @router.post("/query")
 def query(body: GeoQueryRequest, user: Dict[str, Any] = Depends(require_user)) -> Dict[str, Any]:
     norm = get_normalized()
@@ -69,6 +92,10 @@ def query(body: GeoQueryRequest, user: Dict[str, Any] = Depends(require_user)) -
         date_from=_parse_date(body.date_from),
         date_to=_parse_date(body.date_to),
         rfm_segments=body.rfm_segments,
+        customers_by_id=get_customer_index(),
+        genders=body.genders,
+        age_bands=body.age_bands,
+        device_types=body.device_types,
     )
 
     # Privacy differencing check on eligible customer cohort in filter
@@ -79,6 +106,15 @@ def query(body: GeoQueryRequest, user: Dict[str, Any] = Depends(require_user)) -
         seg_map = {s["customer_id"]: s["rfm_segment"] for s in get_rfm()}
         elig = [o for o in elig if seg_map.get(o.get("customer_id")) in body.rfm_segments]
     cohort = [o.get("customer_id") for o in elig if o.get("customer_id")]
+    if body.genders or body.age_bands or body.device_types:
+        allowed = filter_customer_ids(
+            get_customer_index(),
+            set(cohort),
+            genders=body.genders,
+            age_bands=body.age_bands,
+            device_types=body.device_types,
+        )
+        cohort = [cid for cid in cohort if cid in allowed]
     risk = register_query(
         tenant_id=str(user.get("tenant_id") or user.get("brand_id") or "anon"),
         filters={
@@ -86,15 +122,26 @@ def query(body: GeoQueryRequest, user: Dict[str, Any] = Depends(require_user)) -
             "rfm_segments": body.rfm_segments,
             "date_from": body.date_from,
             "date_to": body.date_to,
+            "genders": body.genders,
+            "age_bands": body.age_bands,
+            "device_types": body.device_types,
         },
         cohort_customer_ids=cohort,
     )
     result["choropleth"] = choropleth_features(result.get("tiles") or [])
+    result["garments"] = garment_pin_summary(
+        get_garments(),
+        customers_by_id=get_customer_index(),
+        geo_ids=body.geo_ids,
+        genders=body.genders,
+        age_bands=body.age_bands,
+        device_types=body.device_types,
+    )
     result["privacy"] = risk
     if risk.get("differencing_risk"):
         return err(
             "INSUFFICIENT_DATA",
             risk.get("reason") or "Differencing risk — result suppressed",
-            data={"privacy": risk, "tiles": [], "commodities": [], "rfm_mix": []},
+            data={"privacy": risk, "tiles": [], "commodities": [], "rfm_mix": [], "garments": None},
         )
     return ok(result, coverage={**(result.get("meta") or {}), "privacy": risk})

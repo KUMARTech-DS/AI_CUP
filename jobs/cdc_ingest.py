@@ -20,30 +20,47 @@ sys.path.insert(0, str(ROOT))
 
 from config import settings
 from jobs.bq_sync import run as bq_sync_run
+from suffai.gcp_io import read_state_json, source_data_location, write_state_json
+from suffai.ingest.loader import _as_list
 from suffai.ids import extract_datetime, extract_id
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("suffai.cdc")
 
 
+WATERMARK_NAME = "cdc_watermark.json"
+
+
 def _load_watermark() -> datetime:
-    path = settings.CDC_WATERMARK_PATH
-    if path.exists():
-        try:
-            data = json.loads(path.read_text(encoding="utf-8"))
-            return datetime.fromisoformat(data["watermark"])
-        except Exception:
-            pass
-    return datetime.now(timezone.utc) - timedelta(days=3650)
+    data = read_state_json(WATERMARK_NAME, settings.CDC_WATERMARK_PATH)
+    try:
+        return datetime.fromisoformat(data["watermark"])
+    except Exception:
+        return datetime.now(timezone.utc) - timedelta(days=3650)
 
 
 def _save_watermark(ts: datetime, stats: dict) -> None:
-    path = settings.CDC_WATERMARK_PATH
+    write_state_json(WATERMARK_NAME, {"watermark": ts.isoformat(), "stats": stats}, settings.CDC_WATERMARK_PATH)
+
+
+def _read_snapshot(location: str, filename: str) -> list:
+    if location.startswith("gs://"):
+        from suffai.gcp_io import read_gcs_json
+
+        return _as_list(read_gcs_json(f"{location.rstrip('/')}/{filename}"))
+    path = Path(location) / filename
+    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else []
+
+
+def _write_snapshot(location: str, filename: str, rows: list) -> None:
+    if location.startswith("gs://"):
+        from suffai.gcp_io import write_gcs_json
+
+        write_gcs_json(f"{location.rstrip('/')}/{filename}", rows)
+        return
+    path = Path(location) / filename
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
-        json.dumps({"watermark": ts.isoformat(), "stats": stats}, indent=2) + "\n",
-        encoding="utf-8",
-    )
+    path.write_text(json.dumps(rows, indent=2, default=str) + "\n", encoding="utf-8")
 
 
 def _sync_mongo(since: datetime) -> dict:
@@ -52,8 +69,7 @@ def _sync_mongo(since: datetime) -> dict:
     client = MongoClient(settings.MONGO_URI)
     db = client[settings.MONGO_DB]
     overlap = since - timedelta(hours=2)
-    out_dir = settings.DATA_DIR
-    out_dir.mkdir(parents=True, exist_ok=True)
+    location = source_data_location()
     stats = {}
     for coll in ("orders", "customers", "stores", "commodities", "services"):
         if coll not in db.list_collection_names():
@@ -61,18 +77,15 @@ def _sync_mongo(since: datetime) -> dict:
             continue
         query = {"updated_at": {"$gte": overlap}}
         docs = list(db[coll].find(query))
-        # Merge into existing snapshot file (idempotent by _id)
-        path = out_dir / f"{coll}.json"
-        existing = []
-        if path.exists():
-            existing = json.loads(path.read_text(encoding="utf-8"))
+        # Merge into existing snapshot (idempotent by _id)
+        existing = _read_snapshot(location, f"{coll}.json")
         by_id = {extract_id(d.get("_id")): d for d in existing if extract_id(d.get("_id"))}
         for d in docs:
             # bson → json-friendly
             d = json.loads(json.dumps(d, default=str))
             by_id[extract_id(d.get("_id"))] = d
         merged = list(by_id.values())
-        path.write_text(json.dumps(merged, indent=2, default=str) + "\n", encoding="utf-8")
+        _write_snapshot(location, f"{coll}.json", merged)
         stats[coll] = len(docs)
         log.info("mongo %s pulled=%s total=%s", coll, len(docs), len(merged))
     return stats
@@ -87,7 +100,7 @@ def run() -> dict:
         stats["mode"] = "mongo_incremental"
         stats["mongo"] = _sync_mongo(since)
     else:
-        log.info("MONGO_URI unset — refreshing warehouse from DATA_DIR=%s", settings.DATA_DIR)
+        log.info("MONGO_URI unset — refreshing warehouse from %s", source_data_location())
 
     # Always push current curated snapshot into BigQuery when credentials available
     try:

@@ -8,7 +8,7 @@ from typing import Any, Dict, Optional
 from fastapi import APIRouter, Depends, Header
 from pydantic import BaseModel, Field
 
-from api.deps import get_garment_store, get_normalized, get_rfm, require_user
+from api.deps import get_customer_index, get_garment_store, get_normalized, get_rfm, require_user
 from config import settings
 from suffai.api.envelope import err, ok
 from suffai.gcp_io import publish_extraction_event, signed_upload_url, trigger_worker_http
@@ -105,6 +105,7 @@ def evaluate_campaign(
         eligible_order_ids=eligible_ids,
         rfm_snapshots=get_rfm(),
         my_brand=str(user.get("brand") or ""),
+        customers_by_id=get_customer_index(),
     )
     saved = store.save_campaign_evaluations(campaign_id, evaluations[:100])
     return ok({

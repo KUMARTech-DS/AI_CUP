@@ -14,12 +14,15 @@ from pydantic import BaseModel, Field
 
 from api.deps import get_garment_store, get_normalized, get_rfm, require_user
 from config import settings
+from services import ops_db
+from suffai.gcp_io import read_state_json
 from suffai.api.envelope import err, ok
 from suffai.metrics.eligibility import eligible_orders
 
 router = APIRouter(prefix="/v1/activation", tags=["activation"])
 
 
+# Local-only JSON files; with DATABASE_URL these records live in Cloud SQL tables.
 def _adv_path(name: str) -> Path:
     p = settings.DERIVED_DIR / name
     if not p.exists():
@@ -69,7 +72,6 @@ class InventoryBody(BaseModel):
 def record_conversion(body: ConversionEvent, user: Dict[str, Any] = Depends(require_user)):
     if not settings.ENABLE_ADV:
         return err("FORBIDDEN", "ADV features disabled")
-    rows = _load("conversion_events.json")
     rec = {
         "event_id": str(uuid.uuid4()),
         "tenant_id": user.get("tenant_id"),
@@ -78,14 +80,12 @@ def record_conversion(body: ConversionEvent, user: Dict[str, Any] = Depends(requ
         "observed_at": body.observed_at or datetime.now(timezone.utc).isoformat(),
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
-    rows.append(rec)
-    _save("conversion_events.json", rows)
-    try:
-        from services.ops_db import insert_conversion
-
-        insert_conversion(rec)
-    except Exception:
-        pass
+    if ops_db.configured():
+        ops_db.insert_conversion(rec, strict=True)
+    else:
+        rows = _load("conversion_events.json")
+        rows.append(rec)
+        _save("conversion_events.json", rows)
     return ok(rec)
 
 
@@ -97,10 +97,13 @@ def estimate_uplift(body: UpliftRequest, user: Dict[str, Any] = Depends(require_
     """
     if not settings.ENABLE_ADV:
         return err("FORBIDDEN", "ADV features disabled")
-    events = [
-        e for e in _load("conversion_events.json")
-        if e.get("campaign_id") == body.campaign_id and e.get("tenant_id") == user.get("tenant_id")
-    ]
+    if ops_db.configured():
+        events = ops_db.list_conversions(user.get("tenant_id"), body.campaign_id)
+    else:
+        events = [
+            e for e in _load("conversion_events.json")
+            if e.get("campaign_id") == body.campaign_id and e.get("tenant_id") == user.get("tenant_id")
+        ]
     def rate(keys: List[str]) -> Dict[str, Any]:
         subset = [e for e in events if not keys or e.get("segment_key") in keys]
         n = len(subset)
@@ -146,7 +149,6 @@ def media_push(body: MediaPushBody, user: Dict[str, Any] = Depends(require_user)
         "payload": body.payload,
         "ts": datetime.now(timezone.utc).isoformat(),
     }
-    rows = _load("media_activation_log.json")
     delivery = {"mode": "logged_only", "ok": True}
     webhook = settings.MEDIA_ACTIVATION_WEBHOOK
     if webhook:
@@ -155,41 +157,34 @@ def media_push(body: MediaPushBody, user: Dict[str, Any] = Depends(require_user)
             delivery = {"mode": "webhook", "status_code": resp.status_code, "ok": resp.is_success}
         except Exception as exc:
             delivery = {"mode": "webhook", "ok": False, "error": str(exc)}
-    rows.append({**envelope, "delivery": delivery})
-    _save("media_activation_log.json", rows)
-    try:
-        from services.ops_db import insert_media_activation
-
-        insert_media_activation(envelope, delivery)
-    except Exception:
-        pass
+    if ops_db.configured():
+        ops_db.insert_media_activation(envelope, delivery, strict=True)
+    else:
+        rows = _load("media_activation_log.json")
+        rows.append({**envelope, "delivery": delivery})
+        _save("media_activation_log.json", rows)
     return ok({"activation": envelope, "delivery": delivery})
 
 
 @router.post("/inventory")
 def upsert_inventory(body: InventoryBody, user: Dict[str, Any] = Depends(require_user)):
-    rows = _load("inventory_levels.json")
-    found = None
-    for r in rows:
-        if r.get("brand_id") == body.brand_id and r.get("sku") == body.sku and r.get("warehouse") == body.warehouse:
-            r.update(body.model_dump())
-            r["updated_at"] = datetime.now(timezone.utc).isoformat()
-            found = r
-            break
-    if not found:
-        found = {
-            **body.model_dump(),
-            "inventory_id": str(uuid.uuid4()),
-            "updated_at": datetime.now(timezone.utc).isoformat(),
-        }
-        rows.append(found)
-    _save("inventory_levels.json", rows)
-    try:
-        from services.ops_db import upsert_inventory
-
-        upsert_inventory(found)
-    except Exception:
-        pass
+    now = datetime.now(timezone.utc).isoformat()
+    if ops_db.configured():
+        found = {**body.model_dump(), "updated_at": now}
+        ops_db.upsert_inventory(found, strict=True)
+    else:
+        rows = _load("inventory_levels.json")
+        found = None
+        for r in rows:
+            if r.get("brand_id") == body.brand_id and r.get("sku") == body.sku and r.get("warehouse") == body.warehouse:
+                r.update(body.model_dump())
+                r["updated_at"] = now
+                found = r
+                break
+        if not found:
+            found = {**body.model_dump(), "inventory_id": str(uuid.uuid4()), "updated_at": now}
+            rows.append(found)
+        _save("inventory_levels.json", rows)
     # also mirror into catalog availability
     store = get_garment_store()
     store.upsert_catalog_sku({
@@ -202,6 +197,8 @@ def upsert_inventory(body: InventoryBody, user: Dict[str, Any] = Depends(require
 
 @router.get("/inventory")
 def list_inventory(brand_id: Optional[str] = None, user: Dict[str, Any] = Depends(require_user)):
+    if ops_db.configured():
+        return ok({"inventory": ops_db.list_inventory(brand_id)})
     rows = _load("inventory_levels.json")
     if brand_id:
         rows = [r for r in rows if r.get("brand_id") == brand_id]
@@ -211,9 +208,7 @@ def list_inventory(brand_id: Optional[str] = None, user: Dict[str, Any] = Depend
 @router.get("/snapshots/schedule-status")
 def schedule_status(user: Dict[str, Any] = Depends(require_user)):
     """EXP-01 scheduled snapshots — status of Cloud Scheduler → CDC/BQ jobs."""
-    wm = {}
-    if settings.CDC_WATERMARK_PATH.exists():
-        wm = json.loads(settings.CDC_WATERMARK_PATH.read_text(encoding="utf-8"))
+    wm = read_state_json("cdc_watermark.json", settings.CDC_WATERMARK_PATH) or {}
     return ok({
         "cdc_watermark": wm,
         "use_bigquery_marts": settings.USE_BIGQUERY_MARTS,

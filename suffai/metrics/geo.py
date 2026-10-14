@@ -127,9 +127,15 @@ def geo_query(
     date_from: datetime | None = None,
     date_to: datetime | None = None,
     rfm_segments: list[str] | None = None,
+    customers_by_id: dict[str, dict[str, Any]] | None = None,
+    genders: list[str] | None = None,
+    age_bands: list[str] | None = None,
+    device_types: list[str] | None = None,
     k: int = PRIVACY_K,
 ) -> dict[str, Any]:
-    """Governed geo response: tiles + commodity breakdown + RFM mix."""
+    """Governed geo response: tiles + commodity breakdown + RFM mix + demographics."""
+    from suffai.metrics.demographics import demographic_summary, filter_customer_ids
+
     eligible = eligible_orders(orders)
     eligible_ids = {o["order_id"] for o in eligible}
     segment_by_cust = {
@@ -139,6 +145,19 @@ def geo_query(
     if rfm_segments:
         allowed_cust = {cid for cid, seg in segment_by_cust.items() if seg in rfm_segments}
         eligible = [o for o in eligible if o.get("customer_id") in allowed_cust]
+        eligible_ids = {o["order_id"] for o in eligible}
+
+    cust_index = customers_by_id or {}
+    if cust_index and (genders or age_bands or device_types):
+        cohort = {o.get("customer_id") for o in eligible if o.get("customer_id")}
+        allowed = filter_customer_ids(
+            cust_index,
+            cohort,
+            genders=genders,
+            age_bands=age_bands,
+            device_types=device_types,
+        )
+        eligible = [o for o in eligible if o.get("customer_id") in allowed]
         eligible_ids = {o["order_id"] for o in eligible}
 
     tiles = geo_active_customers(eligible, date_from=date_from, date_to=date_to, k=k)
@@ -152,6 +171,7 @@ def geo_query(
 
     # RFM mix in selected geos
     rfm_counts: dict[str, set[str]] = defaultdict(set)
+    demo_ids: set[str] = set()
     for o in eligible:
         if not _in_range(o.get("ordered_at"), date_from, date_to):
             continue
@@ -161,6 +181,7 @@ def geo_query(
         cid = o.get("customer_id")
         if not cid:
             continue
+        demo_ids.add(cid)
         seg = segment_by_cust.get(cid, "Unknown")
         rfm_counts[seg].add(cid)
 
@@ -175,11 +196,20 @@ def geo_query(
 
     mapped = sum(t["denominator"] for t in tiles if t["geo_key"] != "UNKNOWN")
     unknown = next((t["denominator"] for t in tiles if t["geo_key"] == "UNKNOWN"), 0)
+    demographics = demographic_summary(cust_index, demo_ids, k=k) if cust_index else {
+        "cohort_customers": None,
+        "suppressed": True,
+        "gender_mix": [],
+        "age_band_mix": [],
+        "device_mix": [],
+        "note": "Customer profiles unavailable",
+    }
 
     return {
         "tiles": tiles,
         "commodities": commodities[:50],
         "rfm_mix": rfm_mix,
+        "demographics": demographics,
         "meta": {
             "metric_version": METRIC_VERSION,
             "privacy_k": k,
@@ -188,7 +218,8 @@ def geo_query(
             "eligible_orders": len(eligible_ids),
             "coverage_note": (
                 "Material/color/size/brand distributions require consented "
-                "reviewed garment observations — empty until IMG pipeline data exists."
+                "reviewed garment observations — empty until IMG pipeline data exists. "
+                "Customer demographics join on customer_uuid = garment user_uuid."
             ),
         },
     }
