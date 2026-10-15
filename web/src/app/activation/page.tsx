@@ -87,7 +87,7 @@ export default function ActivationPage() {
       payload: { brand: user?.brand },
     });
     if (res.errors?.length) setError(res.errors[0].message);
-    else setMsg(`Media push: ${JSON.stringify(res.data?.delivery || res.data)}`);
+    else setMsg(`Media push: ${JSON.stringify(res.data)}`);
   }
 
   async function onInventory(e: FormEvent) {
