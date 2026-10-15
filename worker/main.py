@@ -49,46 +49,40 @@ class ExtractRequest(BaseModel):
 import base64
 import json
 
-def parse_key_object_metadata(payload):
-    """Normalize GCS Pub/Sub notifications for extraction."""
+def parse_key_object_metadata(envelope):
+    """Normalize Pub/Sub GCS notifications."""
 
-    if not isinstance(payload, dict):
-        raise ValueError("Invalid Pub/Sub payload")
+    message = envelope.get("message", {})
+    attributes = message.get("attributes", {})
 
-    # Decode standard Pub/Sub push envelope
-    message = payload.get("message")
+    metadata = {}
 
-    if isinstance(message, dict):
-        encoded = message.get("data")
+    if message.get("data"):
+        metadata = json.loads(
+            base64.b64decode(message["data"]).decode("utf-8")
+        )
 
-        if encoded:
-            decoded = base64.b64decode(encoded)
-            payload = json.loads(decoded.decode("utf-8"))
-        else:
-            payload = message.get("attributes", {})
-
-    # Normalize GCS object metadata
     object_key = (
-        payload.get("gcs_object_key")
-        or payload.get("name")
-        or payload.get("objectId")
+        attributes.get("objectId")
+        or metadata.get("name")
+        or metadata.get("gcs_object_key")
     )
 
     bucket = (
-        payload.get("gcs_bucket")
-        or payload.get("bucket")
-        or payload.get("bucketId")
+        attributes.get("bucketId")
+        or metadata.get("bucket")
+        or metadata.get("gcs_bucket")
     )
 
     if not object_key:
-        raise ValueError(
-            f"Missing GCS object key. Payload keys: {list(payload.keys())}"
-        )
+        raise ValueError("gcs_object_key is required")
 
     return {
-        **payload,
+        **metadata,
         "gcs_object_key": object_key,
         "gcs_bucket": bucket,
+        "event_type": attributes.get("eventType"),
+        "object_generation": attributes.get("objectGeneration"),
     }
   
 def _abstain_result(reason: str) -> Dict[str, Any]:
