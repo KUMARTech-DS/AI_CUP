@@ -1,187 +1,239 @@
+
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo } from "react";
+import {
+  MapContainer,
+  TileLayer,
+  GeoJSON,
+  useMap,
+} from "react-leaflet";
+import type {
+  Feature as GeoJSONFeature,
+  FeatureCollection,
+  Geometry,
+} from "geojson";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+
+type Feature = {
+  type: string;
+  properties: {
+    pin_code?: string;
+    area?: string;
+    metric_value?: number | null;
+    suppressed?: boolean;
+  };
+  geometry: {
+    type: string;
+    coordinates: any;
+  };
+};
 
 type Props = {
-  features: {
-    type: string;
-    properties: {
-      pin_code?: string;
-      area?: string;
-      area_name?: string;
-      metric_value?: number | null;
-      suppressed?: boolean;
-    };
-    geometry: {
-      type: string;
-      coordinates: any;
-    };
-  }[];
+  features: Feature[];
   disclaimer?: string;
 };
 
-const TARGET_PINS = new Set(["560102", "560103", "560068", "560035", "560087", "560037"]);
+function colorFor(
+  value: number | null | undefined,
+  max: number
+) {
+  if (value == null || max <= 0) {
+    return "#cbd5e1";
+  }
 
-function colorFor(value: number | null | undefined, max: number) {
-  if (value == null || max <= 0) return "#0f6b4c";
-  const t = Math.max(0, Math.min(1, value / max));
-  const start = [220, 232, 225];
-  const end = [15, 107, 76];
-  const rgb = start.map((c, i) => Math.round(c + (end[i] - c) * t));
-  return `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`;
+  const t = Math.min(1, value / max);
+  const start = [220, 252, 231];
+  const end = [21, 128, 61];
+
+  return `rgb(${start
+    .map((v, i) =>
+      Math.round(v + (end[i] - v) * t)
+    )
+    .join(",")})`;
 }
 
-export function PinChoropleth({ features, disclaimer }: Props) {
-  const mapElement = useRef<HTMLDivElement | null>(null);
-  const [mapError, setMapError] = useState<string | null>(null);
+function FitBounds({
+  data,
+}: {
+  data: FeatureCollection;
+}) {
+  const map = useMap();
 
   useEffect(() => {
-    let map: import("leaflet").Map | undefined;
-    let cancelled = false;
-    let resizeObserver: ResizeObserver | undefined;
+    const layer = L.geoJSON(data as any);
+    const bounds = layer.getBounds();
 
-    async function renderMap() {
-      try {
-        const L = await import("leaflet");
-        if (cancelled || !mapElement.current) return;
-
-        const selected = features.filter((f) =>
-          TARGET_PINS.has(String(f.properties.pin_code || ""))
-        );
-        if (!selected.length) {
-          setMapError("No polygons found for the six configured Bengaluru PIN codes.");
-          return;
-        }
-
-        // Prefer detailed PIN geometry from DataMeet's Bengaluru boundary dataset.
-        // Keep the bundled demo geometry as a fallback if the remote source is unavailable.
-        let mapFeatures = selected;
-        try {
-          const response = await fetch(
-            "https://raw.githubusercontent.com/datameet/PincodeBoundary/master/Bangalore/boundary.geojson"
-          );
-          if (response.ok) {
-            const boundaryData = await response.json();
-            const boundaries = new Map<string, any>();
-            for (const boundary of boundaryData.features || []) {
-              const pin = String(boundary.properties?.pin_code || "");
-              if (TARGET_PINS.has(pin)) boundaries.set(pin, boundary);
-            }
-            mapFeatures = selected.map((f) => {
-              const boundary = boundaries.get(String(f.properties.pin_code || ""));
-              return boundary
-                ? {
-                    ...f,
-                    properties: {
-                      ...f.properties,
-                      area: boundary.properties?.area_name || f.properties.area,
-                    },
-                    geometry: boundary.geometry,
-                  }
-                : f;
-            });
-          }
-        } catch {
-          // The interactive basemap still works with bundled approximate demo geometry.
-        }
-
-        const values = mapFeatures
-          .map((f) => f.properties.metric_value)
-          .filter((v): v is number => typeof v === "number");
-        const max = values.length ? Math.max(...values) : 0;
-
-        map = L.map(mapElement.current, {
-          scrollWheelZoom: true,
-          zoomControl: true,
-        });
-
-        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-          maxZoom: 19,
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        }).addTo(map);
-
-        const collection = {
-          type: "FeatureCollection" as const,
-          features: mapFeatures.map((f) => ({
-            type: "Feature" as const,
-            properties: f.properties,
-            geometry: f.geometry as any,
-          })),
-        };
-
-        const layer = L.geoJSON(collection as any, {
-          style: (feature) => {
-            const props = feature?.properties || {};
-            const suppressed = Boolean(props.suppressed);
-            return {
-              color: "#16352a",
-              weight: 2,
-              opacity: 0.95,
-              fillColor: suppressed ? "#eceff1" : colorFor(props.metric_value, max),
-              fillOpacity: suppressed ? 0.68 : 0.62,
-            };
-          },
-          onEachFeature: (feature, layer) => {
-            const props = feature.properties || {};
-            const pin = String(props.pin_code || "");
-            const area = props.area || props.area_name || "PIN area";
-            const title = `<strong>${String(area)}</strong><br/>PIN: ${pin}`;
-            const detail = props.suppressed
-              ? "<br/><span>Customer count suppressed for privacy</span>"
-              : `<br/>Active customers: ${props.metric_value ?? "No data"}`;
-            layer.bindPopup(title + detail);
-            layer.bindTooltip(`${pin} · ${String(area)}`);
-          },
-        }).addTo(map);
-
-        if (layer.getBounds().isValid()) {
-          map.fitBounds(layer.getBounds(), { padding: [24, 24], maxZoom: 13 });
-        } else {
-          map.setView([12.93, 77.68], 11);
-        }
-
-        // Ensure Leaflet recalculates the viewport when the panel finishes laying out.
-        resizeObserver = new ResizeObserver(() => map?.invalidateSize());
-        resizeObserver.observe(mapElement.current);
-        window.setTimeout(() => map?.invalidateSize(), 100);
-      } catch {
-        if (!cancelled) setMapError("The map could not be loaded. Check your network connection and Leaflet installation.");
-      }
+    if (bounds.isValid()) {
+      map.fitBounds(bounds.pad(0.12), {
+        maxZoom: 13,
+      });
     }
+  }, [data, map]);
 
-    renderMap();
-    return () => {
-      cancelled = true;
-      resizeObserver?.disconnect();
-      map?.remove();
+  return null;
+}
+
+export function PinChoropleth({
+  features,
+  disclaimer,
+}: Props) {
+  const values = features
+    .map((f) => f.properties.metric_value)
+    .filter(
+      (v): v is number => typeof v === "number"
+    );
+
+  const max = values.length
+    ? Math.max(...values)
+    : 0;
+
+  const data = useMemo<FeatureCollection>(
+    () => ({
+      type: "FeatureCollection",
+      features: features.map(
+        (f) =>
+          ({
+            type: "Feature",
+            properties: f.properties,
+            geometry: f.geometry as Geometry,
+          }) as GeoJSONFeature
+      ),
+    }),
+    [features]
+  );
+
+  if (!features.length) {
+    return (
+      <div className="alert">
+        No PIN polygons available.
+      </div>
+    );
+  }
+
+  const style = (feature?: GeoJSONFeature) => {
+    const p = (feature?.properties || {}) as
+      Feature["properties"];
+
+    const suppressed = Boolean(p.suppressed);
+
+    return {
+      color: suppressed ? "#94a3b8" : "#166534",
+      weight: 2,
+      opacity: 0.95,
+      fillColor: suppressed
+        ? "#e2e8f0"
+        : colorFor(p.metric_value, max),
+      fillOpacity: suppressed ? 0.55 : 0.72,
     };
-  }, [features]);
+  };
+
+  const onEachFeature = (
+    feature: GeoJSONFeature,
+    layer: L.Layer
+  ) => {
+    const p = (feature.properties || {}) as
+      Feature["properties"];
+
+    const title =
+      p.area || p.pin_code || "PIN area";
+
+    const detail = p.suppressed
+      ? "Customer count suppressed for privacy"
+      : `Active customers: ${p.metric_value ?? "—"}`;
+
+    layer.bindTooltip(
+      `${title}<br/>${detail}`
+    );
+
+    layer.on({
+      mouseover: (e: L.LeafletMouseEvent) => {
+        (e.target as L.Path).setStyle({
+          weight: 3,
+          color: "#0f172a",
+          fillOpacity: 0.9,
+        });
+      },
+      mouseout: (e: L.LeafletMouseEvent) => {
+        (e.target as L.Path).setStyle(
+          style(feature)
+        );
+      },
+    });
+  };
 
   return (
-    <div>
-      {mapError && <div className="alert">{mapError}</div>}
-      <div
-        ref={mapElement}
-        style={{
-          width: "100%",
-          height: 520,
-          borderRadius: 12,
-          overflow: "hidden",
-          border: "1px solid var(--line, #d8dfda)",
-          background: "#eef2ef",
-        }}
-        role="application"
-        aria-label="Interactive Bengaluru PIN-code map"
-      />
-      <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap", alignItems: "center", marginTop: "0.75rem", fontSize: "0.85rem" }}>
-        <span><span style={{ display: "inline-block", width: 12, height: 12, background: "#0f6b4c", marginRight: 6, border: "1px solid #16352a" }} />Customer activity</span>
-        <span><span style={{ display: "inline-block", width: 12, height: 12, background: "#eceff1", marginRight: 6, border: "1px solid #16352a" }} />Suppressed for privacy</span>
+    <section className="geo-map-shell">
+      <div className="geo-map-toolbar">
+        <div>
+          <span className="geo-live-dot" />
+          Bengaluru · PIN-code coverage
+        </div>
+
+        <span className="geo-map-hint">
+          Scroll to zoom · Select a boundary for details
+        </span>
       </div>
+
+      <MapContainer
+        center={[12.9716, 77.5946]}
+        zoom={11}
+        scrollWheelZoom
+        className="geo-leaflet-map"
+      >
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+
+        <GeoJSON
+          key={`${features.length}-${max}`}
+          data={data as any}
+          style={style as any}
+          onEachFeature={onEachFeature as any}
+        />
+
+        <FitBounds data={data} />
+      </MapContainer>
+
+      <div className="geo-map-footer">
+        <div className="geo-legend">
+          <span
+            className="geo-legend-swatch"
+            style={{ background: "#15803d" }}
+          />
+          Higher activity
+        </div>
+
+        <div className="geo-legend">
+          <span
+            className="geo-legend-swatch"
+            style={{
+              background: "#dcfce7",
+              border: "1px solid #86efac",
+            }}
+          />
+          Lower activity
+        </div>
+
+        <div className="geo-legend">
+          <span
+            className="geo-legend-swatch"
+            style={{
+              background: "#e2e8f0",
+              border: "1px solid #94a3b8",
+            }}
+          />
+          Privacy suppressed
+        </div>
+      </div>
+
       {disclaimer && (
-        <p className="sub" style={{ fontSize: "0.8rem", marginTop: "0.5rem" }}>
+        <p className="geo-map-disclaimer">
           {disclaimer}
         </p>
       )}
-    </div>
+    </section>
   );
 }
