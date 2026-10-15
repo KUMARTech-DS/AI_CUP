@@ -2,11 +2,41 @@
 
 Cloud Run service that:
 
-1. Reads an image from **GCS**
-2. Extracts attributes with **Vertex AI Gemini**
-3. Writes results to **Cloud SQL** (`extraction_jobs`, `garment_instances`, or `campaigns.metadata`)
+1. Receives a **GCS upload event** for `useruuid_orderuuid_itemuuid.jpg` (or an API-published payload)
+2. Extracts attributes + garment gender with **Vertex AI Gemini**
+3. Appends one row to **BigQuery** `suffai_staging.fact_garment_observation` (system of record read by dashboards)
+4. Best-effort Cloud SQL write (`extraction_jobs`, `garment_instances`, `campaigns.metadata`) when `DATABASE_URL` is set
 
-Does **not** require redeploying `suffai-api` or `suffai-web`.
+## Data flow to the dashboard
+
+```text
+GCS upload  ──notification──▶ Pub/Sub ──push──▶ suffai-extraction ──▶ BigQuery fact_garment_observation
+JSON orders/customers ──jobs.bq_sync──▶ BigQuery fact_order, dim_customer, dim_store
+                     suffai_marts.v_garment_enriched = latest garment row + order PIN + customer demographics
+suffai-api (USE_BIGQUERY_MARTS=true) reads the view → Geo / Brand / Research / Review tabs
+```
+
+The view attributes each garment to the order PIN (`order_uuid` → `fact_order.order_pin`),
+falling back to the customer home PIN (`user_uuid` → `dim_customer.pin`). Human corrections from
+the Review tab append a new row (`source=human_review`); the view always takes the latest row.
+
+### One-time setup: GCS → Pub/Sub notification
+
+```bash
+gcloud storage buckets notifications create gs://$GCS_IMAGE_BUCKET \
+  --topic=garment-image-uploaded --event-types=OBJECT_FINALIZE --payload-format=json
+```
+
+The existing push subscription to `suffai-extraction` handles these messages. Objects whose name
+does not match `useruuid_orderuuid_itemuuid.<jpg|png|webp>` are acknowledged and ignored, so
+campaign creatives and API-flow uploads are not processed twice. Eventarc
+(`google.cloud.storage.object.v1.finalized`) delivered directly to the service also works.
+
+### One-time setup: BigQuery
+
+Run the `suffai-bq-sync` job once (`python -m jobs.bq_sync`). It loads orders / customers / stores,
+creates `fact_garment_observation` if missing, and creates `v_garment_enriched`. The worker also
+creates the table on first insert.
 
 ## Env vars (Cloud Run → `suffai-extraction`)
 
@@ -18,7 +48,11 @@ Does **not** require redeploying `suffai-api` or `suffai-web`.
 | `ENABLE_VERTEX` | `true` | yes to call Gemini |
 | `VERTEX_LOCATION` | `asia-south1` | recommended |
 | `VERTEX_MODEL` | `gemini-2.0-flash` | optional |
-| `DATABASE_URL` | see below | yes to persist |
+| `ENABLE_BIGQUERY` | `true` (default) | yes |
+| `BQ_PROJECT` | defaults to `GOOGLE_CLOUD_PROJECT` | optional |
+| `BQ_STAGING_DATASET` | `suffai_staging` | optional |
+| `BQ_LOCATION` | `asia-south1` | optional |
+| `DATABASE_URL` | see below | optional (Cloud SQL mirror) |
 | `AUTO_ACCEPT_CONFIDENCE` | `0.90` | optional |
 
 ### `DATABASE_URL` (Cloud SQL unix socket)
@@ -33,7 +67,12 @@ Also attach the Cloud SQL instance on the Cloud Run service (`suffai-ops` or you
 
 - `roles/storage.objectViewer` on the image bucket
 - `roles/aiplatform.user` (Vertex)
-- Cloud SQL Client on the instance
+- `roles/bigquery.dataEditor` on `suffai_staging` + `roles/bigquery.jobUser` on the project
+- Cloud SQL Client on the instance (only if `DATABASE_URL` is set)
+
+`suffai-api` runtime SA needs `roles/bigquery.dataViewer` on `suffai_staging` and `suffai_marts`,
+`roles/bigquery.dataEditor` on `suffai_staging` (Review tab corrections), and `roles/bigquery.jobUser`.
+The GCS service agent needs `roles/pubsub.publisher` on the topic for bucket notifications.
 - Secret access if password comes from Secret Manager
 
 ## Pub/Sub payload (`garment-image-uploaded`)

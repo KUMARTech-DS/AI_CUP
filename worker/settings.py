@@ -20,6 +20,11 @@ class WorkerSettings:
     # Auto-complete when min field confidence >= this; else NEEDS_REVIEW
     AUTO_ACCEPT_CONFIDENCE = float(os.getenv("AUTO_ACCEPT_CONFIDENCE", "0.90"))
     MAX_IMAGE_BYTES = int(os.getenv("MAX_IMAGE_BYTES", str(12 * 1024 * 1024)))
+    # BigQuery: system of record for extracted garment metadata read by dashboards
+    ENABLE_BIGQUERY = _bool("ENABLE_BIGQUERY", True)
+    BQ_PROJECT = os.getenv("BQ_PROJECT") or PROJECT_ID
+    BQ_LOCATION = os.getenv("BQ_LOCATION", "asia-south1")
+    BQ_STAGING_DATASET = os.getenv("BQ_STAGING_DATASET", "suffai_staging")
 
 
 settings = WorkerSettings()

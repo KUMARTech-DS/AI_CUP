@@ -5,7 +5,13 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
-from api.deps import get_garment_store, require_user
+from api.deps import (
+    get_customer_index,
+    get_garment_coverage,
+    get_garment_store,
+    get_verified_garments,
+    require_user,
+)
 from suffai.api.envelope import err, ok
 from suffai.metrics.brand import brand_benchmarks
 
@@ -25,14 +31,16 @@ class CatalogSkuBody(BaseModel):
 def brand_benchmarks_route(
     brand_id: str,
     geo_ids: Optional[str] = None,
+    genders: Optional[str] = None,
+    age_bands: Optional[str] = None,
+    device_types: Optional[str] = None,
     user: Dict[str, Any] = Depends(require_user),
 ):
     claimed = (user.get("brand") or "").lower().replace(" ", "").replace("'", "").replace("&", "and")
     if brand_id not in {claimed, user.get("brand_id")}:
         return err("FORBIDDEN", "Tenant cannot access another brand's private metrics")
 
-    store = get_garment_store()
-    coverage = store.brand_coverage_summary()
+    coverage = get_garment_coverage()
     if not coverage["brand_analytics_available"]:
         return err(
             "INSUFFICIENT_DATA",
@@ -50,10 +58,17 @@ def brand_benchmarks_route(
         )
 
     pins = [p.strip() for p in geo_ids.split(",")] if geo_ids else None
+    gender_list = [g.strip() for g in genders.split(",")] if genders else None
+    age_list = [a.strip() for a in age_bands.split(",")] if age_bands else None
+    device_list = [d.strip() for d in device_types.split(",")] if device_types else None
     data = brand_benchmarks(
-        store.list_verified_brand_observations(),
+        get_verified_garments(),
         my_brand=str(user.get("brand") or ""),
         geo_ids=pins,
+        customers_by_id=get_customer_index(),
+        genders=gender_list,
+        age_bands=age_list,
+        device_types=device_list,
     )
     data["coverage"] = coverage
     data["brand_id"] = brand_id

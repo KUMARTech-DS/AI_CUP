@@ -1,0 +1,5 @@
+{
+  "/ads-lab/page": "app/ads-lab/page.js",
+  "/login/page": "app/login/page.js",
+  "/geo/page": "app/geo/page.js"
+}

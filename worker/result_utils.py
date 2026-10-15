@@ -33,6 +33,13 @@ def normalize_result(raw: Dict[str, Any], *, model_version: str) -> Dict[str, An
             return default
         return val
 
+    gender = field("gender")
+    if isinstance(gender, str):
+        gender = gender.strip().lower()
+    allowed_gender = {"male", "female", "unisex", "kids", "unknown"}
+    if gender not in allowed_gender:
+        gender = "unknown"
+
     return {
         "commodity_type": field("commodity_type"),
         "material_type": field("material_type"),
@@ -45,6 +52,7 @@ def normalize_result(raw: Dict[str, Any], *, model_version: str) -> Dict[str, An
         "brand_name": field("brand_name"),
         "brand_sku": raw.get("brand_sku"),
         "pattern": field("pattern"),
+        "gender": gender,
         "style_tags": raw.get("style_tags") or [],
         "attribute_evidence": evidence,
         "notes": raw.get("notes"),

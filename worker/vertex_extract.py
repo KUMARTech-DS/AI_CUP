@@ -27,6 +27,7 @@ EXTRACTION_SCHEMA_HINT = {
     "brand_name": "canonical or unknown",
     "brand_sku": "null if not readable",
     "pattern": "solid|striped|checked|printed|other|unknown",
+    "gender": "male|female|unisex|kids|unknown",
     "style_tags": ["casual", "..."],
     "attribute_evidence": {
         "commodity_type": {"source": "visual_inference|care_label_ocr|brand_label_ocr", "confidence": 0.0},
@@ -34,6 +35,7 @@ EXTRACTION_SCHEMA_HINT = {
         "primary_color": {"source": "visual_inference", "confidence": 0.0},
         "size_normalized": {"source": "size_label_ocr|unknown", "confidence": 0.0},
         "brand_name": {"source": "brand_label_ocr|visual_inference|unknown", "confidence": 0.0},
+        "gender": {"source": "visual_inference|label_ocr|unknown", "confidence": 0.0},
     },
     "notes": "short abstention reasons if any",
 }
@@ -43,10 +45,36 @@ Return ONLY valid JSON matching the schema. Rules:
 - Prefer care-label OCR for material composition; if unreadable use "unknown".
 - Prefer brand/size label OCR for brand and size; do not invent SKUs.
 - Image-only material guesses must use source visual_inference and lower confidence.
-- Never infer customer gender, age, or income.
+- Extract garment intended gender tag (male|female|unisex|kids|unknown) from cut, styling, and labels.
+  This is a product attribute, not customer demographics. Never infer customer age or income.
 - unknown is a valid value. Do not hallucinate brands.
 - confidence is 0.0–1.0 per field in attribute_evidence.
 """
+
+
+PROMPT = (
+    SYSTEM_PROMPT
+    + "\nJSON schema example (types/enums only):\n"
+    + json.dumps(EXTRACTION_SCHEMA_HINT)
+    + "\nExtract attributes from this garment/campaign product image."
+)
+
+
+def _model() -> GenerativeModel:
+    if not settings.ENABLE_VERTEX:
+        raise RuntimeError("ENABLE_VERTEX is false")
+    if not settings.PROJECT_ID:
+        raise RuntimeError("GOOGLE_CLOUD_PROJECT / GCP_PROJECT is required for Vertex")
+    vertexai.init(project=settings.PROJECT_ID, location=settings.VERTEX_LOCATION)
+    return GenerativeModel(settings.VERTEX_MODEL)
+
+
+def _gen_cfg() -> GenerationConfig:
+    return GenerationConfig(
+        temperature=0.1,
+        max_output_tokens=2048,
+        response_mime_type="application/json",
+    )
 
 
 def extract_attributes(image: GcsImage) -> Dict[str, Any]:
@@ -54,35 +82,28 @@ def extract_attributes(image: GcsImage) -> Dict[str, Any]:
     Call Vertex Gemini on the image.
     Prefers GCS URI (no re-upload); falls back to inline bytes if URI fails.
     """
-    if not settings.ENABLE_VERTEX:
-        raise RuntimeError("ENABLE_VERTEX is false")
-    if not settings.PROJECT_ID:
-        raise RuntimeError("GOOGLE_CLOUD_PROJECT / GCP_PROJECT is required for Vertex")
-
-    model_name = settings.VERTEX_MODEL
-    vertexai.init(project=settings.PROJECT_ID, location=settings.VERTEX_LOCATION)
-    model = GenerativeModel(model_name)
-
-    prompt = (
-        SYSTEM_PROMPT
-        + "\nJSON schema example (types/enums only):\n"
-        + json.dumps(EXTRACTION_SCHEMA_HINT)
-        + "\nExtract attributes from this garment/campaign product image."
-    )
-    gen_cfg = GenerationConfig(
-        temperature=0.1,
-        max_output_tokens=2048,
-        response_mime_type="application/json",
-    )
-
+    model = _model()
+    gen_cfg = _gen_cfg()
     try:
         part = Part.from_uri(image.gs_uri, mime_type=image.content_type)
-        response = model.generate_content([prompt, part], generation_config=gen_cfg)
+        response = model.generate_content([PROMPT, part], generation_config=gen_cfg)
     except Exception as uri_exc:
         log.warning("Vertex GCS URI failed (%s); retrying with inline bytes", uri_exc)
         part = Part.from_data(data=image.data, mime_type=image.content_type)
-        response = model.generate_content([prompt, part], generation_config=gen_cfg)
+        response = model.generate_content([PROMPT, part], generation_config=gen_cfg)
+    return _parse_response(response)
 
+
+def extract_attributes_from_bytes(data: bytes, content_type: str) -> Dict[str, Any]:
+    """Same extraction for ephemeral in-memory images (nothing written to GCS)."""
+    model = _model()
+    part = Part.from_data(data=data, mime_type=content_type)
+    response = model.generate_content([PROMPT, part], generation_config=_gen_cfg())
+    return _parse_response(response)
+
+
+def _parse_response(response: Any) -> Dict[str, Any]:
+    model_name = settings.VERTEX_MODEL
     text = getattr(response, "text", None) or ""
     if not text and getattr(response, "candidates", None):
         chunks = []

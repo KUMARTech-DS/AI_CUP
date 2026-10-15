@@ -43,7 +43,10 @@ steps:
       - --region=${_REGION}
       - --platform=managed
       - --allow-unauthenticated
-      - --set-env-vars=ENVIRONMENT=staging,DEMO_AUTH_ENABLED=true
+      - --memory=2Gi
+      - --cpu=2
+      - --timeout=300
+      - --update-env-vars=ENVIRONMENT=staging,ENABLE_VERTEX=true,VERTEX_LOCATION=${_REGION}
 
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
     entrypoint: gcloud

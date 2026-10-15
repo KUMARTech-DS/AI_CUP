@@ -26,6 +26,10 @@ def product_opportunities(
     *,
     my_brand: str,
     geo_ids: list[str] | None = None,
+    customers_by_id: dict[str, dict[str, Any]] | None = None,
+    genders: list[str] | None = None,
+    age_bands: list[str] | None = None,
+    device_types: list[str] | None = None,
     k: int = PRIVACY_K,
 ) -> dict[str, Any]:
     """
@@ -33,6 +37,20 @@ def product_opportunities(
           + 15% breadth + 10% evidence quality (PRD §10).
     Underserved gap omitted (renormalized) when catalog empty.
     """
+    from suffai.metrics.demographics import demographic_summary, filter_customer_ids
+
+    cust_index = customers_by_id or {}
+    allowed_customers: set[str] | None = None
+    if cust_index and (genders or age_bands or device_types):
+        cohort = {ln.get("customer_id") for ln in lines if ln.get("customer_id")}
+        allowed_customers = filter_customer_ids(
+            cust_index,
+            cohort,
+            genders=genders,
+            age_bands=age_bands,
+            device_types=device_types,
+        )
+
     # Demand from service commodity lines
     demand: dict[str, dict[str, Any]] = {}
     pins_by_comm: dict[str, set[str]] = defaultdict(set)
@@ -44,13 +62,16 @@ def product_opportunities(
         pin = line.get("order_pin")
         if geo_ids is not None and pin not in geo_ids:
             continue
+        cid = line.get("customer_id")
+        if allowed_customers is not None and cid not in allowed_customers:
+            continue
         name = str(line.get("commodity_name") or "Unknown")
         bucket = demand.setdefault(name, {"quantity": 0})
         bucket["quantity"] += int(line.get("quantity") or 0)
         if pin:
             pins_by_comm[name].add(pin)
-        if line.get("customer_id"):
-            cust_by_comm[name].add(line["customer_id"])
+        if cid:
+            cust_by_comm[name].add(cid)
 
     # Brand presence from verified garments
     brand_counts: dict[str, int] = defaultdict(int)
@@ -133,6 +154,14 @@ def product_opportunities(
     opportunities.sort(key=lambda x: -x["opportunity_score"])
     for i, o in enumerate(opportunities[:5], start=1):
         o["rank"] = i
+        # Attach privacy-safe demographic mix for the commodity's customers
+        o["demographics"] = demographic_summary(
+            cust_index, cust_by_comm.get(o["commodity"], set()), k=k
+        )
+
+    all_ids: set[str] = set()
+    for s in cust_by_comm.values():
+        all_ids |= s
 
     return {
         "my_brand": my_brand,
@@ -140,4 +169,5 @@ def product_opportunities(
         "metric_version": METRIC_VERSION,
         "catalog_skus": len(catalog),
         "verified_garments": len(verified_garments),
+        "customer_demographics": demographic_summary(cust_index, all_ids, k=k),
     }

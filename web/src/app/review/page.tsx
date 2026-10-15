@@ -13,6 +13,9 @@ type Garment = {
   primary_color?: string;
   size_normalized?: string;
   brand_name_raw?: string;
+  gender?: string;
+  customer_gender?: string | null;
+  customer_age_band?: string | null;
   review_status?: string;
 };
 
@@ -66,6 +69,8 @@ export default function ReviewPage() {
                 <th>Material</th>
                 <th>Color</th>
                 <th>Brand</th>
+                <th>Garment gender</th>
+                <th>Customer</th>
                 <th></th>
               </tr>
             </thead>
@@ -78,6 +83,8 @@ export default function ReviewPage() {
                   <td>{g.material_type}</td>
                   <td>{g.primary_color}</td>
                   <td>{g.brand_name_raw}</td>
+                  <td>{g.gender || "—"}</td>
+                  <td>{[g.customer_gender, g.customer_age_band].filter((v) => v && v !== "unknown").join(" · ") || "—"}</td>
                   <td>
                     <button className="btn" type="button" onClick={() => approve(g)}>
                       Mark completed
