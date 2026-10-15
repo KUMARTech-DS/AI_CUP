@@ -270,7 +270,9 @@ async def pubsub_push(request: Request):
         payload["message_id"] = message_id
 
     try:
-        normalized_payload = parse_key_object_metadata(payload)
+        normalized_payload = parse_key_object_metadata(envelope)
+        normalized_payload["idempotency_key"] = message_id
+        normalized_payload["message_id"] = message_id
         result = run_extraction(normalized_payload)
         # result = run_extraction(payload if isinstance(payload, dict) else {})
         return result
