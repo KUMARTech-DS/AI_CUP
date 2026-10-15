@@ -1,0 +1,13 @@
+_id,customer_id,scheduled_date,service,total_number_of_clothes,amount
+o1,c1,2026-01-05,wash_fold,12,450
+o2,c1,2026-02-10,dry_clean,4,800
+o3,c2,2026-01-12,wash_fold,8,320
+o4,c3,2026-01-20,wash_iron,15,560
+o5,c3,2026-03-01,wash_fold,10,400
+o6,c4,2026-02-02,dry_clean,3,600
+o7,c5,2026-01-18,wash_fold,9,360
+o8,c6,2026-02-22,wash_iron,14,520
+o9,c7,2026-01-08,wash_fold,6,240
+o10,c8,2026-03-05,wash_fold,20,750
+o11,c9,2026-02-14,dry_clean,5,900
+o12,c10,2026-03-10,wash_fold,7,280

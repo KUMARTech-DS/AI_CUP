@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-[#0b0c10] text-gray-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>THRED_SPATIAL AI - Pro Ads Lab</title>
+    <script src="./config.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        obsidian: '#0b0c10',
+                        glass: 'rgba(22, 27, 34, 0.6)',
+                        cyanGlow: '#00f3ff',
+                        emeraldGlow: '#00ff88',
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        
+        /* Scrollbars */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #0b0c10; }
+        ::-webkit-scrollbar-thumb { background: #1f293d; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #00f3ff; }
+        .hide-scroll::-webkit-scrollbar { display: none; }
+        .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+
+        .glass-panel {
+            background: rgba(18, 22, 31, 0.82);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        /* 3D Holographic Grid Background */
+        .holographic-grid {
+            background-color: #0b0c10;
+            background-image: 
+                linear-gradient(rgba(0, 243, 255, 0.15) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 243, 255, 0.15) 1px, transparent 1px);
+            background-size: 40px 40px;
+            background-position: center center;
+            position: relative;
+        }
+        .holographic-grid::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at center, transparent 0%, #0b0c10 80%);
+            pointer-events: none;
+        }
+
+        /* 3D Coverflow */
+        .holo-scroll-container {
+            display: flex;
+            overflow-x: auto;
+            perspective: 1200px;
+            padding: 2rem 4rem 3rem 2rem;
+            gap: 1.5rem;
+            align-items: center;
+            position: relative;
+            z-index: 10;
+        }
+        
+        .holo-card {
+            flex-shrink: 0;
+            width: 320px;
+            height: 420px;
+            transform: rotateY(-25deg) translateZ(-40px);
+            transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+            transform-style: preserve-3d;
+            background: rgba(15, 20, 30, 0.85);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(0, 243, 255, 0.4);
+            border-radius: 12px;
+            box-shadow: -15px 15px 25px rgba(0,0,0,0.6), inset 0 0 20px rgba(0, 243, 255, 0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            cursor: pointer;
+        }
+
+        .holo-card:hover {
+            transform: rotateY(0deg) translateZ(40px) scale(1.05) !important;
+            background: rgba(18, 22, 31, 0.98);
+            z-index: 20;
+            border-color: #00ff88;
+            box-shadow: 0 10px 40px rgba(0, 255, 136, 0.2), inset 0 0 30px rgba(0, 255, 136, 0.15);
+            opacity: 1 !important;
+        }
+
+        /* Spatial Scaling */
+        .rank-1 { border-color: #00ff88; }
+        .rank-2 { border-color: #00f3ff; }
+        .rank-3 { border-color: #8a2be2; }
+        .rank-4 { border-color: #6b7280; opacity: 0.85; transform: rotateY(-28deg) translateZ(-50px); }
+        .rank-5 { border-color: #ef4444; opacity: 0.75; transform: rotateY(-30deg) translateZ(-60px); }
+
+        .upload-zone { border: 2px dashed rgba(0, 243, 255, 0.3); transition: all 0.3s ease; }
+        .upload-zone.dragover { border-color: #00f3ff; background: rgba(0, 243, 255, 0.05); }
+        
+        .custom-checkbox {
+            appearance: none; width: 16px; height: 16px; border: 1px solid #4b5563; border-radius: 4px; background-color: #111827; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;
+        }
+        .custom-checkbox:checked { background-color: #00f3ff; border-color: #00f3ff; }
+        .custom-checkbox:checked::after { content: '\f00c'; font-family: 'Font Awesome 6 Free'; font-weight: 900; color: #000; font-size: 10px; }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden bg-[#0b0c10] text-gray-200">
+    <script>
+      if (localStorage.getItem('suffai_demo_session') !== '1') {
+        location.replace('./login.html');
+      }
+    </script>
+
+    <!-- Header -->
+    <header class="glass-panel z-30 border-b border-gray-800 px-4 py-3 flex-none flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+            <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-violet-600 via-cyan-500 to-emerald-400 p-[2px] flex items-center justify-center">
+                <div class="bg-obsidian w-full h-full rounded-[10px] flex items-center justify-center">
+                    <i class="fa-solid fa-ranking-star text-cyan-400 text-lg"></i>
+                </div>
+            </div>
+            <div>
+                <h1 class="font-extrabold text-xl tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-white via-cyan-300 to-violet-400 font-mono">
+                    PRO ADS LAB <span class="text-xs px-2 py-0.5 rounded bg-cyan-900/60 text-cyan-300 border border-cyan-500/40">Creative Optimizer</span>
+                </h1>
+                <p class="text-[11px] text-gray-400">Holographic Demo x Geo x RFM Visualizer</p>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 flex overflow-hidden">
+        
+        <!-- Left Sidebar: Configuration -->
+        <aside class="w-80 flex-none border-r border-gray-800 bg-gray-950/80 flex flex-col p-4 space-y-6 z-20">
+            <!-- Zones -->
+            <div class="space-y-3">
+                <h2 class="text-xs font-bold text-gray-200 uppercase tracking-wider flex items-center space-x-2">
+                    <span class="w-5 h-5 rounded bg-violet-900/50 text-violet-300 flex items-center justify-center text-[10px] border border-violet-500/30">1</span>
+                    <span>Target Areas</span>
+                </h2>
+                <div id="targetAreas" class="space-y-2 bg-gray-900/50 p-3 rounded-xl border border-gray-800 shadow-inner max-h-40 overflow-y-auto">
+                    <span class="text-[10px] text-gray-500">Loading areas from metrics…</span>
+                </div>
+            </div>
+
+            <!-- Upload -->
+            <div class="space-y-3 flex-1 flex flex-col">
+                <h2 class="text-xs font-bold text-gray-200 uppercase tracking-wider flex items-center space-x-2">
+                    <span class="w-5 h-5 rounded bg-cyan-900/50 text-cyan-300 flex items-center justify-center text-[10px] border border-cyan-500/30">2</span>
+                    <span>Upload Creatives</span>
+                </h2>
+                <input type="file" id="fileInput" multiple accept="image/*" class="hidden">
+                <div id="dropzone" class="upload-zone flex-1 rounded-xl flex flex-col items-center justify-center text-center p-6 cursor-pointer bg-gray-950/50 min-h-[120px]">
+                    <i class="fa-solid fa-cloud-arrow-up text-3xl text-cyan-500/50 mb-3"></i>
+                    <span class="text-xs text-gray-300 font-semibold block">Click or Drop Images</span>
+                    <span class="text-[10px] text-gray-500 mt-1">Select variants to rank</span>
+                </div>
+            </div>
+
+            <button onclick="runAnalysis()" class="w-full py-3 bg-gradient-to-r from-violet-600 to-cyan-500 hover:from-violet-500 hover:to-cyan-400 text-white rounded-xl text-sm font-bold shadow-[0_0_15px_rgba(0,243,255,0.4)] flex justify-center items-center space-x-2 transition-all">
+                <i class="fa-solid fa-radar"></i>
+                <span>Execute AI Ranker</span>
+            </button>
+        </aside>
+
+        <!-- Right Main Area: 3D Holographic View -->
+        <section class="flex-1 relative flex flex-col holographic-grid overflow-hidden">
+            
+            <!-- Loading State -->
+            <div id="loadingOverlay" class="absolute inset-0 z-50 flex flex-col items-center justify-center hidden backdrop-blur-sm">
+                <i class="fa-solid fa-crosshairs text-4xl text-cyan-400 animate-spin mb-4 shadow-[0_0_20px_rgba(0,243,255,0.8)] rounded-full"></i>
+                <h3 class="text-sm font-bold text-white font-mono">Simulating Audience Response</h3>
+                <p class="text-xs text-gray-400 mt-2">Mapping image aesthetics against geospatial segments...</p>
+            </div>
+
+            <!-- Empty State -->
+            <div id="emptyState" class="absolute inset-0 flex flex-col items-center justify-center opacity-40 z-10">
+                <i class="fa-solid fa-cubes text-6xl text-cyan-900 mb-4"></i>
+                <p class="text-sm font-mono text-cyan-600">Awaiting visual asset injection.</p>
+            </div>
+
+            <!-- Results Data (Scrollable Container) -->
+            <div id="resultsContent" class="flex-1 flex flex-col hidden h-full w-full z-10 overflow-y-auto">
+                
+                <!-- 3D Horizontal Scroll Section (Fixed minimum height) -->
+                <div class="min-h-[520px] flex-none border-b border-gray-800/50 relative flex flex-col">
+                    
+                    <!-- Dynamic Area Header & Filter -->
+                    <div class="px-6 py-4 flex items-center justify-between z-20">
+                        <div class="flex items-center space-x-4">
+                            <h3 class="text-sm font-bold text-white flex items-center space-x-2">
+                                <i class="fa-solid fa-layer-group text-cyan-400"></i>
+                                <span>Spatial Creative Ranking:</span>
+                            </h3>
+                            <select id="areaSelect" class="bg-gray-900/80 border border-gray-700 text-white text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:border-cyan-400 transition-colors cursor-pointer">
+                                <option>All areas</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Enhanced Area Insights Bar (Top Trends) -->
+                    <div class="px-6 py-3 bg-gray-950/80 border-y border-gray-800 flex items-center space-x-6 overflow-x-auto hide-scroll z-20 shadow-md">
+                        <div class="flex items-center space-x-2 shrink-0 bg-emerald-900/20 px-3 py-1.5 rounded border border-emerald-500/30">
+                            <i class="fa-solid fa-arrow-trend-up text-emerald-500"></i>
+                            <span class="text-[10px] uppercase text-emerald-400 font-bold tracking-wider">Overall Area Lift:</span>
+                            <span class="text-sm font-mono font-bold text-emerald-300">+18.4%</span>
+                        </div>
+                        <div class="w-px h-6 bg-gray-800 shrink-0"></div>
+                        <div class="flex items-center space-x-2 shrink-0">
+                            <i class="fa-solid fa-palette text-violet-400"></i>
+                            <span class="text-[10px] uppercase text-gray-500 font-bold tracking-wider">Colors:</span>
+                            <span class="text-[11px] font-mono text-gray-200">1. Obsidian 2. Sage 3. Crimson 4. Sand 5. Navy</span>
+                        </div>
+                        <div class="w-px h-6 bg-gray-800 shrink-0"></div>
+                        <div class="flex items-center space-x-2 shrink-0">
+                            <i class="fa-solid fa-ruler text-cyan-400"></i>
+                            <span class="text-[10px] uppercase text-gray-500 font-bold tracking-wider">Sizes:</span>
+                            <span class="text-[11px] font-mono text-gray-200">L (38%), XL (28%), M (18%), XXL (10%), S (6%)</span>
+                        </div>
+                        <div class="w-px h-6 bg-gray-800 shrink-0"></div>
+                        <div class="flex items-center space-x-2 shrink-0">
+                            <i class="fa-solid fa-shapes text-pink-400"></i>
+                            <span class="text-[10px] uppercase text-gray-500 font-bold tracking-wider">Patterns:</span>
+                            <span class="text-[11px] font-mono text-gray-200">1. Solid 2. Minimal Logo 3. Colorblock 4. Acid Wash 5. Stripe</span>
+                        </div>
+                        <div class="w-px h-6 bg-gray-800 shrink-0"></div>
+                        <div class="flex items-center space-x-2 shrink-0">
+                            <i class="fa-solid fa-tag text-amber-400"></i>
+                            <span class="text-[10px] uppercase text-gray-500 font-bold tracking-wider">Commodity:</span>
+                            <span class="text-[11px] font-mono text-gray-200">1. Oversized Hoodies 2. Tech Joggers 3. Boxy Tees</span>
+                        </div>
+                    </div>
+
+                    <!-- Holographic Scroll Container -->
+                    <div class="holo-scroll-container hide-scroll w-full flex-1">
+                        
+                        <!-- Card 1 -->
+                        <div class="holo-card rank-1">
+                            <div class="card-img-container h-44 w-full bg-gradient-to-br from-[#1e1b2e] to-obsidian flex items-center justify-center border-b border-emerald-500/30 relative overflow-hidden">
+                                <i class="fa-solid fa-shirt text-6xl text-gray-300 drop-shadow-2xl relative z-10"></i>
+                                <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPjxyZWN0IHdpZHRoPSI0IiBoZWlnaHQ9IjQiIGZpbGw9InRyYW5zcGFyZW50Ii8+PHBhdGggZD0iTTAgMEwyIDBMMiAyTDAgMloiIGZpbGw9InJnYmEoMCwgMjQzLCAyNTUsIDAuMSkiLz48L3N2Zz4=')] opacity-30 pointer-events-none z-10"></div>
+                            </div>
+                            <div class="p-4 flex-1 flex flex-col bg-gray-900/50 justify-between">
+                                <div>
+                                    <div class="flex items-center justify-between mb-3 pb-2 border-b border-gray-800">
+                                        <span class="text-[10px] font-black px-2 py-0.5 rounded bg-emerald-500 text-obsidian shadow-[0_0_8px_#00ff88]"><i class="fa-solid fa-trophy mr-1"></i>RANK #1</span>
+                                        <span class="text-[10px] font-mono text-emerald-300">IMG_HW_OBSIDIAN.JPG</span>
+                                    </div>
+                                    <p class="text-[9px] text-gray-500 font-mono uppercase tracking-wider mb-1">Target Segment Trigger</p>
+                                    <p class="text-[10px] text-cyan-300 font-mono mb-2 bg-cyan-900/20 px-1.5 py-0.5 rounded inline-block border border-cyan-500/20">Indiranagar | 18-26 | Male | Champions</p>
+                                    <p class="text-[9px] text-gray-500 font-mono uppercase tracking-wider mb-1">AI Reasoning</p>
+                                    <p class="text-[11px] text-gray-300 leading-relaxed">Deep hues correlate perfectly with local Gen-Z aesthetic preferences, capturing high-frequency spenders with a high propensity for solid pattern streetwear.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Card 2 -->
+                        <div class="holo-card rank-2">
+                            <div class="card-img-container h-44 w-full bg-gradient-to-br from-[#2e3b2e] to-obsidian flex items-center justify-center border-b border-cyan-500/30 relative overflow-hidden">
+                                <i class="fa-solid fa-shirt text-6xl text-gray-400 drop-shadow-2xl relative z-10"></i>
+                                <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPjxyZWN0IHdpZHRoPSI0IiBoZWlnaHQ9IjQiIGZpbGw9InRyYW5zcGFyZW50Ii8+PHBhdGggZD0iTTAgMEwyIDBMMiAyTDAgMloiIGZpbGw9InJnYmEoMCwgMjQzLCAyNTUsIDAuMSkiLz48L3N2Zz4=')] opacity-30 pointer-events-none z-10"></div>
+                            </div>
+                            <div class="p-4 flex-1 flex flex-col bg-gray-900/50 justify-between">
+                                <div>
+                                    <div class="flex items-center justify-between mb-3 pb-2 border-b border-gray-800">
+                                        <span class="text-[10px] font-black px-2 py-0.5 rounded bg-cyan-500 text-obsidian shadow-[0_0_8px_#00f3ff]">RANK #2</span>
+                                        <span class="text-[10px] font-mono text-cyan-300">IMG_SAGE_JOGGER.JPG</span>
+                                    </div>
+                                    <p class="text-[9px] text-gray-500 font-mono uppercase tracking-wider mb-1">Target Segment Trigger</p>
+                                    <p class="text-[10px] text-cyan-300 font-mono mb-2 bg-cyan-900/20 px-1.5 py-0.5 rounded inline-block border border-cyan-500/20">Indiranagar | 27-35 | Female | Potential Loyalist</p>
+                                    <p class="text-[9px] text-gray-500 font-mono uppercase tracking-wider mb-1">AI Reasoning</p>
+                                    <p class="text-[11px] text-gray-300 leading-relaxed">Utility/cargo styling hits the high-income millennial demographic well, though the sage green slightly under-indexes against obsidian tones.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Card 3 -->
+                        <div class="holo-card rank-3">
+                            <div class="card-img-container h-44 w-full bg-gradient-to-br from-[#3d192b] to-obsidian flex items-center justify-center border-b border-violet-500/30 relative overflow-hidden">
+                                <i class="fa-solid fa-shirt text-6xl text-gray-500 drop-shadow-2xl relative z-10"></i>
+                                <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPjxyZWN0IHdpZHRoPSI0IiBoZWlnaHQ9IjQiIGZpbGw9InRyYW5zcGFyZW50Ii8+PHBhdGggZD0iTTAgMEwyIDBMMiAyTDAgMloiIGZpbGw9InJnYmEoMCwgMjQzLCAyNTUsIDAuMSkiLz48L3N2Zz4=')] opacity-30 pointer-events-none z-10"></div>
+                            </div>
+                            <div class="p-4 flex-1 flex flex-col bg-gray-900/50 justify-between">
+                                <div>
+                                    <div class="flex items-center justify-between mb-3 pb-2 border-b border-gray-800">
+                                        <span class="text-[10px] font-black px-2 py-0.5 rounded bg-violet-500 text-white shadow-[0_0_8px_#8a2be2]">RANK #3</span>
+                                        <span class="text-[10px] font-mono text-violet-300">IMG_CRIMSON_GTEE.JPG</span>
+                                    </div>
+                                    <p class="text-[9px] text-gray-500 font-mono uppercase tracking-wider mb-1">Target Segment Trigger</p>
+                                    <p class="text-[10px] text-cyan-300 font-mono mb-2 bg-cyan-900/20 px-1.5 py-0.5 rounded inline-block border border-cyan-500/20">Indiranagar | 18-26 | Unisex | At Risk</p>
+                                    <p class="text-[9px] text-gray-500 font-mono uppercase tracking-wider mb-1">AI Reasoning</p>
+                                    <p class="text-[11px] text-gray-300 leading-relaxed">High contrast captures attention for re-engagement of lapsed buyers. However, bold graphics violate the top 'Solid' pattern trend, limiting broader scale.</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Card 4 -->
+                        <div class="holo-card rank-4">
+                            <div class="card-img-container h-44 w-full bg-gray-900 flex items-center justify-center border-b border-gray-700 relative overflow-hidden">
+                                <i class="fa-solid fa-image text-6xl text-gray-600 relative z-10"></i>
+                            </div>
+                            <div class="p-4 flex-1 flex flex-col bg-gray-900/50 justify-between">
+                                <div>
+                                    <div class="flex items-center justify-between mb-3 pb-2 border-b border-gray-800">
+                                        <span class="text-[10px] font-black px-2 py-0.5 rounded bg-gray-600 text-white">RANK #4</span>
+                                        <span class="text-[10px] font-mono text-gray-400">IMG_LINEN_BASIC.JPG</span>
+                                    </div>
+                                    <p class="text-[9px] text-gray-500 font-mono uppercase tracking-wider mb-1">Target Segment Trigger</p>
+                                    <p class="text-[10px] text-gray-400 font-mono mb-2 bg-gray-800/50 px-1.5 py-0.5 rounded inline-block border border-gray-700">Indiranagar | 36-45 | Male | New Customer</p>
+                                    <p class="text-[9px] text-gray-500 font-mono uppercase tracking-wider mb-1">AI Reasoning</p>
+                                    <p class="text-[11px] text-gray-400 leading-relaxed">Average performance predicted. Misses key local aesthetic triggers (Heavyweight material) required to capture primary high-LTV segments.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Card 5 -->
+                        <div class="holo-card rank-5">
+                            <div class="card-img-container h-44 w-full bg-gray-900 flex items-center justify-center border-b border-gray-800 relative overflow-hidden">
+                                <i class="fa-solid fa-image text-6xl text-gray-600 relative z-10"></i>
+                            </div>
+                            <div class="p-4 flex-1 flex flex-col bg-gray-900/50 justify-between">
+                                <div>
+                                    <div class="flex items-center justify-between mb-3 pb-2 border-b border-gray-800">
+                                        <span class="text-[10px] font-black px-2 py-0.5 rounded bg-red-600 text-white">RANK #5</span>
+                                        <span class="text-[10px] font-mono text-gray-400">IMG_NEON_ACTIVE.JPG</span>
+                                    </div>
+                                    <p class="text-[9px] text-gray-500 font-mono uppercase tracking-wider mb-1">Target Segment Trigger</p>
+                                    <p class="text-[10px] text-gray-400 font-mono mb-2 bg-gray-800/50 px-1.5 py-0.5 rounded inline-block border border-gray-700">Broad | All Ages | Unisex | Low Spend</p>
+                                    <p class="text-[9px] text-gray-500 font-mono uppercase tracking-wider mb-1">AI Reasoning</p>
+                                    <p class="text-[11px] text-gray-400 leading-relaxed">Color saturation severely violates dominant local aesthetic (Dark/Muted tones). High risk of immediate scroll fatigue.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Matrix Table -->
+                <div class="flex-none p-6 pb-12 relative z-20 flex flex-col">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-xs font-bold text-gray-200 uppercase tracking-wider flex items-center space-x-2">
+                            <i class="fa-solid fa-table text-violet-400"></i>
+                            <span>Detailed Performance Matrix View</span>
+                        </h3>
+                        <button onclick="downloadCSV()" class="px-4 py-2 bg-gradient-to-r from-emerald-600 to-cyan-500 hover:from-emerald-500 hover:to-cyan-400 rounded-lg text-xs font-bold text-white transition-all flex items-center space-x-2 shadow-[0_0_10px_rgba(0,255,136,0.3)]">
+                            <i class="fa-solid fa-file-csv"></i>
+                            <span>Export Matrix CSV</span>
+                        </button>
+                    </div>
+                    
+                    <div class="border border-cyan-500/20 rounded-xl overflow-hidden bg-gray-950/60 backdrop-blur-md shadow-[0_0_30px_rgba(0,243,255,0.05)]">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-xs whitespace-nowrap">
+                                <thead class="bg-gradient-to-r from-gray-900 to-obsidian border-b border-gray-800 text-gray-400 font-mono text-[10px] uppercase tracking-wider">
+                                    <tr>
+                                        <th class="px-5 py-4">Geo Area</th>
+                                        <th class="px-5 py-4">Age Bucket</th>
+                                        <th class="px-5 py-4">Gender</th>
+                                        <th class="px-5 py-4">RFM Segment</th>
+                                        <th class="px-5 py-4">Top Creative (Image ID)</th>
+                                        <th class="px-5 py-4 text-right">Score</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-800/50 text-gray-300">
+                                    <tr class="hover:bg-cyan-900/10 transition duration-200 group">
+                                        <td class="px-5 py-4 text-white font-medium">Indiranagar</td>
+                                        <td class="px-5 py-4">18-26</td>
+                                        <td class="px-5 py-4">Male</td>
+                                        <td class="px-5 py-4 text-emerald-400 font-medium">Champions</td>
+                                        <td class="px-5 py-4 font-mono text-cyan-300 group-hover:text-cyan-200 transition">IMG_HW_OBSIDIAN.JPG</td>
+                                        <td class="px-5 py-4 text-right font-mono text-emerald-400 font-bold">—</td>
+                                    </tr>
+                                    <tr class="hover:bg-cyan-900/10 transition duration-200 group">
+                                        <td class="px-5 py-4 text-white font-medium">Indiranagar</td>
+                                        <td class="px-5 py-4">27-35</td>
+                                        <td class="px-5 py-4">Female</td>
+                                        <td class="px-5 py-4 text-blue-400 font-medium">Potential Loyalist</td>
+                                        <td class="px-5 py-4 font-mono text-cyan-300 group-hover:text-cyan-200 transition">IMG_SAGE_JOGGER.JPG</td>
+                                        <td class="px-5 py-4 text-right font-mono text-emerald-400 font-bold">—</td>
+                                    </tr>
+                                    <tr class="hover:bg-cyan-900/10 transition duration-200 group">
+                                        <td class="px-5 py-4 text-white font-medium">Koramangala</td>
+                                        <td class="px-5 py-4">18-26</td>
+                                        <td class="px-5 py-4">Unisex</td>
+                                        <td class="px-5 py-4 text-pink-400 font-medium">At Risk</td>
+                                        <td class="px-5 py-4 font-mono text-cyan-300 group-hover:text-cyan-200 transition">IMG_CRIMSON_GTEE.JPG</td>
+                                        <td class="px-5 py-4 text-right font-mono text-emerald-400 font-bold">—</td>
+                                    </tr>
+                                    <tr class="hover:bg-cyan-900/10 transition duration-200 group">
+                                        <td class="px-5 py-4 text-gray-400 font-medium">Indiranagar</td>
+                                        <td class="px-5 py-4 text-gray-400">36-45</td>
+                                        <td class="px-5 py-4 text-gray-400">Male</td>
+                                        <td class="px-5 py-4 text-gray-500 font-medium">New Customer</td>
+                                        <td class="px-5 py-4 font-mono text-gray-400 group-hover:text-gray-300 transition">IMG_LINEN_BASIC.JPG</td>
+                                        <td class="px-5 py-4 text-right font-mono text-gray-400">—</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const dropzone = document.getElementById('dropzone');
+        const fileInput = document.getElementById('fileInput');
+        let uploadedFiles = []; // File objects for API
+        let uploadedImages = []; // preview {src, name, file}
+        let lastExtractItems = [];
+        let METRICS = null;
+
+        const apiBase = () => (window.DASHBOARD_API || '').replace(/\/$/, '');
+        const metricsUrl = () => (apiBase() ? apiBase() + '/v1/metrics' : '/v1/metrics');
+        const extractUrl = () => (apiBase() ? apiBase() + '/v1/ads-lab/extract' : '/v1/ads-lab/extract');
+
+        async function loadMetricsForFilters() {
+            let res;
+            try {
+                res = await fetch(metricsUrl());
+            } catch (e) {
+                console.error('[ads_lab] metrics fetch failed', e);
+                const box = document.getElementById('targetAreas');
+                if (box) box.innerHTML = '<span class="text-[10px] text-red-400">Metrics unreachable — check /v1/metrics</span>';
+                return;
+            }
+            if (!res.ok) {
+                let detail = '';
+                try {
+                    const body = await res.json();
+                    detail = body.detail || body.message || '';
+                } catch (_) {}
+                console.error('[ads_lab] metrics HTTP', res.status, detail);
+                const box = document.getElementById('targetAreas');
+                if (box) box.innerHTML = `<span class="text-[10px] text-red-400">Metrics failed (${res.status}): ${detail || 'BigQuery / IAM'}</span>`;
+                return;
+            }
+            METRICS = await res.json();
+            const box = document.getElementById('targetAreas');
+            const sel = document.getElementById('areaSelect');
+            const pins = (METRICS.filters && METRICS.filters.pin_codes) || [];
+            const pinGeo = METRICS.pin_geo || {};
+            if (!pins.length) {
+                box.innerHTML = '<span class="text-[10px] text-gray-500">No PIN areas in metrics</span>';
+                return;
+            }
+            box.innerHTML = pins.map((pin, i) => {
+                const label = (pinGeo[pin] && pinGeo[pin].area_label) ? pinGeo[pin].area_label : pin;
+                const checked = i < 2 ? 'checked' : '';
+                return `<label class="flex items-center space-x-3 cursor-pointer"><input type="checkbox" ${checked} class="custom-checkbox" value="${pin}"><span class="text-xs text-gray-300 hover:text-white transition">${label} (${pin})</span></label>`;
+            }).join('');
+            sel.innerHTML = '<option value="">All areas</option>' + pins.map(pin => {
+                const label = (pinGeo[pin] && pinGeo[pin].area_label) ? pinGeo[pin].area_label : pin;
+                return `<option value="${pin}">${label}</option>`;
+            }).join('');
+
+            // Optional insight strip from metrics (taste)
+            const garm = METRICS.garment_cells || [];
+            const colors = {};
+            const sizes = {};
+            garm.forEach(c => {
+                (c.colors || []).forEach(x => { colors[x.value] = (colors[x.value] || 0) + x.count; });
+                (c.sizes || []).forEach(x => { sizes[x.value] = (sizes[x.value] || 0) + x.count; });
+            });
+            const topColors = Object.entries(colors).sort((a,b)=>b[1]-a[1]).slice(0,5).map(x=>x[0]);
+            const topSizes = Object.entries(sizes).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([s,n]) => `${s}`);
+            const colorEl = document.querySelector('.fa-palette')?.parentElement?.querySelector('.font-mono');
+            const sizeEl = document.querySelector('.fa-ruler')?.parentElement?.querySelector('.font-mono');
+            if (colorEl && topColors.length) colorEl.textContent = topColors.join(' · ');
+            if (sizeEl && topSizes.length) sizeEl.textContent = topSizes.join(', ');
+        }
+
+        dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
+        dropzone.addEventListener('dragleave', () => { dropzone.classList.remove('dragover'); });
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('dragover');
+            processFiles(e.dataTransfer.files);
+        });
+        dropzone.addEventListener('click', () => { fileInput.click(); });
+        fileInput.addEventListener('change', (e) => { processFiles(e.target.files); });
+
+        function processFiles(files) {
+            uploadedFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
+            uploadedImages = [];
+            if (uploadedFiles.length === 0) return;
+            let loaded = 0;
+            uploadedFiles.forEach(file => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    uploadedImages.push({ src: e.target.result, name: file.name.toUpperCase(), file });
+                    loaded++;
+                    if (loaded === uploadedFiles.length) updateDropzoneUI(loaded);
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function updateDropzoneUI(count) {
+            dropzone.innerHTML = `<i class="fa-solid fa-circle-check text-3xl text-emerald-500 mb-2"></i><span class="text-xs text-emerald-300 font-semibold block">${count} Assets Loaded</span>`;
+            dropzone.style.borderColor = '#00ff88';
+            dropzone.style.background = 'rgba(0, 255, 136, 0.05)';
+        }
+
+        /** Dummy score 0–100 (not CTR). Random per call for demo ranking. */
+        function dummyScore() {
+            return Math.floor(Math.random() * 101);
+        }
+
+        function fillCardsFromExtract(items) {
+            const cards = document.querySelectorAll('.holo-card');
+            cards.forEach((card, index) => {
+                const item = items[index] || items[index % items.length];
+                if (!item) return;
+                const imgContainer = card.querySelector('.card-img-container');
+                const preview = uploadedImages[index] || uploadedImages[index % uploadedImages.length];
+                if (preview && imgContainer) {
+                    imgContainer.innerHTML = `
+                        <img src="${preview.src}" class="w-full h-full object-cover opacity-90 relative z-10" />
+                        <div class="absolute inset-0 bg-cyan-500 mix-blend-color opacity-10 pointer-events-none z-30"></div>
+                    `;
+                }
+                const attrs = item.attributes || {};
+                const meta = card.querySelector('p.text-\\[10px\\]') || card.querySelector('p.font-mono');
+                const title = card.querySelector('h4, .font-bold');
+                const fileNameSpan = card.querySelector('span.font-mono');
+                const bits = [attrs.color, attrs.pattern, attrs.size, attrs.sleeve_type, attrs.collar_type].filter(Boolean);
+                if (meta) meta.textContent = bits.length ? bits.join(' · ') : (item.ok ? 'Extracted' : (item.error || 'Failed'));
+                if (title && attrs.name) title.textContent = attrs.name;
+                if (fileNameSpan) fileNameSpan.textContent = (item.filename || preview?.name || 'IMG').toString().toUpperCase();
+                const scoreEl = card.querySelector('.text-emerald-400, .text-cyan-300');
+                if (scoreEl && item.ok) {
+                    item._score = item._score != null ? item._score : dummyScore();
+                    scoreEl.textContent = 'Score ' + item._score;
+                }
+            });
+
+            const tbody = document.querySelector('#resultsContent tbody');
+            if (tbody && items.length) {
+                const pin = document.getElementById('areaSelect')?.value || '';
+                const area = (METRICS && METRICS.pin_geo && METRICS.pin_geo[pin] && METRICS.pin_geo[pin].area_label) || pin || 'All';
+                tbody.innerHTML = items.map((it) => {
+                    const a = it.attributes || {};
+                    if (it.ok && it._score == null) it._score = dummyScore();
+                    return `<tr class="border-b border-gray-800/60">
+                        <td class="px-5 py-4 text-white font-medium">${area}</td>
+                        <td class="px-5 py-4 text-gray-300">${a.size || '—'}</td>
+                        <td class="px-5 py-4 text-gray-300">${a.color || '—'}</td>
+                        <td class="px-5 py-4 text-emerald-400 font-medium">${a.brand || '—'}</td>
+                        <td class="px-5 py-4 font-mono text-cyan-300">${(it.filename || '').toUpperCase()}</td>
+                        <td class="px-5 py-4 text-right text-emerald-300 font-mono">${it.ok ? it._score : '—'}</td>
+                    </tr>`;
+                }).join('');
+            }
+        }
+
+        async function runAnalysis() {
+            if (uploadedFiles.length === 0) { alert('Please upload creative images first.'); return; }
+
+            document.getElementById('emptyState').classList.add('hidden');
+            document.getElementById('resultsContent').classList.add('hidden');
+            document.getElementById('loadingOverlay').classList.remove('hidden');
+            document.getElementById('loadingOverlay').classList.add('flex');
+
+            try {
+                const fd = new FormData();
+                uploadedFiles.forEach(f => fd.append('files', f, f.name));
+                const res = await fetch(extractUrl(), { method: 'POST', body: fd });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(data.detail || data.message || ('Extract failed HTTP ' + res.status));
+                lastExtractItems = data.items || [];
+                fillCardsFromExtract(lastExtractItems);
+            } catch (err) {
+                console.error('[ads_lab] extract failed', err);
+                alert('Extraction failed: ' + err.message + '\nShowing previews without scores.');
+                fillCardsFromExtract(uploadedImages.map(u => ({
+                    ok: false, filename: u.name, error: String(err.message), attributes: {}
+                })));
+            } finally {
+                document.getElementById('loadingOverlay').classList.add('hidden');
+                document.getElementById('loadingOverlay').classList.remove('flex');
+                document.getElementById('resultsContent').classList.remove('hidden');
+            }
+        }
+
+        function downloadCSV() {
+            const rows = [['Geo Area', 'Color', 'Size', 'Brand', 'Filename', 'Score']];
+            const pin = document.getElementById('areaSelect')?.value || '';
+            const area = (METRICS && METRICS.pin_geo && METRICS.pin_geo[pin] && METRICS.pin_geo[pin].area_label) || 'All';
+            (lastExtractItems.length ? lastExtractItems : uploadedImages.map(u => ({ filename: u.name, attributes: {}, ok: true }))).forEach((it) => {
+                const a = it.attributes || {};
+                if (it.ok && it._score == null) it._score = dummyScore();
+                rows.push([area, a.color || '', a.size || '', a.brand || '', it.filename || '', it.ok ? it._score : '']);
+            });
+            const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+            const link = document.createElement('a');
+            link.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+            link.download = 'Spatial_Creative_Matrix.csv';
+            link.click();
+        }
+
+        loadMetricsForFilters();
+    </script>
+</body>
+</html>

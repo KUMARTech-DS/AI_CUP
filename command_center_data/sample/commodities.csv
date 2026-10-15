@@ -1,0 +1,17 @@
+customer_id,order_id,commodity_id,name,color,brand,pattern,size,confidence_score,reason,sleeve_type,collar_type,gender,material
+c1,o1,g1,Hoodie,black,Zara,solid,L,0.92,logo_visible,long,hoodie,F,cotton
+c1,o1,g2,Tee,white,H&M,solid,M,0.88,tag_read,short,crew,F,cotton
+c1,o2,g3,Blazer,navy,Zara,solid,M,0.81,fabric_match,long,lapel,F,wool
+c2,o3,g4,Jeans,blue,Levis,solid,32,0.95,label,na,na,M,denim
+c3,o4,g5,Tee,olive,Snitch,graphic,L,0.79,style_infer,short,crew,F,cotton
+c3,o4,g6,Shirt,white,Uniqlo,solid,M,0.91,tag_read,long,collar,F,linen
+c3,o5,g7,Hoodie,grey,H&M,solid,XL,0.86,logo_visible,long,hoodie,F,cotton
+c4,o6,g8,Shirt,blue,Zara,check,L,0.72,low_light,long,collar,M,cotton
+c5,o7,g9,Joggers,black,Nike,solid,M,0.90,logo_visible,na,na,F,polyester
+c6,o8,g10,Tee,black,Snitch,solid,L,0.84,tag_read,short,crew,M,cotton
+c6,o8,g11,Jacket,green,Uniqlo,solid,XL,0.77,fabric_match,long,collar,M,nylon
+c7,o9,g12,Kurta,cream,Fabindia,print,M,0.93,tag_read,long,band,F,cotton
+c8,o10,g13,Hoodie,black,Nike,solid,L,0.89,logo_visible,long,hoodie,M,cotton
+c8,o10,g14,Tee,white,Zara,solid,M,0.85,tag_read,short,crew,M,cotton
+c9,o11,g15,Dress,red,H&M,floral,S,0.80,style_infer,sleeveless,vneck,F,polyester
+c10,o12,g16,Shirt,grey,Uniqlo,solid,XL,0.70,blurry,long,collar,M,cotton

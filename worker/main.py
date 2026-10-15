@@ -49,46 +49,40 @@ class ExtractRequest(BaseModel):
 import base64
 import json
 
-def parse_key_object_metadata(payload):
-    """Normalize GCS Pub/Sub notifications for extraction."""
+def parse_key_object_metadata(envelope):
+    """Normalize Pub/Sub GCS notifications."""
 
-    if not isinstance(payload, dict):
-        raise ValueError("Invalid Pub/Sub payload")
+    message = envelope.get("message", {})
+    attributes = message.get("attributes", {})
 
-    # Decode standard Pub/Sub push envelope
-    message = payload.get("message")
+    metadata = {}
 
-    if isinstance(message, dict):
-        encoded = message.get("data")
+    if message.get("data"):
+        metadata = json.loads(
+            base64.b64decode(message["data"]).decode("utf-8")
+        )
 
-        if encoded:
-            decoded = base64.b64decode(encoded)
-            payload = json.loads(decoded.decode("utf-8"))
-        else:
-            payload = message.get("attributes", {})
-
-    # Normalize GCS object metadata
     object_key = (
-        payload.get("gcs_object_key")
-        or payload.get("name")
-        or payload.get("objectId")
+        attributes.get("objectId")
+        or metadata.get("name")
+        or metadata.get("gcs_object_key")
     )
 
     bucket = (
-        payload.get("gcs_bucket")
-        or payload.get("bucket")
-        or payload.get("bucketId")
+        attributes.get("bucketId")
+        or metadata.get("bucket")
+        or metadata.get("gcs_bucket")
     )
 
     if not object_key:
-        raise ValueError(
-            f"Missing GCS object key. Payload keys: {list(payload.keys())}"
-        )
+        raise ValueError("gcs_object_key is required")
 
     return {
-        **payload,
+        **metadata,
         "gcs_object_key": object_key,
         "gcs_bucket": bucket,
+        "event_type": attributes.get("eventType"),
+        "object_generation": attributes.get("objectGeneration"),
     }
   
 def _abstain_result(reason: str) -> Dict[str, Any]:
@@ -121,7 +115,26 @@ def run_extraction(payload: Dict[str, Any]) -> Dict[str, Any]:
         or payload.get("message_id")
         or f"extract:{object_key}"
     )
+    demo_prefix = "demo/"
 
+    if (
+        target_type == "garment"
+        and settings.DATABASE_URL
+        and object_key
+        and object_key.startswith(demo_prefix)
+        and not image_id
+        and not garment_instance_id):
+        registration = db.register_gcs_image(
+            gcs_object_key=object_key,
+        )
+
+        image_id = registration["image_id"]
+        garment_instance_id = registration["garment_instance_id"]
+
+        log.info(
+            "Demo image registration completed image_id=%s garment_id=%s",
+            image_id,
+            garment_instance_id)
     if not object_key:
         raise ValueError("gcs_object_key is required")
 
@@ -270,7 +283,9 @@ async def pubsub_push(request: Request):
         payload["message_id"] = message_id
 
     try:
-        normalized_payload = parse_key_object_metadata(payload)
+        normalized_payload = parse_key_object_metadata(envelope)
+        normalized_payload["idempotency_key"] = message_id
+        normalized_payload["message_id"] = message_id
         result = run_extraction(normalized_payload)
         # result = run_extraction(payload if isinstance(payload, dict) else {})
         return result

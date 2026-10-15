@@ -1,0 +1,1066 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SuffAI Command Center</title>
+  <script src="./config.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Outfit:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            ink: '#0a0c0f',
+            panel: '#12161c',
+            raised: '#1a2029',
+            line: '#2a3340',
+            muted: '#8a94a3',
+            soft: '#d2d8e0',
+            accent: '#c4a574',
+            accent2: '#7d9b8a'
+          },
+          fontFamily: {
+            display: ['Cormorant Garamond', 'Georgia', 'serif'],
+            sans: ['Outfit', 'system-ui', 'sans-serif'],
+            mono: ['IBM Plex Mono', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    :root {
+      --ink: #0a0c0f;
+      --panel: #12161c;
+      --raised: #1a2029;
+      --line: #2a3340;
+      --muted: #8a94a3;
+      --soft: #d2d8e0;
+      --accent: #c4a574;
+      --accent2: #7d9b8a;
+      --sidebar-w: 280px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Outfit, system-ui, sans-serif;
+      color: var(--soft);
+      background:
+        radial-gradient(900px 480px at 80% -10%, rgba(196, 165, 116, 0.08), transparent 50%),
+        radial-gradient(700px 400px at 0% 40%, rgba(125, 155, 138, 0.07), transparent 45%),
+        var(--ink);
+    }
+    .font-display { font-family: 'Cormorant Garamond', Georgia, serif; }
+    .font-mono { font-family: 'IBM Plex Mono', monospace; }
+
+    .app {
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Left filter rail */
+    .sidebar {
+      width: var(--sidebar-w);
+      flex-shrink: 0;
+      background: rgba(18, 22, 28, 0.97);
+      border-right: 1px solid var(--line);
+      display: flex;
+      flex-direction: column;
+      transition: margin-left 0.28s ease, opacity 0.2s ease;
+      z-index: 40;
+    }
+    .sidebar.collapsed {
+      margin-left: calc(-1 * var(--sidebar-w));
+      opacity: 0;
+      pointer-events: none;
+    }
+    .sidebar-head {
+      padding: 1.25rem 1.15rem 1rem;
+      border-bottom: 1px solid var(--line);
+    }
+    .sidebar-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1rem 1.15rem 1.5rem;
+    }
+    .filter-block { margin-bottom: 0.9rem; }
+    .filter-label {
+      display: block;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.4rem;
+    }
+    .drop {
+      position: relative;
+    }
+    .drop-btn {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      padding: 0.65rem 0.8rem;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: var(--raised);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      text-align: left;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .drop-btn:hover, .drop.open .drop-btn {
+      border-color: rgba(196, 165, 116, 0.55);
+    }
+    .drop-btn .chev {
+      color: var(--muted);
+      font-size: 10px;
+      transition: transform 0.2s;
+    }
+    .drop.open .drop-btn .chev { transform: rotate(180deg); color: var(--accent); }
+    .drop-btn .summary {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--soft);
+    }
+    .drop-btn .summary.empty { color: var(--muted); font-weight: 400; }
+    .drop-panel {
+      display: none;
+      position: absolute;
+      left: 0; right: 0;
+      top: calc(100% + 4px);
+      z-index: 50;
+      max-height: 220px;
+      overflow-y: auto;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: #0e1218;
+      box-shadow: 0 16px 40px rgba(0,0,0,0.45);
+      padding: 0.35rem;
+    }
+    .drop.open .drop-panel { display: block; }
+    .drop-item {
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+      padding: 0.5rem 0.55rem;
+      border-radius: 8px;
+      font-size: 12.5px;
+      color: var(--soft);
+      cursor: pointer;
+    }
+    .drop-item:hover { background: rgba(196, 165, 116, 0.08); }
+    .drop-item input { accent-color: var(--accent); }
+    .btn-reset {
+      width: 100%;
+      margin-top: 0.5rem;
+      padding: 0.65rem;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: transparent;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+    }
+    .btn-reset:hover { color: #fff; border-color: var(--accent); }
+
+    /* Main column */
+    .main {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .topbar {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.85rem 1.35rem;
+      border-bottom: 1px solid var(--line);
+      background: rgba(18, 22, 28, 0.85);
+      backdrop-filter: blur(10px);
+    }
+    .icon-btn {
+      width: 38px; height: 38px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: var(--raised);
+      color: var(--soft);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+    .icon-btn:hover { border-color: var(--accent); color: #fff; }
+
+    .kpi-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.55rem;
+    }
+    .kpi {
+      min-width: 100px;
+      padding: 0.45rem 0.85rem;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: var(--raised);
+    }
+    .kpi span {
+      display: block;
+      font-size: 9px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    .kpi strong {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 1rem;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    .scroll {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+
+    /* Map hero */
+    .map-hero {
+      position: relative;
+      height: min(58vh, 560px);
+      min-height: 340px;
+      border-bottom: 1px solid var(--line);
+    }
+    #map { width: 100%; height: 100%; }
+    .leaflet-container { background: #0a0d12 !important; font-family: Outfit, sans-serif; }
+    .leaflet-popup-content-wrapper {
+      background: #12161c; color: #d2d8e0; border-radius: 10px;
+      border: 1px solid #2a3340; box-shadow: 0 12px 32px rgba(0,0,0,.4);
+    }
+    .leaflet-popup-tip { background: #12161c; }
+    .leaflet-control-zoom a {
+      background: #12161c !important; color: #d2d8e0 !important; border-color: #2a3340 !important;
+    }
+    .map-pin-label {
+      background: rgba(18, 22, 28, 0.92);
+      border: 1px solid rgba(196, 165, 116, 0.45);
+      color: #f5f0e8;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      white-space: nowrap;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+    }
+    .map-pin-label::before {
+      content: '';
+      display: inline-block;
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      margin-right: 6px;
+      vertical-align: 1px;
+    }
+
+    .catchment {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      border-bottom: 1px solid var(--line);
+      background: var(--panel);
+    }
+    .catchment > div {
+      padding: 0.85rem 1rem;
+      border-right: 1px solid var(--line);
+    }
+    .catchment > div:last-child { border-right: none; }
+    .catchment .lbl {
+      font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--muted); font-weight: 600;
+    }
+    .catchment .val {
+      margin-top: 0.25rem;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.95rem;
+      color: #fff;
+    }
+
+    /* Analytics below map */
+    .analytics {
+      padding: 1.5rem 1.35rem 2.5rem;
+      max-width: 1400px;
+      margin: 0 auto;
+      width: 100%;
+    }
+    .section-head {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1.1rem;
+    }
+    .section-head h2 {
+      margin: 0;
+      font-family: 'Cormorant Garamond', Georgia, serif;
+      font-size: 1.85rem;
+      font-weight: 600;
+      color: #fff;
+      letter-spacing: -0.01em;
+      line-height: 1.1;
+    }
+    .section-head p {
+      margin: 0.2rem 0 0;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 1rem;
+    }
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1rem;
+    }
+    .grid-2-eq {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+    @media (max-width: 1024px) {
+      .grid-2, .grid-3, .grid-2-eq { grid-template-columns: 1fr; }
+      .catchment { grid-template-columns: repeat(2, 1fr); }
+      .catchment > div { border-bottom: 1px solid var(--line); }
+    }
+    @media (max-width: 720px) {
+      :root { --sidebar-w: 100vw; }
+      .map-hero { height: 42vh; min-height: 280px; }
+    }
+
+    .card {
+      background: rgba(26, 32, 41, 0.9);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 1.15rem 1.2rem;
+    }
+    .card-title {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.85rem;
+    }
+    .taste-headline {
+      font-family: 'Cormorant Garamond', Georgia, serif;
+      font-size: 1.55rem;
+      font-weight: 600;
+      color: #fff;
+      line-height: 1.25;
+      margin: 0;
+    }
+    .pill-row { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-top: 0.9rem; }
+    .pill {
+      display: inline-flex; align-items: center; gap: 0.35rem;
+      padding: 0.35rem 0.7rem;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(10, 12, 15, 0.55);
+      font-size: 11px;
+      color: var(--soft);
+      text-transform: capitalize;
+    }
+    .pill b { font-family: 'IBM Plex Mono', monospace; color: var(--accent); font-weight: 600; }
+
+    .swatch-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+      gap: 12px;
+    }
+    .swatch-card { text-align: center; }
+    .swatch-chip {
+      height: 64px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.1);
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,0.2);
+    }
+    .swatch-card .name {
+      margin-top: 0.45rem;
+      font-size: 12px;
+      color: #fff;
+      text-transform: capitalize;
+    }
+    .swatch-card .pct {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .share-row {
+      display: grid;
+      grid-template-columns: 100px 1fr 44px;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 10px;
+      font-size: 13px;
+    }
+    .bar-track {
+      height: 7px;
+      border-radius: 99px;
+      background: #0a0c0f;
+      border: 1px solid var(--line);
+      overflow: hidden;
+    }
+    .bar-fill {
+      height: 100%;
+      border-radius: 99px;
+      background: linear-gradient(90deg, #8a7350, var(--accent));
+    }
+
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-thumb { background: #2f3a48; border-radius: 8px; }
+  </style>
+</head>
+<body class="h-full">
+  <script>
+    if (localStorage.getItem('suffai_demo_session') !== '1') {
+      location.replace('./login.html');
+    }
+  </script>
+  <div class="app">
+    <!-- LEFT FILTERS -->
+    <aside id="sidebar" class="sidebar">
+      <div class="sidebar-head">
+        <div class="text-[10px] font-semibold tracking-[0.14em] uppercase text-muted">Filters</div>
+        <div class="font-display text-[1.55rem] text-white leading-none mt-1">Audience</div>
+        <p class="text-[12px] text-muted mt-1.5 leading-snug">Refine by location, demography & wardrobe brand.</p>
+      </div>
+      <div class="sidebar-body" id="filterBar">
+        <div class="filter-block" data-filter="pin">
+          <span class="filter-label">PIN / Area</span>
+          <div class="drop" id="drop-pin">
+            <button type="button" class="drop-btn" data-drop="pin">
+              <span class="summary empty">All areas</span>
+              <span class="chev">▼</span>
+            </button>
+            <div class="drop-panel" id="opts-pin"></div>
+          </div>
+        </div>
+        <div class="filter-block" data-filter="age">
+          <span class="filter-label">Age group</span>
+          <div class="drop" id="drop-age">
+            <button type="button" class="drop-btn" data-drop="age">
+              <span class="summary empty">All ages</span>
+              <span class="chev">▼</span>
+            </button>
+            <div class="drop-panel" id="opts-age"></div>
+          </div>
+        </div>
+        <div class="filter-block" data-filter="gender">
+          <span class="filter-label">Gender</span>
+          <div class="drop" id="drop-gender">
+            <button type="button" class="drop-btn" data-drop="gender">
+              <span class="summary empty">All genders</span>
+              <span class="chev">▼</span>
+            </button>
+            <div class="drop-panel" id="opts-gender"></div>
+          </div>
+        </div>
+        <div class="filter-block" data-filter="rfm">
+          <span class="filter-label">RFM segment</span>
+          <div class="drop" id="drop-rfm">
+            <button type="button" class="drop-btn" data-drop="rfm">
+              <span class="summary empty">All segments</span>
+              <span class="chev">▼</span>
+            </button>
+            <div class="drop-panel" id="opts-rfm"></div>
+          </div>
+        </div>
+        <div class="filter-block" data-filter="brand">
+          <span class="filter-label">Brand</span>
+          <div class="drop" id="drop-brand">
+            <button type="button" class="drop-btn" data-drop="brand">
+              <span class="summary empty">All brands</span>
+              <span class="chev">▼</span>
+            </button>
+            <div class="drop-panel" id="opts-brand"></div>
+          </div>
+        </div>
+        <button type="button" class="btn-reset" id="btnClear">Reset filters</button>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <div class="main">
+      <header class="topbar">
+        <div class="flex items-center gap-3 min-w-0">
+          <button type="button" class="icon-btn" id="btnToggle" title="Toggle filters">☰</button>
+          <div class="min-w-0">
+            <div class="font-display text-[1.45rem] text-white leading-none tracking-tight">SuffAI Command Center</div>
+            <div class="text-[11px] text-muted mt-0.5 truncate">Spatial demand · Audience taste · Assortment briefing</div>
+          </div>
+        </div>
+        <div class="kpi-row">
+          <div class="kpi"><span>Customers</span><strong id="kpiCust">—</strong></div>
+          <div class="kpi"><span>Revenue</span><strong id="kpiRev">—</strong></div>
+          <div class="kpi"><span>Orders</span><strong id="kpiOrd">—</strong></div>
+          <div class="kpi"><span>Garments</span><strong id="kpiGar">—</strong></div>
+          <div class="kpi"><span>Extractions</span><strong id="kpiJobs">—</strong></div>
+        </div>
+      </header>
+
+      <div class="scroll">
+        <!-- FULL WIDTH MAP -->
+        <section class="map-hero">
+          <div id="map"></div>
+        </section>
+
+        <div class="catchment">
+          <div>
+            <div class="lbl">Focus area</div>
+            <div class="val" id="hubLabel" style="font-family:Outfit,sans-serif;font-weight:600;font-size:0.92rem">All hubs</div>
+          </div>
+          <div>
+            <div class="lbl">PIN population</div>
+            <div class="val" id="popPin">—</div>
+          </div>
+          <div>
+            <div class="lbl">~1 km buffer</div>
+            <div class="val" id="pop1">—</div>
+          </div>
+          <div>
+            <div class="lbl">~2 km buffer</div>
+            <div class="val" id="pop2">—</div>
+          </div>
+          <div>
+            <div class="lbl">~4 km buffer</div>
+            <div class="val" id="pop4">—</div>
+          </div>
+        </div>
+
+        <!-- ANALYTICS BELOW -->
+        <section class="analytics">
+          <div class="section-head">
+            <div>
+              <h2>Audience taste</h2>
+              <p>Wardrobe signals for design, buying & assortment — color, pattern, size, sleeve, collar.</p>
+            </div>
+          </div>
+
+          <div class="grid-2 mb-4">
+            <div class="card">
+              <div class="card-title">Style DNA</div>
+              <p class="taste-headline" id="tasteHeadline">—</p>
+              <div class="pill-row" id="tastePills"></div>
+            </div>
+            <div class="card">
+              <div class="card-title">Color story</div>
+              <div id="colorStory" class="swatch-grid"></div>
+            </div>
+          </div>
+
+          <div class="grid-3 mb-4">
+            <div class="card">
+              <div class="card-title">Pattern preference</div>
+              <div id="patternMix"></div>
+            </div>
+            <div class="card">
+              <div class="card-title">Sleeve</div>
+              <div id="sleeveMix"></div>
+            </div>
+            <div class="card">
+              <div class="card-title">Collar</div>
+              <div id="collarMix"></div>
+            </div>
+          </div>
+
+          <div class="grid-2-eq mb-4">
+            <div class="card">
+              <div class="card-title">Size curve · pack allocation %</div>
+              <canvas id="sizeChart" height="160"></canvas>
+            </div>
+            <div class="card">
+              <div class="card-title">Fabric feel</div>
+              <div id="materialMix" class="pill-row" style="margin-top:0"></div>
+              <div class="card-title" style="margin-top:1.4rem">Wardrobe brands in closet</div>
+              <canvas id="brandChart" height="130"></canvas>
+            </div>
+          </div>
+
+          <div class="grid-2-eq">
+            <div class="card">
+              <div class="card-title">RFM mix</div>
+              <canvas id="rfmChart" height="150"></canvas>
+            </div>
+            <div class="card">
+              <div class="card-title">Competitor stores</div>
+              <p class="text-[14px] text-muted leading-relaxed m-0">
+                Physical competitor pins and store search will land here in a later release.
+              </p>
+              <div class="pill mt-4" style="display:inline-flex">Coming soon</div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let DATA = null;
+    let map, markersLayer, circleLayers = [];
+    let sizeChart, brandChart, rfmChart;
+    const selection = { pin: [], age: [], gender: [], rfm: [], brand: [] };
+
+    const CHART = {
+      color: '#c4a574',
+      colorAlt: '#7d9b8a',
+      grid: 'rgba(42, 51, 64, 0.9)',
+      tick: '#8a94a3'
+    };
+
+    const COLOR_HEX = {
+      black: '#1a1a1a', white: '#f3efe6', navy: '#1e2a44', blue: '#3b6ea5',
+      grey: '#7a7f86', gray: '#7a7f86', olive: '#5c6b3a', green: '#3f6b4a',
+      red: '#b33a3a', cream: '#e8dcc8', beige: '#d6c6a8', pink: '#d48aa8',
+      brown: '#6b4a32', purple: '#6a4c8c', yellow: '#d4b83a', orange: '#d4783a'
+    };
+    const SIZE_ORDER = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '28', '30', '32', '34', '36'];
+    const $ = (id) => document.getElementById(id);
+
+    function areaLabel(pin) {
+      const g = DATA.pin_geo[pin];
+      if (!g) return pin;
+      return g.area_label && g.area_label !== pin ? g.area_label : pin;
+    }
+
+    function pinOptionLabel(pin) {
+      const g = DATA.pin_geo[pin];
+      if (g && g.area_label) return `${g.area_label} (${pin})`;
+      return pin;
+    }
+
+    function matchDemo(cell, pins, ages, genders, rfms) {
+      return (!pins.length || pins.includes(cell.pin_code))
+        && (!ages.length || ages.includes(cell.age_group))
+        && (!genders.length || genders.includes(cell.gender))
+        && (!rfms.length || rfms.includes(cell.rfm_segment));
+    }
+
+    function mergePairs(cells, field) {
+      const m = {};
+      for (const c of cells) {
+        for (const row of (c[field] || [])) {
+          const k = String(row.value || 'unknown');
+          if (k === 'unknown' || k === 'na') continue;
+          m[k] = (m[k] || 0) + row.count;
+        }
+      }
+      return Object.entries(m).map(([value, count]) => ({ value, count })).sort((a, b) => b.count - a.count);
+    }
+
+    function withShare(rows) {
+      const total = rows.reduce((s, r) => s + r.count, 0) || 1;
+      return rows.map(r => ({ ...r, pct: Math.round((r.count / total) * 100) }));
+    }
+
+    function colorHex(name) {
+      return COLOR_HEX[String(name || '').toLowerCase().trim()] || '#5a6575';
+    }
+
+    function sortSizes(rows) {
+      return [...rows].sort((a, b) => {
+        const ia = SIZE_ORDER.indexOf(String(a.value).toUpperCase());
+        const ib = SIZE_ORDER.indexOf(String(b.value).toUpperCase());
+        if (ia === -1 && ib === -1) return String(a.value).localeCompare(String(b.value));
+        if (ia === -1) return 1;
+        if (ib === -1) return -1;
+        return ia - ib;
+      });
+    }
+
+    function renderShareRows(el, rows, emptyMsg) {
+      const ranked = withShare(rows).slice(0, 6);
+      if (!ranked.length) {
+        el.innerHTML = `<div class="text-[13px] text-muted">${emptyMsg}</div>`;
+        return;
+      }
+      el.innerHTML = ranked.map(r => `
+        <div class="share-row">
+          <span class="capitalize truncate" title="${r.value}">${r.value}</span>
+          <div class="bar-track"><div class="bar-fill" style="width:${r.pct}%"></div></div>
+          <span class="font-mono text-[11px] text-right text-white">${r.pct}%</span>
+        </div>
+      `).join('');
+    }
+
+    function renderColorStory(rows) {
+      const ranked = withShare(rows).slice(0, 8);
+      const el = $('colorStory');
+      if (!ranked.length) {
+        el.innerHTML = '<div class="text-[13px] text-muted">No color signals</div>';
+        return;
+      }
+      el.innerHTML = ranked.map(r => `
+        <div class="swatch-card">
+          <div class="swatch-chip" style="background:${colorHex(r.value)}"></div>
+          <div class="name">${r.value}</div>
+          <div class="pct">${r.pct}%</div>
+        </div>
+      `).join('');
+    }
+
+    function updateDropSummary(key, allLabel) {
+      const drop = document.getElementById('drop-' + key);
+      const summary = drop.querySelector('.summary');
+      const vals = selection[key];
+      if (!vals.length) {
+        summary.textContent = allLabel;
+        summary.classList.add('empty');
+        return;
+      }
+      summary.classList.remove('empty');
+      if (key === 'pin') {
+        summary.textContent = vals.map(p => areaLabel(p)).join(', ');
+      } else {
+        summary.textContent = vals.join(', ');
+      }
+    }
+
+    function buildDropdown(key, values, allLabel, labelFn) {
+      const panel = $('opts-' + key);
+      panel.innerHTML = values.map(v => {
+        const label = labelFn ? labelFn(v) : v;
+        return `
+          <label class="drop-item">
+            <input type="checkbox" data-key="${key}" value="${v}" />
+            <span>${label}</span>
+          </label>`;
+      }).join('');
+
+      panel.querySelectorAll('input').forEach(input => {
+        input.addEventListener('change', () => {
+          selection[key] = [...panel.querySelectorAll('input:checked')].map(i => i.value);
+          updateDropSummary(key, allLabel);
+          applyFilters();
+        });
+      });
+      updateDropSummary(key, allLabel);
+    }
+
+    function applyFilters() {
+      const pins = selection.pin;
+      const ages = selection.age;
+      const genders = selection.gender;
+      const rfms = selection.rfm;
+      const brands = selection.brand;
+
+      const cust = DATA.customer_cells.filter(c => matchDemo(c, pins, ages, genders, rfms));
+      const garm = DATA.garment_cells.filter(c =>
+        matchDemo(c, pins, ages, genders, rfms) && (!brands.length || brands.includes(c.brand))
+      );
+
+      const customers = cust.reduce((s, c) => s + c.customers, 0);
+      const orders = cust.reduce((s, c) => s + c.orders, 0);
+      const revenue = cust.reduce((s, c) => s + c.revenue, 0);
+      const garments = garm.reduce((s, c) => s + c.garments, 0);
+
+      $('kpiCust').textContent = customers.toLocaleString();
+      $('kpiRev').textContent = '₹' + Math.round(revenue).toLocaleString();
+      $('kpiOrd').textContent = orders.toLocaleString();
+      $('kpiGar').textContent = garments.toLocaleString();
+      const jobsN = DATA.extraction_jobs_count;
+      $('kpiJobs').textContent = (jobsN == null ? '—' : Number(jobsN).toLocaleString());
+
+      const sizes = sortSizes(mergePairs(garm, 'sizes'));
+      const colors = mergePairs(garm, 'colors');
+      const patterns = mergePairs(garm, 'patterns');
+      const sleeves = mergePairs(garm, 'sleeve_types');
+      const collars = mergePairs(garm, 'collar_types');
+      const materials = mergePairs(garm, 'materials');
+
+      const brandMix = {};
+      for (const g of garm) brandMix[g.brand] = (brandMix[g.brand] || 0) + g.garments;
+      const brandsArr = Object.entries(brandMix).map(([value, count]) => ({ value, count })).sort((a, b) => b.count - a.count);
+
+      const rfmMix = {};
+      for (const c of cust) rfmMix[c.rfm_segment] = (rfmMix[c.rfm_segment] || 0) + c.customers;
+      const rfmArr = Object.entries(rfmMix).map(([value, count]) => ({ value, count }));
+
+      const topColor = colors[0];
+      const topPattern = patterns[0];
+      const topSleeve = sleeves[0];
+      const topCollar = collars[0];
+      const topSize = withShare(sizes).sort((a, b) => b.count - a.count)[0];
+
+      if (!garments) {
+        $('tasteHeadline').textContent = 'No garment observations for this filter set.';
+        $('tastePills').innerHTML = '';
+      } else {
+        const parts = [];
+        if (topColor) parts.push(topColor.value);
+        if (topPattern) parts.push(topPattern.value + ' patterns');
+        if (topSleeve) parts.push(topSleeve.value + ' sleeves');
+        $('tasteHeadline').textContent = parts.length
+          ? `Audience leans ${parts.join(' · ')}.`
+          : 'Assortment signals available below.';
+        const pills = [];
+        if (topSize) pills.push(`Core size <b>${topSize.value}</b> ${topSize.pct}%`);
+        if (topCollar) pills.push(`Collar <b>${topCollar.value}</b>`);
+        if (materials[0]) pills.push(`Fabric <b>${materials[0].value}</b>`);
+        $('tastePills').innerHTML = pills.map(p => `<span class="pill">${p}</span>`).join('');
+      }
+
+      renderColorStory(colors);
+      renderShareRows($('patternMix'), patterns, 'No pattern signals');
+      renderShareRows($('sleeveMix'), sleeves, 'No sleeve data');
+      renderShareRows($('collarMix'), collars, 'No collar data');
+      $('materialMix').innerHTML = withShare(materials).slice(0, 8).map(m =>
+        `<span class="pill capitalize">${m.value} <b>${m.pct}%</b></span>`
+      ).join('') || '<span class="text-[13px] text-muted">No material signals</span>';
+
+      const sizeShares = withShare(sizes);
+      updateChart(sizeChart, sizeShares.map(x => x.value), sizeShares.map(x => x.pct), CHART.color);
+      updateChart(brandChart, brandsArr.map(x => x.value), brandsArr.map(x => x.count), CHART.colorAlt);
+      updateChart(rfmChart, rfmArr.map(x => x.value), rfmArr.map(x => x.count), CHART.color);
+
+      updateMap(pins);
+      updateCatchment(pins);
+    }
+
+    function updateChart(chart, labels, values, color) {
+      chart.data.labels = labels;
+      chart.data.datasets[0].data = values;
+      chart.data.datasets[0].backgroundColor = color;
+      chart.update();
+    }
+
+    function updateCatchment(pins) {
+      const keys = pins.length ? pins : Object.keys(DATA.pin_geo);
+      let popPin = 0, p1 = 0, p2 = 0, p4 = 0;
+      const labels = [];
+      for (const pin of keys) {
+        const g = DATA.pin_geo[pin];
+        if (!g) continue;
+        labels.push(g.area_label || pin);
+        popPin += g.population_pin || 0;
+        p1 += g.pop_buffer_1km || 0;
+        p2 += g.pop_buffer_2km || 0;
+        p4 += g.pop_buffer_4km || 0;
+      }
+      $('hubLabel').textContent = !pins.length
+        ? 'All hubs'
+        : (labels.length <= 2 ? labels.join(', ') : labels.length + ' hubs');
+      $('popPin').textContent = popPin ? popPin.toLocaleString() : '—';
+      $('pop1').textContent = p1 ? p1.toLocaleString() : '—';
+      $('pop2').textContent = p2 ? p2.toLocaleString() : '—';
+      $('pop4').textContent = p4 ? p4.toLocaleString() : '—';
+    }
+
+    function updateMap(pins) {
+      markersLayer.clearLayers();
+      circleLayers.forEach(c => map.removeLayer(c));
+      circleLayers = [];
+
+      const hubs = [];
+      const pinSet = pins.length ? new Set(pins) : null;
+      for (const [pin, g] of Object.entries(DATA.pin_geo)) {
+        if (pinSet && !pinSet.has(pin)) continue;
+        if (g.centroid_lat == null || g.centroid_lon == null) continue;
+        const name = g.area_label || pin;
+        hubs.push({ ...g, pin, name });
+
+        const icon = L.divIcon({
+          className: '',
+          html: `<div class="map-pin-label">${name}</div>`,
+          iconSize: [120, 28],
+          iconAnchor: [60, 14]
+        });
+        const marker = L.marker([g.centroid_lat, g.centroid_lon], { icon })
+          .bindPopup(
+            `<strong style="color:#fff;font-size:13px">${name}</strong><br/>` +
+            `<span style="color:#8a94a3">PIN ${pin}</span><br/>` +
+            `Customers: <b>${g.customers}</b> · Orders: <b>${g.orders}</b>`
+          );
+        markersLayer.addLayer(marker);
+
+        L.circleMarker([g.centroid_lat, g.centroid_lon], {
+          radius: 5,
+          color: '#c4a574',
+          fillColor: '#c4a574',
+          fillOpacity: 0.9,
+          weight: 0
+        }).addTo(markersLayer);
+      }
+
+      if (!hubs.length) return;
+
+      let lat = 0, lon = 0;
+      hubs.forEach(h => { lat += h.centroid_lat; lon += h.centroid_lon; });
+      lat /= hubs.length; lon /= hubs.length;
+
+      [[1000, 0.07], [2200, 0.045], [3800, 0.025]].forEach(([r, opacity]) => {
+        const c = L.circle([lat, lon], {
+          radius: r, color: '#c4a574', weight: 1,
+          fillColor: '#c4a574', fillOpacity: opacity
+        }).addTo(map);
+        circleLayers.push(c);
+      });
+
+      const bounds = L.latLngBounds(hubs.map(h => [h.centroid_lat, h.centroid_lon]));
+      map.fitBounds(bounds.pad(0.45));
+      setTimeout(() => map.invalidateSize(), 80);
+    }
+
+    function makeBar(canvasId) {
+      return new Chart($(canvasId), {
+        type: 'bar',
+        data: {
+          labels: [],
+          datasets: [{
+            data: [],
+            backgroundColor: CHART.color,
+            borderRadius: 5,
+            borderSkipped: false,
+            maxBarThickness: 32
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: '#12161c',
+              titleColor: '#fff',
+              bodyColor: '#d2d8e0',
+              borderColor: '#2a3340',
+              borderWidth: 1,
+              padding: 10
+            }
+          },
+          scales: {
+            x: {
+              ticks: { color: CHART.tick, font: { size: 11, family: 'Outfit' } },
+              grid: { display: false },
+              border: { color: CHART.grid }
+            },
+            y: {
+              ticks: { color: CHART.tick, font: { size: 10, family: 'IBM Plex Mono' } },
+              grid: { color: CHART.grid },
+              border: { display: false },
+              beginAtZero: true
+            }
+          }
+        }
+      });
+    }
+
+    // Dropdown open/close
+    document.querySelectorAll('.drop-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const drop = btn.closest('.drop');
+        const wasOpen = drop.classList.contains('open');
+        document.querySelectorAll('.drop').forEach(d => d.classList.remove('open'));
+        if (!wasOpen) drop.classList.add('open');
+      });
+    });
+    document.addEventListener('click', () => {
+      document.querySelectorAll('.drop').forEach(d => d.classList.remove('open'));
+    });
+    document.querySelectorAll('.drop-panel').forEach(p => {
+      p.addEventListener('click', e => e.stopPropagation());
+    });
+
+    $('btnToggle').addEventListener('click', () => {
+      $('sidebar').classList.toggle('collapsed');
+      setTimeout(() => map && map.invalidateSize(), 300);
+    });
+
+    $('btnClear').addEventListener('click', () => {
+      Object.keys(selection).forEach(k => { selection[k] = []; });
+      document.querySelectorAll('.drop-panel input').forEach(i => { i.checked = false; });
+      updateDropSummary('pin', 'All areas');
+      updateDropSummary('age', 'All ages');
+      updateDropSummary('gender', 'All genders');
+      updateDropSummary('rfm', 'All segments');
+      updateDropSummary('brand', 'All brands');
+      applyFilters();
+    });
+
+    async function boot() {
+      map = L.map('map', { center: [12.97, 77.59], zoom: 11, zoomControl: false });
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Tiles &copy; Esri',
+        maxZoom: 16
+      }).addTo(map);
+      L.control.zoom({ position: 'bottomright' }).addTo(map);
+      markersLayer = L.layerGroup().addTo(map);
+
+      sizeChart = makeBar('sizeChart');
+      brandChart = makeBar('brandChart');
+      rfmChart = makeBar('rfmChart');
+
+      // Live metrics from BigQuery via command-center API (no static fallback)
+      const apiBase = (window.DASHBOARD_API || '').replace(/\/$/, '');
+      const metricsUrl = apiBase ? (apiBase + '/v1/metrics') : '/v1/metrics';
+      let res;
+      try {
+        res = await fetch(metricsUrl);
+      } catch (e) {
+        console.error('[geo] metrics fetch failed', e);
+        throw new Error('Could not reach /v1/metrics — check command-center Cloud Run / network');
+      }
+      if (!res.ok) {
+        let detail = '';
+        try {
+          const body = await res.json();
+          detail = body.detail || body.message || JSON.stringify(body);
+        } catch (_) {
+          detail = await res.text().catch(() => '');
+        }
+        console.error('[geo] metrics HTTP', res.status, detail);
+        throw new Error('Metrics failed (HTTP ' + res.status + '): ' + (detail || 'BigQuery / IAM / tables — check Cloud Run logs'));
+      }
+      DATA = await res.json();
+
+      buildDropdown('pin', DATA.filters.pin_codes, 'All areas', pinOptionLabel);
+      buildDropdown('age', DATA.filters.age_groups, 'All ages');
+      buildDropdown('gender', DATA.filters.genders, 'All genders');
+      buildDropdown('rfm', DATA.filters.rfm_segments, 'All segments');
+      buildDropdown('brand', DATA.filters.brands, 'All brands');
+
+      applyFilters();
+      setTimeout(() => map.invalidateSize(), 150);
+    }
+
+    boot().catch(err => {
+      document.body.innerHTML =
+        `<div style="padding:3rem;font-family:Outfit,sans-serif;color:#d2d8e0;background:#0a0c0f;min-height:100vh">
+          <h1 style="color:#fff">Dashboard failed to load</h1>
+          <p style="color:#8a94a3">${err.message}</p>
+        </div>`;
+    });
+  </script>
+</body>
+</html>

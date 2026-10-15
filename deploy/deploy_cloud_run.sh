@@ -14,7 +14,7 @@ gcloud artifacts repositories create suffai \
   --project="$PROJECT" 2>/dev/null || true
 
 API_IMG="$REGION-docker.pkg.dev/$PROJECT/suffai/suffai-api:latest"
-WEB_IMG="$REGION-docker.pkg.dev/$PROJECT/suffai/suffai-web:latest"
+CC_IMG="$REGION-docker.pkg.dev/$PROJECT/suffai/suffai-command-center:latest"
 WORKER_IMG="$REGION-docker.pkg.dev/$PROJECT/suffai/suffai-extraction:latest"
 
 docker build -f "$ROOT/Dockerfile.api" -t "$API_IMG" "$ROOT"
@@ -31,26 +31,6 @@ gcloud run deploy suffai-api \
 API_URL="$(gcloud run services describe suffai-api --region="$REGION" --project="$PROJECT" --format='value(status.url)')"
 echo "API_URL=$API_URL"
 
-docker build -f "$ROOT/Dockerfile.web" \
-  --build-arg "NEXT_PUBLIC_API_URL=$API_URL" \
-  -t "$WEB_IMG" "$ROOT"
-docker push "$WEB_IMG"
-
-gcloud run deploy suffai-web \
-  --image="$WEB_IMG" \
-  --region="$REGION" \
-  --platform=managed \
-  --allow-unauthenticated \
-  --set-env-vars="PORT=8080" \
-  --project="$PROJECT"
-
-# Point API CORS at web
-WEB_URL="$(gcloud run services describe suffai-web --region="$REGION" --project="$PROJECT" --format='value(status.url)')"
-gcloud run services update suffai-api \
-  --region="$REGION" \
-  --project="$PROJECT" \
-  --update-env-vars="WEB_ORIGIN=$WEB_URL,API_PUBLIC_URL=$API_URL"
-
 docker build -f "$ROOT/Dockerfile.worker" -t "$WORKER_IMG" "$ROOT"
 docker push "$WORKER_IMG"
 
@@ -62,6 +42,30 @@ gcloud run deploy suffai-extraction \
   --set-env-vars="ENABLE_VERTEX=false" \
   --project="$PROJECT"
 
-echo "Web: $WEB_URL"
-echo "API: $API_URL"
+WORKER_URL="$(gcloud run services describe suffai-extraction --region="$REGION" --project="$PROJECT" --format='value(status.url)')"
+
+# Command Center (Geo + Ads Lab) — replaces Next.js web for this product surface
+docker build -f "$ROOT/Dockerfile.command_center" -t "$CC_IMG" "$ROOT"
+docker push "$CC_IMG"
+
+gcloud run deploy suffai-command-center \
+  --image="$CC_IMG" \
+  --region="$REGION" \
+  --platform=managed \
+  --allow-unauthenticated \
+  --memory=1Gi \
+  --set-env-vars="USE_BQ=true,BQ_DATASET=suffai_ops,GOOGLE_CLOUD_PROJECT=$PROJECT,GCS_IMAGE_BUCKET=${PROJECT}-suffai-garment-images,EXTRACTION_URL=$WORKER_URL,CORS_ORIGINS=*" \
+  --project="$PROJECT"
+
+CC_URL="$(gcloud run services describe suffai-command-center --region="$REGION" --project="$PROJECT" --format='value(status.url)')"
+
+# Point legacy API CORS at command center (api code unchanged; env only)
+gcloud run services update suffai-api \
+  --region="$REGION" \
+  --project="$PROJECT" \
+  --update-env-vars="WEB_ORIGIN=$CC_URL,API_PUBLIC_URL=$API_URL" || true
+
+echo "Command Center: $CC_URL/login.html"
+echo "API:            $API_URL"
+echo "Extraction:     $WORKER_URL"
 echo "Done."

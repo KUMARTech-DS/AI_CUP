@@ -1,0 +1,2 @@
+# Only needed if you use: python3 aggregate_metrics.py --bq --project YOUR_PROJECT
+google-cloud-bigquery>=3.11.0
