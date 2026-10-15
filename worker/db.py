@@ -14,6 +14,8 @@ from psycopg.rows import dict_row
 from psycopg.types.json import Json
 
 from worker.settings import settings
+DEMO_CONSENT_ID = "c84dc911-d658-4cb6-b970-1ca2029daf88"
+DEMO_CUSTOMER_ID = "SUFFAI_DEMO_CUSTOMER"
 
 log = logging.getLogger("suffai-extraction.db")
 
