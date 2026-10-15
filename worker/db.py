@@ -47,6 +47,163 @@ def connect() -> Iterator[psycopg.Connection]:
 def _now() -> datetime:
     return datetime.now(timezone.utc)
 
+def register_gcs_image(
+    *,
+    gcs_object_key: str,
+    consent_id: str = DEMO_CONSENT_ID,
+) -> Dict[str, str]:
+    """
+    Register an authorized demo GCS image in Cloud SQL.
+
+    Returns:
+        {
+            "image_id": "...",
+            "garment_instance_id": "..."
+        }
+    """
+
+    if not gcs_object_key:
+        raise ValueError("gcs_object_key is required")
+
+    # This function is restricted to explicitly authorized demo uploads.
+    # Do not call it for arbitrary customer images.
+
+    with connect() as conn:
+        with conn.cursor() as cur:
+
+            # Serialize registration for the same GCS object.
+            cur.execute(
+                "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))",
+                (gcs_object_key,),
+            )
+
+            # 1. Check whether the image already exists.
+            cur.execute(
+                """
+                SELECT
+                    id::text AS image_id,
+                    garment_instance_id::text AS garment_instance_id
+                FROM garment_images
+                WHERE gcs_object_key = %s
+                  AND deleted_at IS NULL
+                LIMIT 1
+                """,
+                (gcs_object_key,),
+            )
+
+            existing = cur.fetchone()
+
+            if existing:
+                log.info(
+                    "GCS image already registered key=%s image_id=%s",
+                    gcs_object_key,
+                    existing["image_id"],
+                )
+                return existing
+
+            # 2. Validate demo consent.
+            cur.execute(
+                """
+                SELECT source_customer_id
+                FROM consent_records
+                WHERE id = %s::uuid
+                  AND source_customer_id = %s
+                  AND purpose = 'operational_processing'
+                  AND status = 'granted'
+                  AND revoked_at IS NULL
+                """,
+                (consent_id, DEMO_CUSTOMER_ID),
+            )
+
+            consent = cur.fetchone()
+
+            if not consent:
+                raise ValueError(
+                    "Valid authorized demo consent not found"
+                )
+
+            # 3. Create a synthetic garment instance.
+            garment_instance_id = str(uuid.uuid4())
+            source_id = str(uuid.uuid4())
+
+            cur.execute(
+                """
+                INSERT INTO garment_instances (
+                    id,
+                    source_customer_id,
+                    source_order_id,
+                    source_order_item_id,
+                    source_order_commodity_line_id,
+                    physical_item_index,
+                    consent_id,
+                    review_status
+                )
+                VALUES (
+                    %s::uuid,
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    %s::uuid,
+                    'needs_review'
+                )
+                """,
+                (
+                    garment_instance_id,
+                    DEMO_CUSTOMER_ID,
+                    f"DEMO_ORDER_{source_id}",
+                    f"DEMO_ITEM_{source_id}",
+                    f"DEMO_LINE_{source_id}",
+                    1,
+                    consent_id,
+                ),
+            )
+
+            # 4. Register the image.
+            image_id = str(uuid.uuid4())
+
+            cur.execute(
+                """
+                INSERT INTO garment_images (
+                    id,
+                    garment_instance_id,
+                    consent_id,
+                    gcs_object_key,
+                    capture_source,
+                    image_type
+                )
+                VALUES (
+                    %s::uuid,
+                    %s::uuid,
+                    %s::uuid,
+                    %s,
+                    %s,
+                    %s
+                )
+                """,
+                (
+                    image_id,
+                    garment_instance_id,
+                    consent_id,
+                    gcs_object_key,
+                    "suffai_demo",
+                    "garment",
+                ),
+            )
+
+            log.info(
+                "GCS image registered key=%s image_id=%s garment_id=%s",
+                gcs_object_key,
+                image_id,
+                garment_instance_id,
+            )
+
+            return {
+                "image_id": image_id,
+                "garment_instance_id": garment_instance_id,
+            }
+
 
 def mark_job_processing(
     *,
