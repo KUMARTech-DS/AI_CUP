@@ -115,7 +115,26 @@ def run_extraction(payload: Dict[str, Any]) -> Dict[str, Any]:
         or payload.get("message_id")
         or f"extract:{object_key}"
     )
+    demo_prefix = "demo/"
 
+    if (
+        target_type == "garment"
+        and settings.DATABASE_URL
+        and object_key
+        and object_key.startswith(demo_prefix)
+        and not image_id
+        and not garment_instance_id):
+        registration = db.register_gcs_image(
+            gcs_object_key=object_key,
+        )
+
+        image_id = registration["image_id"]
+        garment_instance_id = registration["garment_instance_id"]
+
+        log.info(
+            "Demo image registration completed image_id=%s garment_id=%s",
+            image_id,
+            garment_instance_id)
     if not object_key:
         raise ValueError("gcs_object_key is required")
 
