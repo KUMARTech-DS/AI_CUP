@@ -1,3 +1,5 @@
+
+"use client";
 import { FormEvent, useState } from "react";
 import { RequireAuth } from "@/components/RequireAuth";
 import { API_BASE, apiPost } from "@/lib/api";
