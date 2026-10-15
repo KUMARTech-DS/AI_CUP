@@ -25,6 +25,7 @@ from pydantic import BaseModel, Field
 
 from worker import db
 from worker.gcs_io import read_image
+from worker.object_key import parse_object_key_meta
 from worker.settings import settings
 from worker.vertex_extract import extract_attributes
 
@@ -65,7 +66,7 @@ def _abstain_result(reason: str) -> Dict[str, Any]:
 
 def run_extraction(payload: Dict[str, Any]) -> Dict[str, Any]:
     """Core pipeline used by Pub/Sub and POST /v1/extract."""
-    object_key = payload.get("gcs_object_key") or payload.get("object_key")
+    object_key = payload.get("gcs_object_key") or payload.get("object_key") or payload.get("name")
     bucket = payload.get("gcs_bucket") or payload.get("bucket")
     image_id = payload.get("image_id")
     garment_instance_id = payload.get("garment_instance_id")
@@ -80,9 +81,22 @@ def run_extraction(payload: Dict[str, Any]) -> Dict[str, Any]:
     if not object_key:
         raise ValueError("gcs_object_key is required")
 
+    # Parse user_uuid_order_uuid_item_uuid from object basename (required for garment DB upsert)
+    key_meta = parse_object_key_meta(object_key)
+    user_uuid = payload.get("user_uuid") or (key_meta.user_uuid if key_meta else None)
+    order_uuid = payload.get("order_uuid") or (key_meta.order_uuid if key_meta else None)
+    item_uuid = payload.get("item_uuid") or (key_meta.item_uuid if key_meta else None)
+
+    if target_type == "garment" and not (user_uuid and order_uuid and item_uuid):
+        raise ValueError(
+            "GCS object basename must be {user_uuid}_{order_uuid}_{item_uuid}[.ext] "
+            f"(got basename from {object_key!r})"
+        )
+
     # 1) Mark PROCESSING in Cloud SQL (best-effort)
     if settings.DATABASE_URL:
         try:
+            db.ensure_source_uuid_columns()
             db.mark_job_processing(
                 idempotency_key=idempotency_key,
                 image_id=image_id,
@@ -106,8 +120,18 @@ def run_extraction(payload: Dict[str, Any]) -> Dict[str, Any]:
         result = _abstain_result("ENABLE_VERTEX=false; abstain without paid API call")
         status = "NEEDS_REVIEW"
 
+    # Attach filename metadata into evidence for audit
+    evidence = dict(result.get("attribute_evidence") or {})
+    evidence["source_object"] = {
+        "gcs_object_key": object_key,
+        "user_uuid": user_uuid,
+        "order_uuid": order_uuid,
+        "item_uuid": item_uuid,
+    }
+    result["attribute_evidence"] = evidence
+
     persist_info: Dict[str, Any] = {"skipped": True}
-    # 4) Write to Cloud SQL
+    # 4) Write to Cloud SQL (attributes + user/order/item UUIDs)
     if not settings.DATABASE_URL:
         persist_info = {
             "skipped": True,
@@ -129,10 +153,14 @@ def run_extraction(payload: Dict[str, Any]) -> Dict[str, Any]:
                     garment_instance_id=garment_instance_id,
                     result=result,
                     status=status,
+                    user_uuid=user_uuid,
+                    order_uuid=order_uuid,
+                    item_uuid=item_uuid,
+                    gcs_object_key=object_key,
                 )
+                garment_instance_id = persist_info.get("garment_instance_id") or garment_instance_id
         except Exception as exc:
             log.exception("Cloud SQL persist failed")
-            # Best-effort mark FAILED
             try:
                 db.persist_garment_extraction(
                     idempotency_key=idempotency_key,
@@ -141,12 +169,15 @@ def run_extraction(payload: Dict[str, Any]) -> Dict[str, Any]:
                     result={**result, "notes": f"persist_failed: {exc}"},
                     status="FAILED",
                     error_code="DB_PERSIST_FAILED",
+                    user_uuid=user_uuid,
+                    order_uuid=order_uuid,
+                    item_uuid=item_uuid,
+                    gcs_object_key=object_key,
                 )
             except Exception:
                 pass
             raise
 
-    # Do not return raw image bytes
     safe_result = {k: v for k, v in result.items() if k != "raw_model_json"}
     return {
         "status": status,
@@ -157,6 +188,10 @@ def run_extraction(payload: Dict[str, Any]) -> Dict[str, Any]:
         "target_type": target_type,
         "image_id": image_id,
         "garment_instance_id": garment_instance_id,
+        "user_uuid": user_uuid,
+        "order_uuid": order_uuid,
+        "item_uuid": item_uuid,
+        "gcs_object_key": object_key,
         "campaign_id": campaign_id,
         "persist": persist_info,
         "result": safe_result,
@@ -220,9 +255,29 @@ async def pubsub_push(request: Request):
         log.exception("bad payload: %s", exc)
         return JSONResponse({"status": "bad_payload"}, status_code=200)
 
-    if isinstance(payload, dict) and "idempotency_key" not in payload:
-        payload["idempotency_key"] = payload.get("idempotency_key") or message_id
-        payload["message_id"] = message_id
+    if not isinstance(payload, dict):
+        log.error("invalid pubsub payload type message_id=%s", message_id)
+        return JSONResponse({"status": "bad_payload"}, status_code=200)
+
+    # GCS OBJECT_FINALIZE notifications use `name` and `bucket`, while the
+    # application's own Pub/Sub messages use `gcs_object_key` and `gcs_bucket`.
+    # Normalize native GCS notifications without changing the existing contract.
+    if not payload.get("gcs_object_key") and not payload.get("object_key"):
+        if payload.get("name") and payload.get("bucket"):
+            payload["gcs_object_key"] = payload["name"]
+            payload["gcs_bucket"] = payload["bucket"]
+            log.info("received GCS object notification bucket=%s object=%s message_id=%s",
+                     payload["bucket"], payload["name"], message_id)
+
+    if not payload.get("idempotency_key"):
+        # A GCS object generation is stable across Pub/Sub redeliveries.
+        if payload.get("bucket") and payload.get("name") and payload.get("generation"):
+            payload["idempotency_key"] = (
+                f"gcs:{payload['bucket']}:{payload['name']}:{payload['generation']}"
+            )
+        else:
+            payload["idempotency_key"] = message_id
+    payload["message_id"] = message_id
 
     try:
         result = run_extraction(payload if isinstance(payload, dict) else {})
@@ -232,17 +287,22 @@ async def pubsub_push(request: Request):
         log.error("extraction failed message_id=%s err=%s\n%s", message_id, exc, traceback.format_exc())
         # Non-retryable client errors → 200 to avoid infinite retry
         if isinstance(exc, (ValueError, FileNotFoundError)):
-            if settings.DATABASE_URL:
+            if settings.DATABASE_URL and isinstance(payload, dict):
                 try:
+                    meta = parse_object_key_meta(
+                        str(payload.get("gcs_object_key") or payload.get("object_key") or payload.get("name") or "")
+                    )
                     db.persist_garment_extraction(
-                        idempotency_key=str(
-                            (payload or {}).get("idempotency_key") or message_id
-                        ),
-                        image_id=(payload or {}).get("image_id"),
+                        idempotency_key=str(payload.get("idempotency_key") or message_id),
+                        image_id=payload.get("image_id"),
                         garment_instance_id=None,
                         result=_abstain_result(str(exc)),
                         status="FAILED",
                         error_code="CLIENT_ERROR",
+                        user_uuid=payload.get("user_uuid") or (meta.user_uuid if meta else None),
+                        order_uuid=payload.get("order_uuid") or (meta.order_uuid if meta else None),
+                        item_uuid=payload.get("item_uuid") or (meta.item_uuid if meta else None),
+                        gcs_object_key=payload.get("gcs_object_key") or payload.get("object_key") or payload.get("name"),
                     )
                 except Exception:
                     pass
