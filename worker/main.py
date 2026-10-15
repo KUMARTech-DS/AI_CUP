@@ -46,6 +46,51 @@ class ExtractRequest(BaseModel):
     target_type: str = Field(default="garment", description="garment | campaign")
 
 
+import base64
+import json
+
+def parse_key_object_metadata(payload):
+    """Normalize GCS Pub/Sub notifications for extraction."""
+
+    if not isinstance(payload, dict):
+        raise ValueError("Invalid Pub/Sub payload")
+
+    # Decode standard Pub/Sub push envelope
+    message = payload.get("message")
+
+    if isinstance(message, dict):
+        encoded = message.get("data")
+
+        if encoded:
+            decoded = base64.b64decode(encoded)
+            payload = json.loads(decoded.decode("utf-8"))
+        else:
+            payload = message.get("attributes", {})
+
+    # Normalize GCS object metadata
+    object_key = (
+        payload.get("gcs_object_key")
+        or payload.get("name")
+        or payload.get("objectId")
+    )
+
+    bucket = (
+        payload.get("gcs_bucket")
+        or payload.get("bucket")
+        or payload.get("bucketId")
+    )
+
+    if not object_key:
+        raise ValueError(
+            f"Missing GCS object key. Payload keys: {list(payload.keys())}"
+        )
+
+    return {
+        **payload,
+        "gcs_object_key": object_key,
+        "gcs_bucket": bucket,
+    }
+  
 def _abstain_result(reason: str) -> Dict[str, Any]:
     return {
         "commodity_type": "unknown",
@@ -225,7 +270,9 @@ async def pubsub_push(request: Request):
         payload["message_id"] = message_id
 
     try:
-        result = run_extraction(payload if isinstance(payload, dict) else {})
+        normalized_payload = parse_key_object_metadata(payload)
+        result = run_extraction(normalized_payload)
+        # result = run_extraction(payload if isinstance(payload, dict) else {})
         return result
     except Exception as exc:
         # Ack with 200 only for poison non-retryable? Prefer 500 so Pub/Sub retries / DLQ.
