@@ -1,0 +1,38 @@
+{
+  "_comment": "Dummy PIN → population. Replace with your real mapping anytime.",
+  "560008": {
+    "area_label": "Indiranagar",
+    "population_pin": 42000,
+    "pop_buffer_1km": 68400,
+    "pop_buffer_2km": 210000,
+    "pop_buffer_4km": 540000
+  },
+  "560034": {
+    "area_label": "Koramangala",
+    "population_pin": 51000,
+    "pop_buffer_1km": 82000,
+    "pop_buffer_2km": 260000,
+    "pop_buffer_4km": 680000
+  },
+  "560102": {
+    "area_label": "HSR Layout",
+    "population_pin": 38000,
+    "pop_buffer_1km": 55000,
+    "pop_buffer_2km": 185000,
+    "pop_buffer_4km": 490000
+  },
+  "560041": {
+    "area_label": "Jayanagar",
+    "population_pin": 48000,
+    "pop_buffer_1km": 74000,
+    "pop_buffer_2km": 240000,
+    "pop_buffer_4km": 610000
+  },
+  "560066": {
+    "area_label": "Whitefield",
+    "population_pin": 45000,
+    "pop_buffer_1km": 60000,
+    "pop_buffer_2km": 290000,
+    "pop_buffer_4km": 720000
+  }
+}

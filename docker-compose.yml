@@ -1,4 +1,4 @@
-# Local GCP-parity stack (no Streamlit)
+# Local GCP-parity stack
 services:
   api:
     build:
@@ -9,26 +9,13 @@ services:
     environment:
       PORT: "8080"
       ENVIRONMENT: local
-      WEB_ORIGIN: http://localhost:3000,http://localhost:8081
+      WEB_ORIGIN: http://localhost:8083
       DEMO_AUTH_ENABLED: "true"
       JWT_SECRET: local-dev-secret
       DATA_DIR: /app/data_offline
       DERIVED_DIR: /app/data_derived
     volumes:
       - ./data_derived:/app/data_derived
-
-  web:
-    build:
-      context: .
-      dockerfile: Dockerfile.web
-      args:
-        NEXT_PUBLIC_API_URL: http://localhost:8080
-    ports:
-      - "8081:8080"
-    environment:
-      PORT: "8080"
-    depends_on:
-      - api
 
   worker:
     build:
@@ -39,3 +26,19 @@ services:
     environment:
       PORT: "8080"
       ENABLE_VERTEX: "false"
+
+  # web/ UI + /v1/metrics + /v1/ads-lab/extract
+  command_center:
+    build:
+      context: .
+      dockerfile: Dockerfile.command_center
+    ports:
+      - "8083:8080"
+    environment:
+      PORT: "8080"
+      USE_BQ: "true"
+      GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:-}
+      BQ_DATASET: ${BQ_DATASET:-suffai_ops}
+      GCS_IMAGE_BUCKET: ${GCS_IMAGE_BUCKET:-}
+      EXTRACTION_URL: ${EXTRACTION_URL:-}
+      CORS_ORIGINS: "*"

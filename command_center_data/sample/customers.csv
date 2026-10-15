@@ -1,0 +1,11 @@
+_id,name,number,address,age,gender,pin_code,rfm_segment,lat,lon
+c1,Asha,/91XXXX1001,Indiranagar,28,F,560008,Champions,12.9784,77.6408
+c2,Ravi,/91XXXX1002,Indiranagar,34,M,560008,Loyal,12.9791,77.6415
+c3,Meera,/91XXXX1003,Koramangala,22,F,560034,Champions,12.9352,77.6245
+c4,Arjun,/91XXXX1004,Koramangala,41,M,560034,At Risk,12.9340,77.6230
+c5,Priya,/91XXXX1005,HSR Layout,29,F,560102,Loyal,12.9121,77.6445
+c6,Karan,/91XXXX1006,HSR Layout,36,M,560102,Champions,12.9130,77.6430
+c7,Neha,/91XXXX1007,Jayanagar,45,F,560041,Hibernating,12.9299,77.5826
+c8,Vikram,/91XXXX1008,Whitefield,31,M,560066,Champions,12.9698,77.7499
+c9,Sana,/91XXXX1009,Whitefield,26,F,560066,Loyal,12.9710,77.7480
+c10,Dev,/91XXXX1010,Indiranagar,52,M,560008,At Risk,12.9770,77.6390

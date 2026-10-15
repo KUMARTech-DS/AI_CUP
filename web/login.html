@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SuffAI · Sign in</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Outfit:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      font-family: Outfit, system-ui, sans-serif;
+      min-height: 100vh;
+      margin: 0;
+      color: #d2d8e0;
+      background:
+        radial-gradient(800px 420px at 20% 0%, rgba(196, 165, 116, 0.12), transparent 50%),
+        radial-gradient(700px 400px at 100% 80%, rgba(125, 155, 138, 0.1), transparent 45%),
+        #0a0c0f;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+    .card {
+      width: 100%;
+      max-width: 400px;
+      background: rgba(18, 22, 28, 0.95);
+      border: 1px solid #2a3340;
+      border-radius: 16px;
+      padding: 2rem 1.75rem;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.4);
+    }
+    .title {
+      font-family: 'Cormorant Garamond', Georgia, serif;
+      font-size: 2rem;
+      color: #fff;
+      margin: 0 0 0.25rem;
+    }
+    label {
+      display: block;
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #8a94a3;
+      font-weight: 600;
+      margin-bottom: 0.4rem;
+    }
+    input {
+      width: 100%;
+      padding: 0.75rem 0.85rem;
+      border-radius: 10px;
+      border: 1px solid #2a3340;
+      background: #0e1218;
+      color: #fff;
+      font-size: 14px;
+      outline: none;
+      margin-bottom: 1rem;
+    }
+    input:focus { border-color: #c4a574; }
+    button {
+      width: 100%;
+      margin-top: 0.35rem;
+      padding: 0.8rem;
+      border: none;
+      border-radius: 10px;
+      background: #c4a574;
+      color: #1a140c;
+      font-weight: 700;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    button:hover { background: #d4b684; }
+    .err {
+      display: none;
+      margin-bottom: 0.85rem;
+      padding: 0.65rem 0.75rem;
+      border-radius: 8px;
+      background: rgba(180, 60, 60, 0.15);
+      border: 1px solid rgba(180, 60, 60, 0.35);
+      color: #f0a8a8;
+      font-size: 13px;
+    }
+    .hint { margin-top: 1rem; font-size: 12px; color: #8a94a3; line-height: 1.45; }
+    .hint code { color: #c4a574; font-size: 11px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div style="font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#8a94a3;font-weight:600">SuffAI</div>
+    <h1 class="title">Sign in</h1>
+    <p style="margin:0 0 1.4rem;font-size:13px;color:#8a94a3">Demo access for Command Center (Geo + Ads Lab).</p>
+    <div id="err" class="err">Invalid username or password.</div>
+    <form id="form">
+      <label for="user">Username</label>
+      <input id="user" name="user" autocomplete="username" required />
+      <label for="pass">Password</label>
+      <input id="pass" name="pass" type="password" autocomplete="current-password" required />
+      <button type="submit">Continue</button>
+    </form>
+    <p class="hint">
+      Demo only (not server auth).<br />
+      Use <code>brand</code> / <code>brand123</code>
+    </p>
+  </div>
+  <script>
+    // Demo credentials only — visible in source. Not production security.
+    const DEMO_USER = 'brand';
+    const DEMO_PASS = 'brand123';
+
+    if (localStorage.getItem('suffai_demo_session') === '1') {
+      location.replace('./index.html');
+    }
+
+    document.getElementById('form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const u = document.getElementById('user').value.trim();
+      const p = document.getElementById('pass').value;
+      if (u === DEMO_USER && p === DEMO_PASS) {
+        localStorage.setItem('suffai_demo_session', '1');
+        localStorage.setItem('suffai_demo_user', u);
+        location.href = './index.html';
+        return;
+      }
+      document.getElementById('err').style.display = 'block';
+    });
+  </script>
+</body>
+</html>
