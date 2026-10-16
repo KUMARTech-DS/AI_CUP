@@ -26,6 +26,45 @@
     .creative-card.rank-1 { border-color:#00ff88; box-shadow:0 0 22px rgba(0,255,136,.09); }
     .tag { display:inline-flex; align-items:center; gap:.3rem; border-radius:999px; border:1px solid #374151; padding:.15rem .5rem; font-size:10px; color:#d1d5db; background:rgba(17,24,39,.8); }
     .muted { color:#9ca3af; }
+    /* Restore the original interactive horizontal 3D coverflow for ranked creatives. */
+    .creative-rail {
+      display:flex; gap:1.5rem; align-items:stretch; overflow-x:auto; overflow-y:hidden;
+      perspective:1200px; padding:1.8rem 3rem 2.2rem 1.25rem; position:relative; z-index:10;
+      scroll-behavior:smooth; scroll-snap-type:x proximity; overscroll-behavior-x:contain;
+      min-height:530px; width:100%;
+    }
+    .creative-rail:focus-visible { outline:2px solid rgba(0,243,255,.65); outline-offset:-2px; }
+    .creative-rail::-webkit-scrollbar { height:8px; }
+    .creative-rail::-webkit-scrollbar-track { background:#0b0c10; border-radius:4px; }
+    .creative-rail::-webkit-scrollbar-thumb { background:#253449; border-radius:4px; }
+    .creative-rail::-webkit-scrollbar-thumb:hover { background:#00f3ff; }
+    .holo-card {
+      flex:0 0 320px; width:320px; min-width:320px; height:490px; min-height:490px;
+      display:flex; flex-direction:column; overflow:hidden; cursor:default; position:relative;
+      scroll-snap-align:center; transform:rotateY(-19deg) translateZ(-30px);
+      transform-style:preserve-3d; transition:transform .38s cubic-bezier(.25,.8,.25,1),
+      box-shadow .38s ease,border-color .25s ease,opacity .25s ease;
+      background:rgba(15,20,30,.9); backdrop-filter:blur(8px);
+      border:1px solid rgba(0,243,255,.38); border-radius:12px;
+      box-shadow:-15px 15px 25px rgba(0,0,0,.55),inset 0 0 20px rgba(0,243,255,.08);
+      opacity:.92;
+    }
+    .holo-card:hover, .holo-card:focus-within {
+      transform:rotateY(0deg) translateZ(35px) scale(1.035); z-index:20;
+      border-color:#00ff88; opacity:1;
+      box-shadow:0 10px 40px rgba(0,255,136,.2),inset 0 0 30px rgba(0,255,136,.1);
+    }
+    .holo-card.rank-1 { border-color:#00ff88; }
+    .holo-card.rank-2 { border-color:#00f3ff; }
+    .holo-card.rank-3 { border-color:#8a2be2; }
+    .holo-card.rank-4 { border-color:#6b7280; opacity:.88; transform:rotateY(-22deg) translateZ(-40px); }
+    .holo-card.rank-5 { border-color:#ef4444; opacity:.82; transform:rotateY(-24deg) translateZ(-48px); }
+    .holo-card .card-body { flex:1; min-height:0; overflow-y:auto; scrollbar-width:thin; scrollbar-color:#273449 transparent; }
+    @media (max-width:640px) {
+      .creative-rail { padding:1.2rem 1rem 1.6rem; gap:1rem; min-height:500px; }
+      .holo-card { flex-basis:285px; width:285px; min-width:285px; height:475px; min-height:475px; transform:rotateY(-8deg) translateZ(-10px); }
+    }
+    @media (prefers-reduced-motion: reduce) { .holo-card,.creative-rail { transition:none; scroll-behavior:auto; } }
   </style>
 </head>
 <body class="h-screen flex flex-col overflow-hidden bg-[#0b0c10] text-gray-200">
@@ -77,7 +116,7 @@
             <div class="min-w-0">
               <p class="text-[10px] uppercase tracking-[.2em] text-cyan-400 font-bold">Current target</p>
               <h2 id="segmentTitle" class="text-lg sm:text-xl font-bold mt-1">Loading audience…</h2>
-              <p id="profileNote" class="text-xs text-gray-400 mt-2 max-w-3xl">Profile metrics are loading from the command-center API.</p>
+              <p id="profileNote" class="text-xs text-gray-400 mt-2 max-w-3xl">Profile metrics are loading from the command-center API.</p><p class="text-[10px] text-gray-500 mt-2">When an exact cohort has no garment observations, the UI uses the closest available fallback profile, labels the relaxed dimensions, and ranks every uploaded creative against that available profile.</p>
             </div>
             <div class="grid grid-cols-3 gap-2 min-w-[250px]">
               <div class="bg-gray-950/70 border border-gray-800 rounded-lg p-3"><p class="text-[9px] uppercase tracking-wider text-gray-500">Customers</p><p id="audienceCustomers" class="font-mono text-lg text-cyan-300 mt-1">—</p></div>
@@ -104,10 +143,14 @@
         <section>
           <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 mb-3">
             <div><h3 class="text-sm font-bold text-white"><i class="fa-solid fa-layer-group text-cyan-400 mr-2"></i>Creative ranking for this segment</h3><p class="text-[10px] text-gray-500 mt-1">One card per uploaded file. Scores and order update when the segment changes.</p></div>
-            <span id="rankCount" class="tag">0 creatives</span>
+            <div class="flex items-center gap-2">
+              <button id="creativePrev" type="button" aria-label="Scroll creatives left" class="h-8 w-8 rounded-lg border border-gray-700 bg-gray-900/90 hover:border-cyan-400 hover:text-cyan-300 transition"><i class="fa-solid fa-chevron-left"></i></button>
+              <button id="creativeNext" type="button" aria-label="Scroll creatives right" class="h-8 w-8 rounded-lg border border-gray-700 bg-gray-900/90 hover:border-cyan-400 hover:text-cyan-300 transition"><i class="fa-solid fa-chevron-right"></i></button>
+              <span id="rankCount" class="tag">0 creatives</span>
+            </div>
           </div>
           <div id="emptyState" class="glass-panel rounded-xl min-h-[220px] flex flex-col items-center justify-center text-center p-8"><i class="fa-solid fa-images text-5xl text-cyan-900 mb-4"></i><p class="text-sm font-mono text-cyan-300">Upload garment creatives to begin.</p><p class="text-xs text-gray-500 mt-2">After extraction, each uploaded image will be ranked against the selected audience profile.</p></div>
-          <div id="creativeGrid" class="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-4"></div>
+          <div id="creativeGrid" class="creative-rail" tabindex="0" role="list" aria-label="Ranked creative cards"></div>
         </section>
 
         <section class="glass-panel rounded-xl overflow-hidden">
@@ -221,24 +264,29 @@
       }
       return true;
     }
+    function isKnownObservation(value) {
+      return !['', 'unknown', 'n/a', 'na', 'null', 'none', 'not specified', 'not available'].includes(normal(value));
+    }
     function asDistribution(raw) {
       const output = {};
       if (Array.isArray(raw)) {
         for (const item of raw) {
           if (item == null) continue;
           if (typeof item === 'string' || typeof item === 'number') {
-            const v = String(item); output[v] = (output[v] || 0) + 1; continue;
+            const v = String(item); if (!isKnownObservation(v)) continue;
+            output[v] = (output[v] || 0) + 1; continue;
           }
           const value = item.value ?? item.name ?? item.label ?? item.key ?? item.brand ?? item.color ?? item.pattern ?? item.size ?? item.material ?? item.commodity_type;
           const count = Number(item.count ?? item.n ?? item.quantity ?? item.total ?? 1);
-          if (value !== undefined && Number.isFinite(count)) output[String(value)] = (output[String(value)] || 0) + Math.max(0, count);
+          if (value !== undefined && isKnownObservation(value) && Number.isFinite(count)) output[String(value)] = (output[String(value)] || 0) + Math.max(0, count);
         }
       } else if (raw && typeof raw === 'object') {
         for (const [key, v] of Object.entries(raw)) {
+          if (!isKnownObservation(key)) continue;
           const count = Number(typeof v === 'object' ? (v.count ?? v.n ?? v.quantity ?? 1) : v);
           if (Number.isFinite(count)) output[key] = Math.max(0, count);
         }
-      } else if (typeof raw === 'string' && raw.trim()) output[raw.trim()] = 1;
+      } else if (typeof raw === 'string' && raw.trim() && isKnownObservation(raw)) output[raw.trim()] = 1;
       return output;
     }
     function categoryDistribution(cell, config) {
@@ -267,7 +315,9 @@
     }
     function metricCellRows() {
       const m = state.metrics || {};
-      const rows = m.garment_cells || m.garmentCells || m.garment_profiles || m.segment_garment_cells || [];
+      // New payload: one row per geo × age × gender × RFM cell, with brands pooled.
+      // Older payloads remain supported as a compatibility fallback.
+      const rows = m.garment_segment_cells || m.garment_cells || m.garmentCells || m.garment_profiles || m.segment_garment_cells || [];
       return Array.isArray(rows) ? rows : [];
     }
     function tierLabel(keep, filters, exact = false) {
@@ -282,7 +332,9 @@
     function filterTiers(filters) {
       const selected = FILTER_KEYS.filter(k => filters[k]);
       const tiers = [];
-      // Prefer exact audience; if it has no observed garment profile, relax RFM, then gender, then age, while retaining geo.
+      // First aggregate over every unselected dimension: e.g. geo + age means all genders and all RFM segments.
+      // If that exact roll-up has no garment observations, preserve geo when possible and relax age before geo.
+      // The selected filters are never silently presented as exact once a fallback is needed.
       const dropOrder = ['rfm_segment','gender','age_group','pin_code'];
       let keep = selected.slice();
       tiers.push({keep: keep.slice(), label: tierLabel(keep, filters, true)});
@@ -345,48 +397,46 @@
       const rows = metricRowsForAudience();
       const selectedKeys = FILTER_KEYS.filter(k => Boolean(filters[k]));
       if (rows.length) {
-        const tier = filterTiers(filters).find(t => rows.some(r => matches(r, filters, t.keep)));
-        if (tier) {
-          const matched = rows.filter(r => matches(r, filters, tier.keep));
-          const sum = (key) => matched.reduce((acc, r) => acc + (Number(r[key] ?? 0) || 0), 0);
-          const exactAllFour = FILTER_KEYS.every(k => Boolean(filters[k]) && tier.keep.includes(k));
-          const everySelectedDimensionUsed = selectedKeys.every(k => tier.keep.includes(k));
-          let coverage, coverageTitle, coverageDetail;
-          if (exactAllFour) {
-            coverage = 'exact-segment';
-            coverageTitle = 'EXACT SEGMENT-LEVEL TOTALS';
-            coverageDetail = 'Customer, order and revenue values match this exact geo × age × gender × RFM selection.';
-          } else if (selectedKeys.length === 0) {
-            coverage = 'overall';
-            coverageTitle = 'OVERALL TOTALS — NO SEGMENT FILTERS';
-            coverageDetail = 'Values cover the overall available aggregate. Select geo, age, gender and RFM to request an exact audience segment.';
-          } else if (everySelectedDimensionUsed) {
-            coverage = 'partial-filter';
-            coverageTitle = 'PARTIALLY FILTERED TOTALS — NOT A FULL 4-DIMENSION SEGMENT';
-            coverageDetail = `Totals respect the selected fields (${tier.label}), while unselected dimensions are combined. Select all four fields for a fully specified audience.`;
-          } else {
-            coverage = 'broader-fallback';
-            coverageTitle = 'BROADER FALLBACK — NOT THE EXACT SELECTED SEGMENT';
-            coverageDetail = `The available aggregate only supports ${tier.label}. One or more selected filters were relaxed, so these totals/profile do not represent the requested segment. Update the metrics aggregation to emit rows by geo × age_group × gender × rfm_segment.`;
-          }
-          return { customers:sum('customers'), orders:sum('orders'), revenue:sum('revenue'), source: tier.label, coverage, coverageTitle, coverageDetail };
+        // Do not relax selected dimensions for audience counts. Since customer_cells is a full
+        // geo × age × gender × RFM cube, sum across only the dimensions the user left as “All”.
+        const matched = rows.filter(r => matches(r, filters, selectedKeys));
+        const sum = (key) => matched.reduce((acc, r) => acc + (Number(r[key] ?? 0) || 0), 0);
+        if (selectedKeys.length > 0 && matched.length === 0) {
+          return {
+            customers: 0, orders: 0, revenue: 0, source: 'Exact selected dimensions in customer_cells; no matching rows',
+            coverage: 'empty-segment', coverageTitle: 'NO CUSTOMER RECORDS FOR THIS FILTER COMBINATION',
+            coverageDetail: `The selected audience (${filtersLabel(filters)}) has no matching customer-cell rows in BigQuery. Customer, order and revenue totals are shown as 0 rather than substituting broader area-level totals. Garment ranking may still use a clearly labelled broader preference profile if no exact garment observations exist.`
+          };
         }
+        let coverage, coverageTitle, coverageDetail;
+        if (selectedKeys.length === FILTER_KEYS.length) {
+          coverage = 'exact-segment';
+          coverageTitle = 'EXACT SEGMENT-LEVEL TOTALS';
+          coverageDetail = 'Customer, order and revenue totals match this exact geo × age × gender × RFM selection.';
+        } else if (selectedKeys.length === 0) {
+          coverage = 'overall';
+          coverageTitle = 'OVERALL TOTALS — NO SEGMENT FILTERS';
+          coverageDetail = 'Totals include all available customer cells. Select any combination of geo, age, gender and RFM to roll up the selected dimensions while combining only fields left as All.';
+        } else {
+          const used = selectedKeys.map(k => ({pin_code:'geo',age_group:'age',gender:'gender',rfm_segment:'RFM'}[k])).join(' × ');
+          const combined = FILTER_KEYS.filter(k => !filters[k]).map(k => ({pin_code:'geo',age_group:'age',gender:'gender',rfm_segment:'RFM'}[k])).join(', ');
+          coverage = 'partial-filter';
+          coverageTitle = 'FILTERED AUDIENCE TOTALS — UNSELECTED DIMENSIONS COMBINED';
+          coverageDetail = `Totals match the selected dimensions (${used}). Unselected dimensions (${combined || 'none'}) are intentionally combined. No selected filter was relaxed.`;
+        }
+        return { customers:sum('customers'), orders:sum('orders'), revenue:sum('revenue'), source: 'customer_cells rolled up over unselected dimensions', coverage, coverageTitle, coverageDetail };
       }
-      // pin_geo contains area-level aggregates only. Make this fallback explicit in the UI.
+      // If full segment rows are absent altogether, make the gap explicit; never silently use pin_geo.
       const pin = filters.pin_code;
       const area = pin ? state.metrics?.pin_geo?.[String(pin)] : null;
-      if (area) {
-        return {
-          customers: area.customers ?? null, orders: area.orders ?? null, revenue: area.revenue ?? null,
-          source: 'Area-level aggregate from pin_geo', coverage: 'area-only',
-          coverageTitle: 'AREA-LEVEL TOTALS ONLY — NOT DEMOGRAPHIC SEGMENT COUNTS',
-          coverageDetail: `The values above describe all available customers/orders/revenue in ${labelForPin(pin)}, across ages, genders and RFM segments. They are not the selected geo × age × gender × RFM audience size. This is a backend data-coverage gap: /v1/metrics needs audience aggregates grouped by pin_code, age_group, gender and rfm_segment.`
-        };
-      }
       return {
-        customers: null, orders: null, revenue: null, source: 'Segment aggregate counts are not present in the metrics payload',
-        coverage: 'missing', coverageTitle: 'SEGMENT TOTALS UNAVAILABLE',
-        coverageDetail: 'The API does not provide audience-level customer/order/revenue aggregates for this selection. No area-level number is being substituted. Update the metrics aggregation to emit audience cells by geo × age_group × gender × rfm_segment.'
+        customers: null, orders: null, revenue: null,
+        source: area ? 'Only area aggregate is present; audience cells are missing' : 'Audience cell aggregates are missing',
+        coverage: area ? 'area-only' : 'missing',
+        coverageTitle: area ? 'AREA-LEVEL TOTALS AVAILABLE — DEMOGRAPHIC TOTALS UNAVAILABLE' : 'SEGMENT TOTALS UNAVAILABLE',
+        coverageDetail: area
+          ? `The API only provides area-level totals for ${labelForPin(pin)}. These values are deliberately not substituted for the selected audience. Deploy a metrics payload with customer_cells grouped by pin_code × age_group × gender × rfm_segment.`
+          : 'The metrics payload has no customer_cells/audience_cells array. Deploy the updated aggregation so the UI can count exact and partial audience selections.'
       };
     }
     function renderCoverage(stats) {
@@ -399,7 +449,8 @@
         'overall': 'mt-4 rounded-lg border border-slate-500/50 bg-slate-950/50 p-3',
         'broader-fallback': 'mt-4 rounded-lg border border-amber-500/60 bg-amber-950/35 p-3',
         'area-only': 'mt-4 rounded-lg border border-red-500/70 bg-red-950/40 p-3',
-        'missing': 'mt-4 rounded-lg border border-red-500/70 bg-red-950/40 p-3'
+        'missing': 'mt-4 rounded-lg border border-red-500/70 bg-red-950/40 p-3',
+        'empty-segment': 'mt-4 rounded-lg border border-rose-500/70 bg-rose-950/40 p-3'
       };
       const textStyles = {
         'exact-segment': 'text-[11px] font-bold tracking-wide text-emerald-200',
@@ -407,12 +458,13 @@
         'overall': 'text-[11px] font-bold tracking-wide text-slate-200',
         'broader-fallback': 'text-[11px] font-bold tracking-wide text-amber-200',
         'area-only': 'text-[11px] font-bold tracking-wide text-red-200',
-        'missing': 'text-[11px] font-bold tracking-wide text-red-200'
+        'missing': 'text-[11px] font-bold tracking-wide text-red-200',
+        'empty-segment': 'text-[11px] font-bold tracking-wide text-rose-200'
       };
       banner.className = styles[stats.coverage] || styles.missing;
       title.className = textStyles[stats.coverage] || textStyles.missing;
       title.textContent = stats.coverageTitle || 'DATA COVERAGE STATUS';
-      detail.className = 'text-xs mt-1 leading-relaxed ' + (['area-only','missing','broader-fallback'].includes(stats.coverage) ? 'text-red-100/95' : 'text-gray-200');
+      detail.className = 'text-xs mt-1 leading-relaxed ' + (['area-only','missing','broader-fallback','empty-segment'].includes(stats.coverage) ? 'text-red-100/95' : 'text-gray-200');
       detail.textContent = stats.coverageDetail || stats.source || '';
     }
     function renderTasteCoverage(profile, filters) {
@@ -437,7 +489,7 @@
           ? 'AREA-LEVEL GARMENT PROFILE ONLY — OTHER FILTERS RELAXED'
           : 'BROADER GARMENT PROFILE — NOT THE EXACT SELECTED SEGMENT';
         const relaxed = selected.filter(k => !retained.includes(k)).map(k => ({pin_code:'geo',age_group:'age',gender:'gender',rfm_segment:'RFM'}[k] || k));
-        explanation = `Requested audience: ${filtersLabel(filters)}. Observed garment preferences came from ${retainedLabel} (${profile.cellCount} grouped cell(s)); filters relaxed: ${relaxed.length ? relaxed.join(', ') : 'none'}. Ranking is therefore based on a broader observed profile, not the exact requested segment. More reviewed garment observations may be needed.`;
+        explanation = `Requested audience: ${filtersLabel(filters)}. Observed garment preferences came from ${retainedLabel} (${profile.cellCount} grouped cell(s)); filters relaxed: ${relaxed.length ? relaxed.join(', ') : 'none'}. Ranking is therefore based on a broader observed profile, not the exact requested segment. More usable garment observations may be needed for this exact cohort.`;
       } else if (selected.length === FILTER_KEYS.length) {
         coverage = 'exact-segment';
         heading = 'EXACT SEGMENT-LEVEL GARMENT PROFILE';
@@ -559,12 +611,14 @@
         const scoreText = fit.score === null ? 'N/A' : `${fit.score}/100`;
         const tags = extractedTags(attrs);
         const reason = fit.score === null ? (fit.reason || 'No comparable segment profile') : `${fit.reason}. Relative preference score, not predicted ad performance.`;
-        return `<article class="creative-card ${rank === 1 && fit.score !== null ? 'rank-1' : ''}">
-          <div class="relative aspect-[4/3] bg-gray-950 border-b border-gray-800"><img src="${asset.src}" alt="${esc(asset.file.name)}" class="w-full h-full object-contain" loading="lazy"><div class="absolute top-3 left-3 tag ${rank === 1 && fit.score !== null ? 'border-emerald-400 text-emerald-300' : ''}">#${rank} ${rank === 1 ? '· TOP FIT' : ''}</div><div class="absolute top-3 right-3 tag">${esc(status)}</div></div>
-          <div class="p-4 space-y-3"><div class="flex items-start justify-between gap-3"><h4 class="font-semibold text-sm break-all">${esc(asset.file.name)}</h4><div class="text-right shrink-0"><p class="text-[9px] uppercase tracking-wider text-gray-500">Segment fit</p><p class="font-mono text-xl ${fit.score === null ? 'text-gray-500' : rank === 1 ? 'text-emerald-300' : 'text-cyan-300'}">${scoreText}</p></div></div>
+        return `<article class="creative-card holo-card rank-${Math.min(rank, 5)} ${rank === 1 && fit.score !== null ? 'rank-1' : ''}" role="listitem" tabindex="0">
+          <div class="relative h-48 flex-none bg-gray-950 border-b border-gray-800"><img src="${asset.src}" alt="${esc(asset.file.name)}" class="w-full h-full object-contain" loading="lazy"><div class="absolute top-3 left-3 tag ${rank === 1 && fit.score !== null ? 'border-emerald-400 text-emerald-300' : ''}">#${rank} ${rank === 1 && fit.score !== null ? '· TOP FIT' : ''}</div><div class="absolute top-3 right-3 tag">${esc(status)}</div></div>
+          <div class="card-body p-4 space-y-3"><div class="flex items-start justify-between gap-3"><h4 class="font-semibold text-sm break-all">${esc(asset.file.name)}</h4><div class="text-right shrink-0"><p class="text-[9px] uppercase tracking-wider text-gray-500">Segment fit</p><p class="font-mono text-xl ${fit.score === null ? 'text-gray-500' : rank === 1 ? 'text-emerald-300' : 'text-cyan-300'}">${scoreText}</p></div></div>
           <div class="flex flex-wrap gap-1.5">${tags.length ? tags.map(t => `<span class="tag">${esc(t)}</span>`).join('') : '<span class="text-xs text-gray-500">No normalized attributes returned</span>'}</div>
           <div class="border-t border-gray-800 pt-2"><p class="text-[9px] uppercase tracking-wider text-gray-500 mb-1">Ranked for</p><p class="text-[10px] text-cyan-200 leading-relaxed">${esc(filtersLabel())}</p><p class="text-[10px] text-gray-500 mt-2 leading-relaxed">${esc(reason)}</p></div></div></article>`;
       }).join('');
+      // When a segment changes, bring the new #1 creative back into view.
+      $('creativeGrid').scrollTo({ left: 0, behavior: 'smooth' });
       renderMatrix(list);
     }
     function renderMatrix(list) {
@@ -629,6 +683,12 @@
       const url = URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8;'})); const a = document.createElement('a'); a.href = url; a.download = 'ads_lab_segment_ranking.csv'; a.click(); URL.revokeObjectURL(url);
     }
     $('downloadButton').addEventListener('click', downloadCSV);
+    $('creativePrev').addEventListener('click', () => $('creativeGrid').scrollBy({left: -360, behavior: 'smooth'}));
+    $('creativeNext').addEventListener('click', () => $('creativeGrid').scrollBy({left: 360, behavior: 'smooth'}));
+    $('creativeGrid').addEventListener('keydown', (event) => {
+      if (event.key === 'ArrowRight') $('creativeGrid').scrollBy({left: 360, behavior: 'smooth'});
+      if (event.key === 'ArrowLeft') $('creativeGrid').scrollBy({left: -360, behavior: 'smooth'});
+    });
     loadMetrics();
   </script>
 </body>
