@@ -16,12 +16,6 @@ gcloud artifacts repositories create suffai \
 API_IMG="$REGION-docker.pkg.dev/$PROJECT/suffai/suffai-api:latest"
 CC_IMG="$REGION-docker.pkg.dev/$PROJECT/suffai/suffai-command-center:latest"
 WORKER_IMG="$REGION-docker.pkg.dev/$PROJECT/suffai/suffai-extraction:latest"
-SIM_IMG="$REGION-docker.pkg.dev/$PROJECT/suffai/suffai-similarity:latest"
-GCS_IMAGE_BUCKET="${GCS_IMAGE_BUCKET:-${PROJECT}-suffai-garment-images}"
-ENABLE_VERTEX="${ENABLE_VERTEX:-true}"
-VERTEX_LOCATION="${VERTEX_LOCATION:-$REGION}"
-TOPIC="${PUBSUB_IMAGE_TOPIC:-garment-image-uploaded}"
-
 
 docker build -f "$ROOT/Dockerfile.api" -t "$API_IMG" "$ROOT"
 docker push "$API_IMG"
@@ -45,27 +39,12 @@ gcloud run deploy suffai-extraction \
   --region="$REGION" \
   --platform=managed \
   --no-allow-unauthenticated \
-  --set-env-vars="ENABLE_VERTEX=${ENABLE_VERTEX},GOOGLE_CLOUD_PROJECT=$PROJECT,GCS_IMAGE_BUCKET=$GCS_IMAGE_BUCKET,VERTEX_LOCATION=$VERTEX_LOCATION" \
+  --set-env-vars="ENABLE_VERTEX=false" \
   --project="$PROJECT"
 
 WORKER_URL="$(gcloud run services describe suffai-extraction --region="$REGION" --project="$PROJECT" --format='value(status.url)')"
 
-# Similarity — same topic/bucket/Vertex project as extraction (own push subscription)
-docker build -f "$ROOT/Dockerfile.similarity" -t "$SIM_IMG" "$ROOT"
-docker push "$SIM_IMG"
-# Full Pub/Sub OIDC wiring lives in deploy_similarity.sh; image+service here for stack deploy
-gcloud run deploy suffai-similarity \
-  --image="$SIM_IMG" \
-  --region="$REGION" \
-  --platform=managed \
-  --no-allow-unauthenticated \
-  --memory=1Gi \
-  --set-env-vars="ENABLE_VERTEX=${ENABLE_VERTEX},GOOGLE_CLOUD_PROJECT=$PROJECT,GCS_IMAGE_BUCKET=$GCS_IMAGE_BUCKET,VERTEX_LOCATION=$VERTEX_LOCATION,USE_BQ=true,BQ_DATASET=suffai_ops,CORS_ORIGINS=*" \
-  --project="$PROJECT"
-SIM_URL="$(gcloud run services describe suffai-similarity --region="$REGION" --project="$PROJECT" --format='value(status.url)')"
-echo "Run deploy/deploy_similarity.sh once to attach Pub/Sub push sub on $TOPIC → similarity."
-
-# Command Center (Geo + Ads Lab + Admin) — proxies EXTRACTION_URL + SIMILARITY_URL
+# Command Center (Geo + Ads Lab) — replaces Next.js web for this product surface
 docker build -f "$ROOT/Dockerfile.command_center" -t "$CC_IMG" "$ROOT"
 docker push "$CC_IMG"
 
@@ -75,7 +54,7 @@ gcloud run deploy suffai-command-center \
   --platform=managed \
   --allow-unauthenticated \
   --memory=1Gi \
-  --set-env-vars="USE_BQ=true,BQ_DATASET=suffai_ops,GOOGLE_CLOUD_PROJECT=$PROJECT,GCS_IMAGE_BUCKET=$GCS_IMAGE_BUCKET,EXTRACTION_URL=$WORKER_URL,SIMILARITY_URL=$SIM_URL,CORS_ORIGINS=*" \
+  --set-env-vars="USE_BQ=true,BQ_DATASET=suffai_ops,GOOGLE_CLOUD_PROJECT=$PROJECT,GCS_IMAGE_BUCKET=${PROJECT}-suffai-garment-images,EXTRACTION_URL=$WORKER_URL,CORS_ORIGINS=*" \
   --project="$PROJECT"
 
 CC_URL="$(gcloud run services describe suffai-command-center --region="$REGION" --project="$PROJECT" --format='value(status.url)')"
@@ -89,5 +68,4 @@ gcloud run services update suffai-api \
 echo "Command Center: $CC_URL/login.html"
 echo "API:            $API_URL"
 echo "Extraction:     $WORKER_URL"
-echo "Similarity:     $SIM_URL"
-echo "Done. Attach similarity Pub/Sub: ./deploy/deploy_similarity.sh"
+echo "Done."
