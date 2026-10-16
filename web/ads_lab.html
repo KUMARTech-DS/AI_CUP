@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full bg-[#0b0c10] text-gray-100">
+<html lang="en" class="h-full bg-[#FAF8F4] text-[#292722]">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,24 +9,26 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
-    :root { color-scheme: dark; }
-    body { font-family: Inter, sans-serif; }
+    :root { color-scheme: light; }
+    body { font-family: Inter, sans-serif; background-color: #FAF8F4; color: #292722; }
     .font-mono { font-family: 'JetBrains Mono', monospace; }
     ::-webkit-scrollbar { width: 8px; height: 8px; }
-    ::-webkit-scrollbar-track { background: #0b0c10; }
-    ::-webkit-scrollbar-thumb { background: #1f293d; border-radius: 4px; }
-    ::-webkit-scrollbar-thumb:hover { background: #00f3ff; }
-    .glass-panel { background: rgba(18,22,31,.88); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,.08); }
-    .holographic-grid { background-color:#0b0c10; background-image:linear-gradient(rgba(0,243,255,.075) 1px,transparent 1px),linear-gradient(90deg,rgba(0,243,255,.075) 1px,transparent 1px); background-size:40px 40px; }
-    .upload-zone { border:2px dashed rgba(0,243,255,.3); transition:all .2s ease; }
-    .upload-zone.dragover { border-color:#00f3ff; background:rgba(0,243,255,.08); }
-    .field { width:100%; background:#111827; border:1px solid #374151; color:#f9fafb; border-radius:.5rem; padding:.55rem .65rem; font-size:.75rem; }
-    .field:focus { outline:2px solid rgba(0,243,255,.4); border-color:#00f3ff; }
-    .creative-card { background:rgba(15,20,30,.94); border:1px solid rgba(0,243,255,.22); border-radius:12px; overflow:hidden; min-width:0; }
-    .creative-card.rank-1 { border-color:#00ff88; box-shadow:0 0 22px rgba(0,255,136,.09); }
-    .tag { display:inline-flex; align-items:center; gap:.3rem; border-radius:999px; border:1px solid #374151; padding:.15rem .5rem; font-size:10px; color:#d1d5db; background:rgba(17,24,39,.8); }
-    .muted { color:#9ca3af; }
+    ::-webkit-scrollbar-track { background: #F0ECE4; }
+    ::-webkit-scrollbar-thumb { background: #DED7CB; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #89765C; }
     
+    .glass-panel { background: #FAF8F4; border: 1px solid #E4DED3; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,.04); }
+    .holographic-grid { background-color: #FAF8F4; background-image: linear-gradient(#E4DED3 1px, transparent 1px), linear-gradient(90deg, #E4DED3 1px, transparent 1px); background-size: 40px 40px; }
+    
+    .upload-zone { border: 2px dashed #89765C; transition: all .2s ease; background: #F0ECE4; }
+    .upload-zone.dragover { border-color: #292722; background: #E4DED3; }
+    
+    .field { width: 100%; background: #FFFFFF; border: 1px solid #E4DED3; color: #292722; border-radius: .5rem; padding: .55rem .65rem; font-size: .75rem; }
+    .field:focus { outline: 2px solid #89765C; border-color: #89765C; }
+    
+    .tag { display: inline-flex; align-items: center; gap: .3rem; border-radius: 999px; border: 1px solid #E4DED3; padding: .15rem .5rem; font-size: 10px; color: #4A4339; background: #F0ECE4; }
+    .muted { color: #777066; }
+
     /* Audience taste: one horizontal rail; categories never stack vertically. */
     .taste-rail {
       display: flex;
@@ -40,38 +42,37 @@
       scroll-snap-type: x proximity;
       overscroll-behavior-x: contain;
       scrollbar-width: thin;
-      scrollbar-color: #253449 #0b0c10;
+      scrollbar-color: #89765C #F0ECE4;
     }
-    .taste-rail::-webkit-scrollbar { height: 8px; }
-    .taste-rail::-webkit-scrollbar-track { background: #0b0c10; border-radius: 4px; }
-    .taste-rail::-webkit-scrollbar-thumb { background: #253449; border-radius: 4px; }
-    .taste-rail::-webkit-scrollbar-thumb:hover { background: #00f3ff; }
 
     .taste-card {
       flex: 0 0 240px;
       width: 240px;
       min-width: 240px;
-      height: 175px;
-      max-height: 175px;
+      height: 185px;
+      max-height: 185px;
       display: flex;
       flex-direction: column;
-      overflow-hidden;
+      overflow: hidden;
       scroll-snap-align: start;
-      background: rgba(15, 20, 30, 0.9);
-      border: 1px solid rgba(0, 243, 255, 0.25);
+      background: #FFFFFF;
+      border: 1px solid #E4DED3;
       border-radius: 10px;
       padding: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.03);
     }
+    
     .taste-card .taste-body {
       flex: 1;
       min-height: 0;
       overflow-y: auto;
       scrollbar-width: thin;
-      scrollbar-color: #273449 transparent;
+      scrollbar-color: #89765C transparent;
       padding-right: 2px;
     }
+    
     .taste-card .taste-title {
-      color: #00f3ff;
+      color: #89765C;
       font-size: 10px;
       font-weight: 700;
       letter-spacing: .07em;
@@ -79,103 +80,102 @@
       margin-bottom: 8px;
     }
 
-    /* Restore the original interactive horizontal 3D coverflow for ranked creatives. */
+    /* Creative Fit Ranking 3D / Horizontal Rail */
     .creative-rail {
-      display:flex; gap:1.5rem; align-items:stretch; overflow-x:auto; overflow-y:hidden;
-      perspective:1200px; padding:1.8rem 3rem 2.2rem 1.25rem; position:relative; z-index:10;
-      scroll-behavior:smooth; scroll-snap-type:x proximity; overscroll-behavior-x:contain;
-      min-height:530px; width:100%;
+      display: flex; gap: 1.5rem; align-items: stretch; overflow-x: auto; overflow-y: hidden;
+      perspective: 1200px; padding: 1.8rem 3rem 2.2rem 1.25rem; position: relative; z-index: 10;
+      scroll-behavior: smooth; scroll-snap-type: x proximity; overscroll-behavior-x: contain;
+      min-height: 530px; width: 100%;
     }
-    .creative-rail:focus-visible { outline:2px solid rgba(0,243,255,.65); outline-offset:-2px; }
-    .creative-rail::-webkit-scrollbar { height:8px; }
-    .creative-rail::-webkit-scrollbar-track { background:#0b0c10; border-radius:4px; }
-    .creative-rail::-webkit-scrollbar-thumb { background:#253449; border-radius:4px; }
-    .creative-rail::-webkit-scrollbar-thumb:hover { background:#00f3ff; }
+    .creative-rail:focus-visible { outline: 2px solid #89765C; outline-offset: -2px; }
+    .creative-rail::-webkit-scrollbar { height: 8px; }
+    .creative-rail::-webkit-scrollbar-track { background: #F0ECE4; border-radius: 4px; }
+    .creative-rail::-webkit-scrollbar-thumb { background: #89765C; border-radius: 4px; }
+    
     .holo-card {
-      flex:0 0 320px; width:320px; min-width:320px; height:490px; min-height:490px;
-      display:flex; flex-direction:column; overflow:hidden; cursor:default; position:relative;
-      scroll-snap-align:center; transform:rotateY(-19deg) translateZ(-30px);
-      transform-style:preserve-3d; transition:transform .38s cubic-bezier(.25,.8,.25,1),
-      box-shadow .38s ease,border-color .25s ease,opacity .25s ease;
-      background:rgba(15,20,30,.9); backdrop-filter:blur(8px);
-      border:1px solid rgba(0,243,255,.38); border-radius:12px;
-      box-shadow:-15px 15px 25px rgba(0,0,0,.55),inset 0 0 20px rgba(0,243,255,.08);
-      opacity:.92;
+      flex: 0 0 320px; width: 320px; min-width: 320px; height: 490px; min-height: 490px;
+      display: flex; flex-direction: column; overflow: hidden; cursor: default; position: relative;
+      scroll-snap-align: center; transform: rotateY(-19deg) translateZ(-30px);
+      transform-style: preserve-3d; transition: transform .38s cubic-bezier(.25,.8,.25,1),
+      box-shadow .38s ease, border-color .25s ease, opacity .25s ease;
+      background: #FFFFFF; backdrop-filter: blur(8px);
+      border: 1px solid #E4DED3; border-radius: 12px;
+      box-shadow: 0 10px 28px rgba(0,0,0,0.08);
+      opacity: .95;
     }
     .holo-card:hover, .holo-card:focus-within {
-      transform:rotateY(0deg) translateZ(35px) scale(1.035); z-index:20;
-      border-color:#00ff88; opacity:1;
-      box-shadow:0 10px 40px rgba(0,255,136,.2),inset 0 0 30px rgba(0,255,136,.1);
+      transform: rotateY(0deg) translateZ(35px) scale(1.035); z-index: 20;
+      border-color: #89765C; opacity: 1;
+      box-shadow: 0 15px 40px rgba(137,118,92,.18);
     }
-    .holo-card.rank-1 { border-color:#00ff88; }
-    .holo-card.rank-2 { border-color:#00f3ff; }
-    .holo-card.rank-3 { border-color:#8a2be2; }
-    .holo-card.rank-4 { border-color:#6b7280; opacity:.88; transform:rotateY(-22deg) translateZ(-40px); }
-    .holo-card.rank-5 { border-color:#ef4444; opacity:.82; transform:rotateY(-24deg) translateZ(-48px); }
-    .holo-card .card-body { flex:1; min-height:0; overflow-y:auto; scrollbar-width:thin; scrollbar-color:#273449 transparent; }
-    @media (max-width:640px) {
-      .creative-rail { padding:1.2rem 1rem 1.6rem; gap:1rem; min-height:500px; }
-      .holo-card { flex-basis:285px; width:285px; min-width:285px; height:475px; min-height:475px; transform:rotateY(-8deg) translateZ(-10px); }
+    .holo-card.rank-1 { border-color: #89765C; box-shadow: 0 0 25px rgba(137,118,92,.15); }
+    .holo-card .card-body { flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #89765C transparent; color: #292722; }
+    
+    @media (max-width: 640px) {
+      .creative-rail { padding: 1.2rem 1rem 1.6rem; gap: 1rem; min-height: 500px; }
+      .holo-card { flex-basis: 285px; width: 285px; min-width: 285px; height: 475px; min-height: 475px; transform: rotateY(-8deg) translateZ(-10px); }
     }
-    @media (prefers-reduced-motion: reduce) { .holo-card,.creative-rail { transition:none; scroll-behavior:auto; } }
   </style>
 </head>
-<body class="h-screen flex flex-col overflow-hidden bg-[#0b0c10] text-gray-200">
+<body class="h-screen flex flex-col overflow-hidden">
   <script>
     if (localStorage.getItem('suffai_demo_session') !== '1') location.replace('./login.html');
   </script>
 
-  <header class="glass-panel z-30 border-b border-gray-800 px-4 py-3 flex-none flex items-center justify-between gap-4">
+  <header class="glass-panel z-30 border-b border-[#E4DED3] px-4 py-3 flex-none flex items-center justify-between gap-4">
     <div class="flex items-center gap-3 min-w-0">
-      <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-violet-600 via-cyan-500 to-emerald-400 p-[2px] flex-none"><div class="bg-[#0b0c10] w-full h-full rounded-[10px] flex items-center justify-center"><i class="fa-solid fa-ranking-star text-cyan-400 text-lg"></i></div></div>
+      <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-[#89765C] via-[#292722] to-[#DED7CB] p-[2px] flex-none">
+        <div class="bg-[#FAF8F4] w-full h-full rounded-[10px] flex items-center justify-center">
+          <i class="fa-solid fa-ranking-star text-[#89765C] text-lg"></i>
+        </div>
+      </div>
       <div class="min-w-0">
-        <h1 class="font-extrabold text-lg sm:text-xl tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-white via-cyan-300 to-violet-400 font-mono">PRO ADS LAB <span class="text-[10px] px-2 py-0.5 rounded bg-cyan-900/60 text-cyan-300 border border-cyan-500/40">Segment Fit</span></h1>
-        <p class="text-[11px] text-gray-400">Rank uploaded creatives for a selected geo × age × gender × RFM audience.</p>
+        <h1 class="font-extrabold text-lg sm:text-xl tracking-wider text-[#292722] font-mono">PRO ADS LAB <span class="text-[10px] px-2 py-0.5 rounded bg-[#F0ECE4] text-[#89765C] border border-[#E4DED3]">Segment Fit</span></h1>
+        <p class="text-[11px] text-[#777066]">Rank uploaded creatives for a selected geo × age × gender × RFM audience.</p>
       </div>
     </div>
-    <div id="apiStatus" class="tag flex-none"><span class="w-1.5 h-1.5 rounded-full bg-yellow-400"></span> Loading BigQuery profile…</div>
+    <div id="apiStatus" class="tag flex-none"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Loading BigQuery profile…</div>
   </header>
 
   <main class="flex-1 flex min-h-0 overflow-hidden">
-    <aside class="w-80 max-w-[45vw] flex-none border-r border-gray-800 bg-gray-950/85 flex flex-col p-4 gap-5 overflow-y-auto z-20">
+    <aside class="w-80 max-w-[45vw] flex-none border-r border-[#E4DED3] bg-[#F0ECE4] flex flex-col p-4 gap-5 overflow-y-auto z-20">
       <section class="space-y-3">
-        <h2 class="text-xs font-bold uppercase tracking-wider flex items-center gap-2"><span class="w-5 h-5 rounded bg-violet-900/50 text-violet-300 flex items-center justify-center text-[10px] border border-violet-500/30">1</span> Audience segment</h2>
-        <label class="block text-[10px] text-gray-400 uppercase tracking-wider">Geo area / PIN code<select id="filterArea" class="field mt-1"><option value="">Loading areas…</option></select></label>
-        <label class="block text-[10px] text-gray-400 uppercase tracking-wider">Age bucket<select id="filterAge" class="field mt-1"><option value="">All age groups</option></select></label>
-        <label class="block text-[10px] text-gray-400 uppercase tracking-wider">Gender<select id="filterGender" class="field mt-1"><option value="">All genders</option></select></label>
-        <label class="block text-[10px] text-gray-400 uppercase tracking-wider">RFM segment<select id="filterRfm" class="field mt-1"><option value="">All RFM segments</option></select></label>
-        <p class="text-[10px] text-gray-500 leading-relaxed">Changing any filter refreshes the segment profile and re-ranks the uploaded creatives.</p>
+        <h2 class="text-xs font-bold uppercase tracking-wider text-[#292722] flex items-center gap-2"><span class="w-5 h-5 rounded bg-[#E4DED3] text-[#292722] flex items-center justify-center text-[10px] border border-[#DED7CB]">1</span> Audience segment</h2>
+        <label class="block text-[10px] text-[#777066] uppercase tracking-wider font-semibold">Geo area / PIN code<select id="filterArea" class="field mt-1"><option value="">Loading areas…</option></select></label>
+        <label class="block text-[10px] text-[#777066] uppercase tracking-wider font-semibold">Age bucket<select id="filterAge" class="field mt-1"><option value="">All age groups</option></select></label>
+        <label class="block text-[10px] text-[#777066] uppercase tracking-wider font-semibold">Gender<select id="filterGender" class="field mt-1"><option value="">All genders</option></select></label>
+        <label class="block text-[10px] text-[#777066] uppercase tracking-wider font-semibold">RFM segment<select id="filterRfm" class="field mt-1"><option value="">All RFM segments</option></select></label>
+        <p class="text-[10px] text-[#777066] leading-relaxed">Changing any filter refreshes the segment profile and re-ranks the uploaded creatives.</p>
       </section>
 
       <section class="space-y-3 flex-1 flex flex-col min-h-[180px]">
-        <h2 class="text-xs font-bold uppercase tracking-wider flex items-center gap-2"><span class="w-5 h-5 rounded bg-cyan-900/50 text-cyan-300 flex items-center justify-center text-[10px] border border-cyan-500/30">2</span> Upload creatives</h2>
+        <h2 class="text-xs font-bold uppercase tracking-wider text-[#292722] flex items-center gap-2"><span class="w-5 h-5 rounded bg-[#E4DED3] text-[#292722] flex items-center justify-center text-[10px] border border-[#DED7CB]">2</span> Upload creatives</h2>
         <input type="file" id="fileInput" multiple accept="image/*" class="hidden">
-        <div id="dropzone" role="button" tabindex="0" class="upload-zone rounded-xl flex flex-col items-center justify-center text-center p-5 cursor-pointer bg-gray-950/50 min-h-[130px]">
-          <i class="fa-solid fa-cloud-arrow-up text-3xl text-cyan-500/70 mb-3"></i>
-          <span class="text-xs text-gray-200 font-semibold">Click or drop images</span>
-          <span class="text-[10px] text-gray-500 mt-1">Every uploaded image appears once.</span>
+        <div id="dropzone" role="button" tabindex="0" class="upload-zone rounded-xl flex flex-col items-center justify-center text-center p-5 cursor-pointer min-h-[130px]">
+          <i class="fa-solid fa-cloud-arrow-up text-3xl text-[#89765C] mb-3"></i>
+          <span class="text-xs text-[#292722] font-semibold">Click or drop images</span>
+          <span class="text-[10px] text-[#777066] mt-1">Every uploaded image appears once.</span>
         </div>
-        <p id="uploadSummary" class="text-[10px] text-gray-500">No creatives uploaded.</p>
-        <button id="runButton" type="button" class="w-full py-3 bg-gradient-to-r from-violet-600 to-cyan-500 hover:from-violet-500 hover:to-cyan-400 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl text-sm font-bold flex justify-center items-center gap-2 transition-all" disabled><i class="fa-solid fa-wand-magic-sparkles"></i><span>Extract & rank creatives</span></button>
-        <p class="text-[10px] text-gray-500 leading-relaxed">Extraction calls the deployed extraction API. Ranking uses a deterministic segment-fit heuristic from available BigQuery garment observations; it is not a click/conversion prediction.</p>
+        <p id="uploadSummary" class="text-[10px] text-[#777066]">No creatives uploaded.</p>
+        <button id="runButton" type="button" class="w-full py-3 bg-[#292722] hover:bg-[#4A4339] disabled:opacity-40 disabled:cursor-not-allowed text-[#FAF8F4] rounded-xl text-sm font-bold flex justify-center items-center gap-2 transition-all shadow-sm" disabled><i class="fa-solid fa-wand-magic-sparkles text-[#89765C]"></i><span>Extract & rank creatives</span></button>
+        <p class="text-[10px] text-[#777066] leading-relaxed">Extraction calls the deployed extraction API. Ranking uses a deterministic segment-fit heuristic.</p>
       </section>
     </aside>
 
     <section class="flex-1 min-w-0 relative flex flex-col holographic-grid overflow-hidden">
-      <div id="loadingOverlay" class="absolute inset-0 z-50 hidden items-center justify-center bg-black/60 backdrop-blur-sm"><div class="text-center"><i class="fa-solid fa-circle-notch text-4xl text-cyan-400 animate-spin mb-4"></i><p id="loadingText" class="text-sm font-mono">Loading…</p></div></div>
+      <div id="loadingOverlay" class="absolute inset-0 z-50 hidden items-center justify-center bg-[#FAF8F4]/80 backdrop-blur-sm"><div class="text-center"><i class="fa-solid fa-circle-notch text-4xl text-[#89765C] animate-spin mb-4"></i><p id="loadingText" class="text-sm font-mono text-[#292722]">Loading…</p></div></div>
       <div class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
         <section class="glass-panel rounded-xl p-4 sm:p-5">
           <div class="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-4">
             <div class="min-w-0">
-              <p class="text-[10px] uppercase tracking-[.2em] text-cyan-400 font-bold">Current target</p>
-              <h2 id="segmentTitle" class="text-lg sm:text-xl font-bold mt-1">Loading audience…</h2>
-              <p id="profileNote" class="text-xs text-gray-400 mt-2 max-w-3xl">Profile metrics are loading from the command-center API.</p>
-              <p class="text-[10px] text-gray-500 mt-2">When an exact cohort has no garment observations, the UI uses the closest available fallback profile, labels the relaxed dimensions, and ranks every uploaded creative against that available profile.</p>
+              <p class="text-[10px] uppercase tracking-[.2em] text-[#89765C] font-bold">Current target</p>
+              <h2 id="segmentTitle" class="text-lg sm:text-xl font-bold mt-1 text-[#292722]">Loading audience…</h2>
+              <p id="profileNote" class="text-xs text-[#777066] mt-2 max-w-3xl">Profile metrics are loading from the command-center API.</p>
             </div>
             <div class="min-w-[150px]">
-              <div class="bg-gray-950/70 border border-gray-800 rounded-lg p-3">
-                <p class="text-[9px] uppercase tracking-wider text-gray-500">Customers</p>
-                <p id="audienceCustomers" class="font-mono text-lg text-cyan-300 mt-1">—</p>
+              <div class="bg-[#FFFFFF] border border-[#E4DED3] rounded-lg p-3 shadow-sm">
+                <p class="text-[9px] uppercase tracking-wider text-[#777066] font-semibold">Customers</p>
+                <p id="audienceCustomers" class="font-mono text-lg text-[#292722] mt-1">—</p>
               </div>
               <!-- Hidden fields preserved for JS logic compatibility -->
               <div class="hidden">
@@ -184,27 +184,28 @@
               </div>
             </div>
           </div>
-          <div id="audienceCoverage" role="status" aria-live="polite" class="mt-4 rounded-lg border border-amber-500/50 bg-amber-950/30 p-3">
-            <p id="audienceCoverageTitle" class="text-[11px] font-bold tracking-wide text-amber-200">CHECKING AUDIENCE-COUNT COVERAGE</p>
-            <p id="audienceCoverageDetail" class="text-xs text-amber-100/90 mt-1">Checking whether customer totals match the selected audience.</p>
+          
+          <div id="audienceCoverage" role="status" aria-live="polite" class="mt-4 rounded-lg border border-[#E4DED3] bg-[#F0ECE4] p-3">
+            <p id="audienceCoverageTitle" class="text-[11px] font-bold tracking-wide text-[#292722]">CHECKING AUDIENCE-COUNT COVERAGE</p>
+            <p id="audienceCoverageDetail" class="text-xs text-[#777066] mt-1">Checking whether customer totals match the selected audience.</p>
           </div>
-          <div id="tasteCoverage" role="status" aria-live="polite" class="mt-3 rounded-lg border border-amber-500/50 bg-amber-950/30 p-3">
-            <p id="tasteCoverageTitle" class="text-[11px] font-bold tracking-wide text-amber-200">CHECKING GARMENT-PREFERENCE COVERAGE</p>
-            <p id="tasteCoverageDetail" class="text-xs text-amber-100/90 mt-1">Checking whether garment observations match the selected audience.</p>
+          <div id="tasteCoverage" role="status" aria-live="polite" class="mt-3 rounded-lg border border-[#E4DED3] bg-[#F0ECE4] p-3">
+            <p id="tasteCoverageTitle" class="text-[11px] font-bold tracking-wide text-[#292722]">CHECKING GARMENT-PREFERENCE COVERAGE</p>
+            <p id="tasteCoverageDetail" class="text-xs text-[#777066] mt-1">Checking whether garment observations match the selected audience.</p>
           </div>
           
-          <!-- Audience Taste Profile - Single Horizontal Scrollable Row -->
+          <!-- Audience Taste Profile - Single Horizontal Scrollable Row (6 Categories) -->
           <div class="mt-4">
             <div class="flex items-end justify-between gap-3 mb-2">
               <div>
-                <h3 class="text-xs font-bold uppercase tracking-wider text-gray-200">
+                <h3 class="text-xs font-bold uppercase tracking-wider text-[#292722]">
                   Audience Taste Profile
                 </h3>
-                <p class="text-[10px] text-gray-400 mt-0.5">
+                <p class="text-[10px] text-[#777066] mt-0.5">
                   Percentage share derived from actual filtered observations (Category Denominator).
                 </p>
               </div>
-              <span class="text-[10px] text-gray-500 flex-none">
+              <span class="text-[10px] text-[#89765C] flex-none font-medium">
                 Scroll horizontally →
               </span>
             </div>
@@ -240,20 +241,20 @@
 
         <section>
           <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 mb-3">
-            <div><h3 class="text-sm font-bold text-white"><i class="fa-solid fa-layer-group text-cyan-400 mr-2"></i>Creative ranking for this segment</h3><p class="text-[10px] text-gray-500 mt-1">One card per uploaded file. Scores and order update when the segment changes.</p></div>
+            <div><h3 class="text-sm font-bold text-[#292722]"><i class="fa-solid fa-layer-group text-[#89765C] mr-2"></i>Creative ranking for this segment</h3><p class="text-[10px] text-[#777066] mt-1">One card per uploaded file. Scores and order update when the segment changes.</p></div>
             <div class="flex items-center gap-2">
-              <button id="creativePrev" type="button" aria-label="Scroll creatives left" class="h-8 w-8 rounded-lg border border-gray-700 bg-gray-900/90 hover:border-cyan-400 hover:text-cyan-300 transition"><i class="fa-solid fa-chevron-left"></i></button>
-              <button id="creativeNext" type="button" aria-label="Scroll creatives right" class="h-8 w-8 rounded-lg border border-gray-700 bg-gray-900/90 hover:border-cyan-400 hover:text-cyan-300 transition"><i class="fa-solid fa-chevron-right"></i></button>
+              <button id="creativePrev" type="button" aria-label="Scroll creatives left" class="h-8 w-8 rounded-lg border border-[#E4DED3] bg-[#FFFFFF] hover:border-[#89765C] hover:text-[#89765C] transition"><i class="fa-solid fa-chevron-left"></i></button>
+              <button id="creativeNext" type="button" aria-label="Scroll creatives right" class="h-8 w-8 rounded-lg border border-[#E4DED3] bg-[#FFFFFF] hover:border-[#89765C] hover:text-[#89765C] transition"><i class="fa-solid fa-chevron-right"></i></button>
               <span id="rankCount" class="tag">0 creatives</span>
             </div>
           </div>
-          <div id="emptyState" class="glass-panel rounded-xl min-h-[220px] flex flex-col items-center justify-center text-center p-8"><i class="fa-solid fa-images text-5xl text-cyan-900 mb-4"></i><p class="text-sm font-mono text-cyan-300">Upload garment creatives to begin.</p><p class="text-xs text-gray-500 mt-2">After extraction, each uploaded image will be ranked against the selected audience profile.</p></div>
+          <div id="emptyState" class="glass-panel rounded-xl min-h-[220px] flex flex-col items-center justify-center text-center p-8"><i class="fa-solid fa-images text-5xl text-[#DED7CB] mb-4"></i><p class="text-sm font-mono text-[#89765C]">Upload garment creatives to begin.</p><p class="text-xs text-[#777066] mt-2">After extraction, each uploaded image will be ranked against the selected audience profile.</p></div>
           <div id="creativeGrid" class="creative-rail" tabindex="0" role="list" aria-label="Ranked creative cards"></div>
         </section>
 
         <section class="glass-panel rounded-xl overflow-hidden">
-          <div class="p-4 border-b border-gray-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"><div><h3 class="text-xs font-bold uppercase tracking-wider"><i class="fa-solid fa-table text-violet-400 mr-2"></i>Segment ranking matrix</h3><p class="text-[10px] text-gray-500 mt-1">Contains the same filtered and sorted images as the cards above.</p></div><button id="downloadButton" type="button" class="px-3 py-2 bg-emerald-700 hover:bg-emerald-600 rounded-lg text-xs font-bold text-white"><i class="fa-solid fa-file-csv mr-2"></i>Export CSV</button></div>
-          <div class="overflow-x-auto"><table class="w-full text-left text-xs whitespace-nowrap"><thead class="bg-gray-900/90 text-gray-400 font-mono text-[10px] uppercase"><tr><th class="px-4 py-3">Rank</th><th class="px-4 py-3">Creative</th><th class="px-4 py-3">Geo</th><th class="px-4 py-3">Age</th><th class="px-4 py-3">Gender</th><th class="px-4 py-3">RFM</th><th class="px-4 py-3">Extracted taste</th><th class="px-4 py-3 text-right">Segment fit</th></tr></thead><tbody id="matrixBody" class="divide-y divide-gray-800/80"><tr><td colspan="8" class="px-4 py-8 text-center text-gray-500">Upload images to populate the matrix.</td></tr></tbody></table></div>
+          <div class="p-4 border-b border-[#E4DED3] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"><div><h3 class="text-xs font-bold uppercase tracking-wider text-[#292722]"><i class="fa-solid fa-table text-[#89765C] mr-2"></i>Segment ranking matrix</h3><p class="text-[10px] text-[#777066] mt-1">Contains the same filtered and sorted images as the cards above.</p></div><button id="downloadButton" type="button" class="px-3 py-2 bg-[#89765C] hover:bg-[#66513B] rounded-lg text-xs font-bold text-white shadow-sm"><i class="fa-solid fa-file-csv mr-2"></i>Export CSV</button></div>
+          <div class="overflow-x-auto"><table class="w-full text-left text-xs whitespace-nowrap"><thead class="bg-[#F0ECE4] text-[#777066] font-mono text-[10px] uppercase"><tr><th class="px-4 py-3">Rank</th><th class="px-4 py-3">Creative</th><th class="px-4 py-3">Geo</th><th class="px-4 py-3">Age</th><th class="px-4 py-3">Gender</th><th class="px-4 py-3">RFM</th><th class="px-4 py-3">Extracted taste</th><th class="px-4 py-3 text-right">Segment fit</th></tr></thead><tbody id="matrixBody" class="divide-y divide-[#E4DED3]"><tr><td colspan="8" class="px-4 py-8 text-center text-[#777066]">Upload images to populate the matrix.</td></tr></tbody></table></div>
         </section>
       </div>
     </section>
@@ -307,7 +308,7 @@
       return [f.pin_code ? labelForPin(f.pin_code) : 'All areas', f.age_group || 'All ages', displayGender(f.gender), f.rfm_segment || 'All RFM segments'].join(' × ');
     }
     function setApiStatus(ok, msg) {
-      $('apiStatus').innerHTML = `<span class="w-1.5 h-1.5 rounded-full ${ok ? 'bg-emerald-400' : 'bg-red-400'}"></span>${esc(msg)}`;
+      $('apiStatus').innerHTML = `<span class="w-1.5 h-1.5 rounded-full ${ok ? 'bg-emerald-600' : 'bg-red-600'}"></span>${esc(msg)}`;
     }
     function setLoading(show, text = 'Working…') {
       state.loading = show; $('loadingText').textContent = text;
@@ -474,12 +475,11 @@
       return Object.entries(distribution || {}).filter(([, n]) => Number(n) > 0).sort((a,b) => b[1]-a[1]).slice(0, limit);
     }
     
-    // Render attribute percentages using the category denominator
     function renderTastePercentages(id, distribution) {
       const node = $(id); 
       const rows = topN(distribution, 10);
       if (!rows.length) {
-        node.innerHTML = '<span class="text-[11px] text-gray-500">No observations for this profile</span>';
+        node.innerHTML = '<span class="text-[11px] text-[#777066]">No observations for this profile</span>';
         return;
       }
       const total = rows.reduce((sum, [, count]) => sum + Number(count), 0) || 1;
@@ -487,11 +487,11 @@
         const pct = Math.round((Number(count) / total) * 100);
         return `<div class="text-[11px] mb-2">
           <div class="flex justify-between items-center mb-1">
-            <span class="text-gray-300 truncate max-w-[140px]" title="${esc(name)}">${esc(name)}</span>
-            <span class="font-mono text-cyan-300 text-[10px]">${pct}% <span class="text-gray-500">(${count})</span></span>
+            <span class="text-[#292722] truncate max-w-[140px]" title="${esc(name)}">${esc(name)}</span>
+            <span class="font-mono text-[#89765C] text-[10px] font-semibold">${pct}% <span class="text-[#777066]">(${count})</span></span>
           </div>
-          <div class="w-full bg-gray-900 rounded-full h-1 overflow-hidden border border-gray-800">
-            <div class="bg-gradient-to-r from-violet-500 to-cyan-400 h-full rounded-full" style="width: ${pct}%"></div>
+          <div class="w-full bg-[#F0ECE4] rounded-full h-1 overflow-hidden border border-[#E4DED3]">
+            <div class="bg-[#89765C] h-full rounded-full" style="width: ${pct}%"></div>
           </div>
         </div>`;
       }).join('');
@@ -549,16 +549,7 @@
       const banner = $('audienceCoverage');
       const title = $('audienceCoverageTitle');
       const detail = $('audienceCoverageDetail');
-      const styles = {
-        'exact-segment': 'mt-4 rounded-lg border border-emerald-500/50 bg-emerald-950/25 p-3',
-        'partial-filter': 'mt-4 rounded-lg border border-sky-500/50 bg-sky-950/25 p-3',
-        'overall': 'mt-4 rounded-lg border border-slate-500/50 bg-slate-950/50 p-3',
-        'broader-fallback': 'mt-4 rounded-lg border border-amber-500/60 bg-amber-950/35 p-3',
-        'area-only': 'mt-4 rounded-lg border border-red-500/70 bg-red-950/40 p-3',
-        'missing': 'mt-4 rounded-lg border border-red-500/70 bg-red-950/40 p-3',
-        'empty-segment': 'mt-4 rounded-lg border border-rose-500/70 bg-rose-950/40 p-3'
-      };
-      banner.className = styles[stats.coverage] || styles.missing;
+      banner.className = 'mt-4 rounded-lg border border-[#E4DED3] bg-[#F0ECE4] p-3';
       title.textContent = stats.coverageTitle || 'DATA COVERAGE STATUS';
       detail.textContent = stats.coverageDetail || stats.source || '';
     }
@@ -593,7 +584,7 @@
         const used = selected.map(k => ({pin_code:'geo',age_group:'age',gender:'gender',rfm_segment:'RFM'}[k] || k)).join(' × ');
         explanation = `Preferences respect selected dimensions (${used || 'none'}). Matched cells: ${profile.cellCount}.`;
       }
-      banner.className = 'mt-3 rounded-lg border border-' + (coverage === 'exact-segment' ? 'emerald' : coverage === 'partial-filter' ? 'sky' : 'amber') + '-500/50 bg-gray-950/40 p-3';
+      banner.className = 'mt-3 rounded-lg border border-[#E4DED3] bg-[#F0ECE4] p-3';
       title.textContent = heading;
       detail.textContent = explanation;
     }
@@ -611,7 +602,6 @@
       renderTasteCoverage(state.profile, filters);
       $('profileNote').textContent = `Audience totals source: ${stats.source}. Garment preference source: ${state.profile.label}; observed cells used: ${state.profile.cellCount}.`;
       
-      // Render percentages into the 6 categories in the single horizontal rail
       renderTastePercentages('insightColors', state.profile.distributions.color);
       renderTastePercentages('insightPatterns', state.profile.distributions.pattern);
       renderTastePercentages('insightSizes', state.profile.distributions.size);
@@ -688,10 +678,10 @@
         const tags = extractedTags(attrs);
         const reason = fit.score === null ? (fit.reason || 'No comparable segment profile') : `${fit.reason}. Relative preference score.`;
         return `<article class="creative-card holo-card rank-${Math.min(rank, 5)} ${rank === 1 && fit.score !== null ? 'rank-1' : ''}" role="listitem" tabindex="0">
-          <div class="relative h-48 flex-none bg-gray-950 border-b border-gray-800"><img src="${asset.src}" alt="${esc(asset.file.name)}" class="w-full h-full object-contain" loading="lazy"><div class="absolute top-3 left-3 tag ${rank === 1 && fit.score !== null ? 'border-emerald-400 text-emerald-300' : ''}">#${rank} ${rank === 1 && fit.score !== null ? '· TOP FIT' : ''}</div><div class="absolute top-3 right-3 tag">${esc(status)}</div></div>
-          <div class="card-body p-4 space-y-3"><div class="flex items-start justify-between gap-3"><h4 class="font-semibold text-sm break-all">${esc(asset.file.name)}</h4><div class="text-right shrink-0"><p class="text-[9px] uppercase tracking-wider text-gray-500">Segment fit</p><p class="font-mono text-xl ${fit.score === null ? 'text-gray-500' : rank === 1 ? 'text-emerald-300' : 'text-cyan-300'}">${scoreText}</p></div></div>
-          <div class="flex flex-wrap gap-1.5">${tags.length ? tags.map(t => `<span class="tag">${esc(t)}</span>`).join('') : '<span class="text-xs text-gray-500">No normalized attributes returned</span>'}</div>
-          <div class="border-t border-gray-800 pt-2"><p class="text-[9px] uppercase tracking-wider text-gray-500 mb-1">Ranked for</p><p class="text-[10px] text-cyan-200 leading-relaxed">${esc(filtersLabel())}</p><p class="text-[10px] text-gray-500 mt-2 leading-relaxed">${esc(reason)}</p></div></div></article>`;
+          <div class="relative h-48 flex-none bg-[#F0ECE4] border-b border-[#E4DED3]"><img src="${asset.src}" alt="${esc(asset.file.name)}" class="w-full h-full object-contain" loading="lazy"><div class="absolute top-3 left-3 tag ${rank === 1 && fit.score !== null ? 'border-[#89765C] text-[#89765C] font-bold' : ''}">#${rank} ${rank === 1 && fit.score !== null ? '· TOP FIT' : ''}</div><div class="absolute top-3 right-3 tag">${esc(status)}</div></div>
+          <div class="card-body p-4 space-y-3"><div class="flex items-start justify-between gap-3"><h4 class="font-semibold text-sm break-all text-[#292722]">${esc(asset.file.name)}</h4><div class="text-right shrink-0"><p class="text-[9px] uppercase tracking-wider text-[#777066]">Segment fit</p><p class="font-mono text-xl ${fit.score === null ? 'text-[#777066]' : rank === 1 ? 'text-[#89765C] font-bold' : 'text-[#292722]'}">${scoreText}</p></div></div>
+          <div class="flex flex-wrap gap-1.5">${tags.length ? tags.map(t => `<span class="tag">${esc(t)}</span>`).join('') : '<span class="text-xs text-[#777066]">No normalized attributes returned</span>'}</div>
+          <div class="border-t border-[#E4DED3] pt-2"><p class="text-[9px] uppercase tracking-wider text-[#777066] mb-1">Ranked for</p><p class="text-[10px] text-[#89765C] leading-relaxed font-medium">${esc(filtersLabel())}</p><p class="text-[10px] text-[#777066] mt-2 leading-relaxed">${esc(reason)}</p></div></div></article>`;
       }).join('');
       $('creativeGrid').scrollTo({ left: 0, behavior: 'smooth' });
       renderMatrix(list);
@@ -700,8 +690,8 @@
       const f = currentFilters();
       $('matrixBody').innerHTML = list.length ? list.map(row => {
         const a = row.attrs; const taste = extractedTags(a).join(' · ') || '—';
-        return `<tr><td class="px-4 py-3 font-mono ${row.rank === 1 ? 'text-emerald-300' : 'text-gray-400'}">#${row.rank}</td><td class="px-4 py-3 text-white">${esc(row.asset.file.name)}</td><td class="px-4 py-3">${esc(f.pin_code ? labelForPin(f.pin_code) : 'All areas')}</td><td class="px-4 py-3">${esc(f.age_group || 'All ages')}</td><td class="px-4 py-3">${esc(displayGender(f.gender))}</td><td class="px-4 py-3">${esc(f.rfm_segment || 'All RFM')}</td><td class="px-4 py-3 whitespace-normal min-w-[220px]">${esc(taste)}</td><td class="px-4 py-3 text-right font-mono ${row.fit.score === null ? 'text-gray-500' : 'text-cyan-300'}">${row.fit.score === null ? 'N/A' : row.fit.score + '/100'}</td></tr>`;
-      }).join('') : '<tr><td colspan="8" class="px-4 py-8 text-center text-gray-500">Upload images to populate the matrix.</td></tr>';
+        return `<tr><td class="px-4 py-3 font-mono ${row.rank === 1 ? 'text-[#89765C] font-bold' : 'text-[#777066]'}">#${row.rank}</td><td class="px-4 py-3 text-[#292722] font-medium">${esc(row.asset.file.name)}</td><td class="px-4 py-3">${esc(f.pin_code ? labelForPin(f.pin_code) : 'All areas')}</td><td class="px-4 py-3">${esc(f.age_group || 'All ages')}</td><td class="px-4 py-3">${esc(displayGender(f.gender))}</td><td class="px-4 py-3">${esc(f.rfm_segment || 'All RFM')}</td><td class="px-4 py-3 whitespace-normal min-w-[220px]">${esc(taste)}</td><td class="px-4 py-3 text-right font-mono ${row.fit.score === null ? 'text-[#777066]' : 'text-[#89765C] font-bold'}">${row.fit.score === null ? 'N/A' : row.fit.score + '/100'}</td></tr>`;
+      }).join('') : '<tr><td colspan="8" class="px-4 py-8 text-center text-[#777066]">Upload images to populate the matrix.</td></tr>';
     }
 
     function readAsDataUrl(file) {
