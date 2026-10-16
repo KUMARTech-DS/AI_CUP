@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SuffAI Admin — Unique Garments</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="./config.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Outfit:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #0a0c0f;
+      --panel: #12161c;
+      --line: #2a3340;
+      --muted: #8a94a3;
+      --soft: #d2d8e0;
+      --accent: #c4a574;
+    }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Outfit, system-ui, sans-serif;
+      color: var(--soft);
+      background: radial-gradient(ellipse at top, #141a22 0%, var(--ink) 55%);
+    }
+    h1 {
+      font-family: 'Cormorant Garamond', Georgia, serif;
+      font-weight: 700;
+      color: #fff;
+    }
+    .card {
+      border: 1px solid var(--line);
+      background: rgba(18, 22, 28, 0.92);
+      border-radius: 14px;
+      padding: 1.1rem 1.25rem;
+    }
+    .kpi-val {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 1.75rem;
+      color: #fff;
+      font-weight: 500;
+    }
+    .kpi-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+    input, button {
+      font-family: inherit;
+    }
+    input {
+      background: #0e1218;
+      border: 1px solid var(--line);
+      color: var(--soft);
+      border-radius: 8px;
+      padding: 0.5rem 0.75rem;
+      font-size: 13px;
+    }
+    button.primary {
+      background: rgba(196, 165, 116, 0.2);
+      border: 1px solid rgba(196, 165, 116, 0.45);
+      color: #fff;
+      font-weight: 600;
+      font-size: 13px;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    button.primary:hover { background: rgba(196, 165, 116, 0.32); }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th {
+      text-align: left;
+      color: var(--muted);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 0.65rem 0.5rem;
+      border-bottom: 1px solid var(--line);
+    }
+    td {
+      padding: 0.7rem 0.5rem;
+      border-bottom: 1px solid rgba(42, 51, 64, 0.6);
+      color: var(--soft);
+    }
+    .mono { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #9fd4ff; }
+    .err { color: #f87171; font-size: 13px; }
+    .muted { color: var(--muted); font-size: 12px; }
+  </style>
+</head>
+<body>
+  <script>
+    if (localStorage.getItem('suffai_demo_session') !== '1') {
+      location.replace('./login.html');
+    }
+  </script>
+
+  <div class="max-w-6xl mx-auto px-5 py-8">
+    <div class="mb-6">
+      <h1 class="text-3xl m-0">Unique garments</h1>
+      <p class="muted mt-1 mb-0">Aggregates from the similarity service (per-user unique wardrobe + PIN / brand counters). Recommendations not enabled yet.</p>
+    </div>
+
+    <div class="card mb-5 flex flex-wrap gap-3 items-end">
+      <label class="flex flex-col gap-1 text-xs text-gray-400">
+        PIN code
+        <input id="pin" placeholder="e.g. 560038" maxlength="6" />
+      </label>
+      <label class="flex flex-col gap-1 text-xs text-gray-400">
+        Brand
+        <input id="brand" placeholder="optional" />
+      </label>
+      <button type="button" class="primary" id="btnLoad">Refresh</button>
+      <span id="status" class="muted self-center"></span>
+    </div>
+
+    <div id="error" class="err mb-4 hidden"></div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+      <div class="card">
+        <div class="kpi-label">Unique garments</div>
+        <div class="kpi-val" id="kpiUnique">—</div>
+      </div>
+      <div class="card">
+        <div class="kpi-label">Total observations</div>
+        <div class="kpi-val" id="kpiObs">—</div>
+      </div>
+      <div class="card">
+        <div class="kpi-label">Unique users</div>
+        <div class="kpi-val" id="kpiUsers">—</div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+      <div class="card">
+        <h2 class="text-white text-base font-semibold m-0 mb-3">By PIN</h2>
+        <div class="overflow-x-auto">
+          <table>
+            <thead><tr><th>PIN</th><th>Unique</th><th>Observations</th></tr></thead>
+            <tbody id="byPin"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <h2 class="text-white text-base font-semibold m-0 mb-3">By brand</h2>
+        <div class="overflow-x-auto">
+          <table>
+            <thead><tr><th>Brand</th><th>Unique</th><th>Observations</th></tr></thead>
+            <tbody id="byBrand"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 class="text-white text-base font-semibold m-0 mb-3">Recent unique garments</h2>
+      <div class="overflow-x-auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Garment ID</th>
+              <th>Brand</th>
+              <th>GCS key</th>
+              <th>Obs total</th>
+              <th>Created</th>
+            </tr>
+          </thead>
+          <tbody id="listBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const apiBase = () => (window.DASHBOARD_API || '').replace(/\/$/, '');
+    const summaryUrl = (q) => (apiBase() ? apiBase() : '') + '/v1/admin/unique-summary' + (q ? '?' + q : '');
+    const listUrl = (q) => (apiBase() ? apiBase() : '') + '/v1/admin/unique-garments' + (q ? '?' + q : '');
+
+    function qs() {
+      const pin = document.getElementById('pin').value.trim();
+      const brand = document.getElementById('brand').value.trim();
+      const p = new URLSearchParams();
+      if (pin) p.set('pin', pin);
+      if (brand) p.set('brand', brand);
+      return p.toString();
+    }
+
+    function showErr(msg) {
+      const el = document.getElementById('error');
+      if (!msg) { el.classList.add('hidden'); el.textContent = ''; return; }
+      el.textContent = msg;
+      el.classList.remove('hidden');
+      console.error('[admin]', msg);
+    }
+
+    function rows(tbody, data, cols) {
+      if (!data.length) {
+        tbody.innerHTML = '<tr><td colspan="8" class="muted">No rows</td></tr>';
+        return;
+      }
+      tbody.innerHTML = data.map(r => '<tr>' + cols.map(c => '<td>' + c(r) + '</td>').join('') + '</tr>').join('');
+    }
+
+    async function load() {
+      const status = document.getElementById('status');
+      status.textContent = 'Loading…';
+      showErr('');
+      const q = qs();
+      try {
+        const [sumRes, listRes] = await Promise.all([
+          fetch(summaryUrl(q)),
+          fetch(listUrl(q + (q ? '&' : '') + 'limit=50')),
+        ]);
+        if (!sumRes.ok) {
+          let detail = '';
+          try { detail = (await sumRes.json()).detail || ''; } catch (_) {}
+          throw new Error('Summary HTTP ' + sumRes.status + (detail ? ': ' + detail : ' — set SIMILARITY_URL / check suffai-similarity'));
+        }
+        const summary = await sumRes.json();
+        const k = summary.kpis || {};
+        document.getElementById('kpiUnique').textContent = k.unique_garments ?? '—';
+        document.getElementById('kpiObs').textContent = k.total_observations ?? '—';
+        document.getElementById('kpiUsers').textContent = k.unique_users ?? '—';
+
+        rows(document.getElementById('byPin'), summary.by_pin || [], [
+          r => r.pin_code,
+          r => r.unique_garments,
+          r => r.observations,
+        ]);
+        rows(document.getElementById('byBrand'), summary.by_brand || [], [
+          r => r.brand,
+          r => r.unique_garments,
+          r => r.observations,
+        ]);
+
+        if (listRes.ok) {
+          const list = await listRes.json();
+          rows(document.getElementById('listBody'), list.items || [], [
+            r => '<span class="mono">' + (r.garment_id || '').slice(0, 8) + '…</span>',
+            r => r.brand_name || '—',
+            r => '<span class="mono">' + (r.gcs_object_key || '') + '</span>',
+            r => r.observation_count_total,
+            r => (r.created_at || '—').toString().slice(0, 19),
+          ]);
+        } else {
+          document.getElementById('listBody').innerHTML = '<tr><td colspan="5" class="muted">List unavailable</td></tr>';
+        }
+        status.textContent = 'Updated';
+      } catch (err) {
+        showErr(err.message || String(err));
+        status.textContent = 'Failed';
+      }
+    }
+
+    document.getElementById('btnLoad').addEventListener('click', load);
+    load();
+  </script>
+</body>
+</html>
