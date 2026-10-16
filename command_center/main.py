@@ -7,6 +7,7 @@ Does NOT modify api/, worker/, suffai/, or services/.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
@@ -15,9 +16,9 @@ import uuid
 from pathlib import Path
 from typing import Any, Optional
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 logging.basicConfig(
@@ -278,6 +279,37 @@ async def ads_lab_extract(files: list[UploadFile] = File(...)):
         raise HTTPException(400, "No valid images uploaded")
 
     return {"ok": True, "items": results}
+
+
+@app.post("/v1/chat/assistant")
+async def chat_assistant_proxy(request: Request):
+    """Forward browser chat requests to the existing suffai-api service."""
+    api_base = (os.getenv("API_PUBLIC_URL") or "").rstrip("/")
+    if not api_base:
+        raise HTTPException(503, "API_PUBLIC_URL is not configured on Command Center")
+
+    body = await request.body()
+    if len(body) > 40000:
+        raise HTTPException(413, "Chat request is too large")
+
+    def forward():
+        import urllib.error
+        import urllib.request
+
+        req = urllib.request.Request(
+            f"{api_base}/v1/chat/assistant",
+            data=body,
+            method="POST",
+            headers={"Content-Type": "application/json"},
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=90) as resp:
+                return resp.status, resp.read()
+        except urllib.error.HTTPError as exc:
+            return exc.code, exc.read()
+
+    status, content = await asyncio.to_thread(forward)
+    return Response(content=content, status_code=status, media_type="application/json")
 
 
 @app.get("/")
