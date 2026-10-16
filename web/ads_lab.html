@@ -140,25 +140,28 @@
   <main class="flex-1 flex min-h-0 overflow-hidden">
     <aside class="w-80 max-w-[45vw] flex-none border-r border-[#E4DED3] bg-[#F0ECE4] flex flex-col p-4 gap-5 overflow-y-auto z-20">
       <section class="space-y-3">
-        <h2 class="text-xs font-bold uppercase tracking-wider text-[#292722] flex items-center gap-2"><span class="w-5 h-5 rounded bg-[#E4DED3] text-[#292722] flex items-center justify-center text-[10px] border border-[#DED7CB]">1</span> Audience segment</h2>
-        <label class="block text-[10px] text-[#777066] uppercase tracking-wider font-semibold">Geo area / PIN code<select id="filterArea" class="field mt-1"><option value="">Loading areas…</option></select></label>
+        <h2 class="text-xs font-bold uppercase tracking-wider text-[#292722] flex items-center gap-2"><span class="w-5 h-5 rounded bg-[#E4DED3] text-[#292722] flex items-center justify-center text-[10px] border border-[#DED7CB]">1</span> Brand &amp; audience</h2>
+        <label class="block text-[10px] text-[#777066] uppercase tracking-wider font-semibold">Brand name (required)<input id="filterBrand" type="text" class="field mt-1" placeholder="e.g. Nike" autocomplete="organization" /></label>
+        <label class="block text-[10px] text-[#777066] uppercase tracking-wider font-semibold">PIN codes (multi-select)<select id="filterArea" class="field mt-1" multiple size="5"><option value="">Loading areas…</option></select></label>
+        <p class="text-[10px] text-[#777066]">Hold Cmd/Ctrl to select multiple PINs for one campaign.</p>
         <label class="block text-[10px] text-[#777066] uppercase tracking-wider font-semibold">Age bucket<select id="filterAge" class="field mt-1"><option value="">All age groups</option></select></label>
         <label class="block text-[10px] text-[#777066] uppercase tracking-wider font-semibold">Gender<select id="filterGender" class="field mt-1"><option value="">All genders</option></select></label>
         <label class="block text-[10px] text-[#777066] uppercase tracking-wider font-semibold">RFM segment<select id="filterRfm" class="field mt-1"><option value="">All RFM segments</option></select></label>
-        <p class="text-[10px] text-[#777066] leading-relaxed">Changing any filter refreshes the segment profile and re-ranks the uploaded creatives.</p>
+        <p class="text-[10px] text-[#777066] leading-relaxed">PIN + age + gender + RFM filter audience garments used in ranking.</p>
       </section>
 
       <section class="space-y-3 flex-1 flex flex-col min-h-[180px]">
-        <h2 class="text-xs font-bold uppercase tracking-wider text-[#292722] flex items-center gap-2"><span class="w-5 h-5 rounded bg-[#E4DED3] text-[#292722] flex items-center justify-center text-[10px] border border-[#DED7CB]">2</span> Upload creatives</h2>
+        <h2 class="text-xs font-bold uppercase tracking-wider text-[#292722] flex items-center gap-2"><span class="w-5 h-5 rounded bg-[#E4DED3] text-[#292722] flex items-center justify-center text-[10px] border border-[#DED7CB]">2</span> Upload SKUs</h2>
         <input type="file" id="fileInput" multiple accept="image/*" class="hidden">
         <div id="dropzone" role="button" tabindex="0" class="upload-zone rounded-xl flex flex-col items-center justify-center text-center p-5 cursor-pointer min-h-[130px]">
           <i class="fa-solid fa-cloud-arrow-up text-3xl text-[#89765C] mb-3"></i>
-          <span class="text-xs text-[#292722] font-semibold">Click or drop images</span>
-          <span class="text-[10px] text-[#777066] mt-1">Every uploaded image appears once.</span>
+          <span class="text-xs text-[#292722] font-semibold">Click or drop SKU images</span>
+          <span class="text-[10px] text-[#777066] mt-1">Any filenames OK — brand comes from the field above.</span>
         </div>
         <p id="uploadSummary" class="text-[10px] text-[#777066]">No creatives uploaded.</p>
-        <button id="runButton" type="button" class="w-full py-3 bg-[#292722] hover:bg-[#4A4339] disabled:opacity-40 disabled:cursor-not-allowed text-[#FAF8F4] rounded-xl text-sm font-bold flex justify-center items-center gap-2 transition-all shadow-sm" disabled><i class="fa-solid fa-wand-magic-sparkles text-[#89765C]"></i><span>Extract & rank creatives</span></button>
-        <p class="text-[10px] text-[#777066] leading-relaxed">Extraction calls the deployed extraction API. Ranking uses a deterministic segment-fit heuristic.</p>
+        <p class="text-[11px] text-[#292722]">Campaign brand: <strong id="brandUploadLabel" class="text-[#89765C]">(enter brand name above)</strong></p>
+        <button id="runButton" type="button" class="w-full py-3 bg-[#292722] hover:bg-[#4A4339] disabled:opacity-40 disabled:cursor-not-allowed text-[#FAF8F4] rounded-xl text-sm font-bold flex justify-center items-center gap-2 transition-all shadow-sm" disabled><i class="fa-solid fa-wand-magic-sparkles text-[#89765C]"></i><span>Extract &amp; rank SKUs</span></button>
+        <p class="text-[10px] text-[#777066] leading-relaxed">Passes <code>brand_name</code> to <code>POST /v1/ads-lab/campaign</code>, stores under GCS brands/{brand}/…, overwrites extract brand, ranks vs PIN unique garments + segment taste.</p>
       </section>
     </aside>
 
@@ -263,7 +266,7 @@
   <script>
     'use strict';
     const $ = (id) => document.getElementById(id);
-    const state = { metrics: null, assets: [], results: [], profile: null, loading: false };
+    const state = { metrics: null, assets: [], results: [], profile: null, loading: false, campaign: null, campaignItems: [] };
     const FILTER_KEYS = ['pin_code', 'age_group', 'gender', 'rfm_segment'];
     const GROUPS = {
       color: { keys: ['colors', 'color_counts', 'primary_colors', 'color_distribution'], weight: 25 },
@@ -292,8 +295,20 @@
       if (key === 'pin_code') return String(value ?? '').replace(/\.0$/, '').trim();
       return normal(value);
     }
+    function selectedPinCodes() {
+      const el = $('filterArea');
+      return Array.from(el.selectedOptions || []).map(o => o.value).filter(Boolean);
+    }
     function currentFilters() {
-      return { pin_code: $('filterArea').value, age_group: $('filterAge').value, gender: $('filterGender').value, rfm_segment: $('filterRfm').value };
+      const pins = selectedPinCodes();
+      return {
+        pin_codes: pins,
+        pin_code: pins[0] || '',
+        age_group: $('filterAge').value,
+        gender: $('filterGender').value,
+        rfm_segment: $('filterRfm').value,
+        brand_name: ($('filterBrand').value || '').trim()
+      };
     }
     function displayGender(value) {
       const g = normalizedGender(value);
@@ -305,7 +320,17 @@
       return obj?.area_label ? `${obj.area_label} (${pin})` : (pin ? String(pin) : 'All areas');
     }
     function filtersLabel(f = currentFilters()) {
-      return [f.pin_code ? labelForPin(f.pin_code) : 'All areas', f.age_group || 'All ages', displayGender(f.gender), f.rfm_segment || 'All RFM segments'].join(' × ');
+      const pins = f.pin_codes || (f.pin_code ? [f.pin_code] : []);
+      const pinLabel = !pins.length
+        ? 'No PIN selected'
+        : (pins.length <= 2 ? pins.map(labelForPin).join(', ') : pins.length + ' PINs');
+      return [
+        f.brand_name || 'Brand?',
+        pinLabel,
+        f.age_group || 'All ages',
+        displayGender(f.gender),
+        f.rfm_segment || 'All RFM segments'
+      ].join(' × ');
     }
     function setApiStatus(ok, msg) {
       $('apiStatus').innerHTML = `<span class="w-1.5 h-1.5 rounded-full ${ok ? 'bg-emerald-600' : 'bg-red-600'}"></span>${esc(msg)}`;
@@ -315,10 +340,14 @@
       $('loadingOverlay').classList.toggle('hidden', !show); $('loadingOverlay').classList.toggle('flex', show);$('runButton').disabled = show || state.assets.length === 0;
     }
     function selectOptions(el, firstLabel, rows, selected = '') {
-      el.innerHTML = `<option value="">${esc(firstLabel)}</option>` + rows.map((row) => {
+      const isMulti = el.multiple;
+      el.innerHTML = (isMulti ? '' : `<option value="">${esc(firstLabel)}</option>`) + rows.map((row) => {
         const value = typeof row === 'object' ? row.value : row;
         const label = typeof row === 'object' ? row.label : row;
-        return `<option value="${esc(value)}" ${String(value) === String(selected) ? 'selected' : ''}>${esc(label)}</option>`;
+        const sel = isMulti
+          ? (Array.isArray(selected) ? selected.map(String).includes(String(value)) : String(value) === String(selected))
+          : String(value) === String(selected);
+        return `<option value="${esc(value)}" ${sel ? 'selected' : ''}>${esc(label)}</option>`;
       }).join('');
     }
     async function loadMetrics() {
@@ -329,7 +358,7 @@
         state.metrics = data;
         const f = data.filters || {};
         const pins = (f.pin_codes || Object.keys(data.pin_geo || {})).map(String);
-        selectOptions($('filterArea'), 'All areas', pins.map(pin => ({value:pin, label:labelForPin(pin)})), pins[0] || '');
+        selectOptions($('filterArea'), 'All areas', pins.map(pin => ({value:pin, label:labelForPin(pin)})), pins.slice(0, 1));
         selectOptions($('filterAge'), 'All age groups', f.age_groups || []);
         selectOptions($('filterGender'), 'All genders', (f.genders || []).map(g => ({value:g, label:displayGender(g)})));
         selectOptions($('filterRfm'), 'All RFM segments', f.rfm_segments || []);
@@ -591,7 +620,14 @@
 
     function fmtNumber(n) { return n === null || n === undefined || !Number.isFinite(Number(n)) ? '—' : Number(n).toLocaleString('en-IN', {maximumFractionDigits:0}); }
     
+    function updateBrandUploadLabel() {
+      const name = ($('filterBrand').value || '').trim();
+      const el = $('brandUploadLabel');
+      if (el) el.textContent = name || '(enter brand name above)';
+    }
+
     function refreshForFilters() {
+      updateBrandUploadLabel();
       if (!state.metrics) return;
       const filters = currentFilters();
       state.profile = createProfile(filters);
@@ -610,7 +646,38 @@
       renderTastePercentages('insightBrands', state.profile.distributions.brand);
       
       renderCreatives();
+      publishAdsContext();
     }
+
+    function publishAdsContext() {
+      if (!window.parent || window.parent === window) return;
+      try {
+        const filters = currentFilters();
+        const ranked = makeRankedAssets().slice(0, 20).map(row => ({
+          filename: row.asset?.file?.name || '',
+          rank: row.rank,
+          score: row.fit?.score ?? null,
+          attrs: row.attrs || {},
+          reason: row.fit?.reason || '',
+          ok: !!(row.item && row.item.ok)
+        }));
+        window.parent.postMessage({
+          type: 'cc-context',
+          source: 'ads',
+          filters,
+          filters_label: filtersLabel(filters),
+          ranked
+        }, '*');
+      } catch (e) {
+        console.error('[ads_lab] postMessage failed', e);
+      }
+    }
+
+    window.addEventListener('message', (ev) => {
+      if (!ev.data || ev.data.type !== 'cc-context-request') return;
+      if (state.metrics) refreshForFilters();
+      else publishAdsContext();
+    });
 
     function extractionAttrs(item) {
       const a = item?.attributes || {}; const r = item?.raw_result || item?.result || {};
@@ -648,22 +715,47 @@
     }
     function makeRankedAssets() {
       const usedResultIndexes = new Set();
+      const campaignByName = {};
+      (state.campaignItems || []).forEach(row => {
+        if (row && row.filename) campaignByName[normal(row.filename)] = row;
+      });
       const ranked = state.assets.map((asset, index) => {
         let resultIndex = state.results.findIndex((r, i) => !usedResultIndexes.has(i) && normal(r.filename) === normal(asset.file.name));
         if (resultIndex < 0 && index < state.results.length && !usedResultIndexes.has(index)) resultIndex = index;
         const item = resultIndex >= 0 ? state.results[resultIndex] : null;
         if (resultIndex >= 0) usedResultIndexes.add(resultIndex);
-        const attrs = extractionAttrs(item);
-        const fit = item?.ok ? matchScore(attrs, state.profile || createProfile(currentFilters())) : {score:null,evidence:0,reason:item?.error || 'Extraction has not completed'};
-        return { asset, item, attrs, fit, originalIndex:index };
+        const camp = campaignByName[normal(asset.file.name)];
+        const attrs = camp?.attributes
+          ? {
+              color: camp.attributes.color || '',
+              pattern: camp.attributes.pattern || '',
+              commodity: camp.attributes.name || camp.attributes.commodity || '',
+              material: camp.attributes.material || '',
+              size: camp.attributes.size || '',
+              brand: camp.attributes.brand || '',
+              confidence: camp.attributes.confidence || ''
+            }
+          : extractionAttrs(item);
+        let fit;
+        if (camp && camp.rank_score != null) {
+          fit = {
+            score: Math.round(Number(camp.rank_score)),
+            evidence: 3,
+            reason: `Campaign rank · sim ${camp.sim_fit ?? '—'} · attr ${camp.attr_fit ?? '—'} · freq ${camp.freq_coverage ?? '—'}`
+          };
+        } else {
+          fit = item?.ok ? matchScore(attrs, state.profile || createProfile(currentFilters())) : {score:null,evidence:0,reason:item?.error || camp?.error || 'Run campaign ranking to score'};
+        }
+        return { asset, item: item || camp, attrs, fit, originalIndex:index, campaignRank: camp?.rank };
       });
       ranked.sort((a,b) => {
+        if (a.campaignRank != null && b.campaignRank != null && a.campaignRank !== b.campaignRank) return a.campaignRank - b.campaignRank;
         if (a.fit.score === null && b.fit.score !== null) return 1;
         if (a.fit.score !== null && b.fit.score === null) return -1;
         if (a.fit.score !== null && b.fit.score !== null && b.fit.score !== a.fit.score) return b.fit.score - a.fit.score;
         return a.originalIndex - b.originalIndex;
       });
-      return ranked.map((item, i) => ({...item, rank:i+1}));
+      return ranked.map((item, i) => ({...item, rank: item.campaignRank || (i + 1)}));
     }
     function extractedTags(attrs) {
       return [attrs.color && `Color: ${attrs.color}`, attrs.pattern && `Pattern: ${attrs.pattern}`, attrs.commodity && `Type: ${attrs.commodity}`, attrs.material && `Material: ${attrs.material}`, attrs.size && `Size: ${attrs.size}`, attrs.brand && `Brand: ${attrs.brand}`].filter(Boolean);
@@ -690,7 +782,9 @@
       const f = currentFilters();
       $('matrixBody').innerHTML = list.length ? list.map(row => {
         const a = row.attrs; const taste = extractedTags(a).join(' · ') || '—';
-        return `<tr><td class="px-4 py-3 font-mono ${row.rank === 1 ? 'text-[#89765C] font-bold' : 'text-[#777066]'}">#${row.rank}</td><td class="px-4 py-3 text-[#292722] font-medium">${esc(row.asset.file.name)}</td><td class="px-4 py-3">${esc(f.pin_code ? labelForPin(f.pin_code) : 'All areas')}</td><td class="px-4 py-3">${esc(f.age_group || 'All ages')}</td><td class="px-4 py-3">${esc(displayGender(f.gender))}</td><td class="px-4 py-3">${esc(f.rfm_segment || 'All RFM')}</td><td class="px-4 py-3 whitespace-normal min-w-[220px]">${esc(taste)}</td><td class="px-4 py-3 text-right font-mono ${row.fit.score === null ? 'text-[#777066]' : 'text-[#89765C] font-bold'}">${row.fit.score === null ? 'N/A' : row.fit.score + '/100'}</td></tr>`;
+        const pins = f.pin_codes || (f.pin_code ? [f.pin_code] : []);
+        const pinLabel = !pins.length ? 'No PIN' : (pins.length <= 2 ? pins.map(labelForPin).join(', ') : pins.length + ' PINs');
+        return `<tr><td class="px-4 py-3 font-mono ${row.rank === 1 ? 'text-[#89765C] font-bold' : 'text-[#777066]'}">#${row.rank}</td><td class="px-4 py-3 text-[#292722] font-medium">${esc(row.asset.file.name)}</td><td class="px-4 py-3">${esc(pinLabel)}</td><td class="px-4 py-3">${esc(f.age_group || 'All ages')}</td><td class="px-4 py-3">${esc(displayGender(f.gender))}</td><td class="px-4 py-3">${esc(f.rfm_segment || 'All RFM')}</td><td class="px-4 py-3 whitespace-normal min-w-[220px]">${esc(taste)}</td><td class="px-4 py-3 text-right font-mono ${row.fit.score === null ? 'text-[#777066]' : 'text-[#89765C] font-bold'}">${row.fit.score === null ? 'N/A' : row.fit.score + '/100'}</td></tr>`;
       }).join('') : '<tr><td colspan="8" class="px-4 py-8 text-center text-[#777066]">Upload images to populate the matrix.</td></tr>';
     }
 
@@ -715,31 +809,52 @@
     dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
     dropzone.addEventListener('drop', e => { e.preventDefault(); dropzone.classList.remove('dragover'); processFiles(e.dataTransfer.files); });
     fileInput.addEventListener('change', e => { processFiles(e.target.files); fileInput.value = ''; });
-    ['filterArea','filterAge','filterGender','filterRfm'].forEach(id => $(id).addEventListener('change', refreshForFilters));$('runButton').addEventListener('click', runAnalysis);
+    ['filterArea','filterAge','filterGender','filterRfm','filterBrand'].forEach(id => $(id).addEventListener('change', refreshForFilters));
+    $('filterBrand').addEventListener('input', refreshForFilters);
+    $('runButton').addEventListener('click', runAnalysis);
 
     async function runAnalysis() {
       if (!state.assets.length || state.loading) return;
-      setLoading(true, 'Extracting uploaded garments…');
+      const f = currentFilters();
+      if (!f.brand_name) { alert('Enter a brand name.'); return; }
+      if (!f.pin_codes.length) { alert('Select at least one PIN code.'); return; }
+      setLoading(true, 'Uploading SKUs · extracting · ranking for audience…');
       try {
-        const fd = new FormData(); state.assets.forEach(({file}) => fd.append('files', file, file.name));
-        const res = await fetch(endpoint('/v1/ads-lab/extract'), {method:'POST', body:fd});
+        const fd = new FormData();
+        fd.append('brand_name', f.brand_name);
+        fd.append('pin_codes', JSON.stringify(f.pin_codes));
+        fd.append('age_group', f.age_group || '');
+        fd.append('gender', f.gender || '');
+        fd.append('rfm_segment', f.rfm_segment || '');
+        state.assets.forEach(({file}) => fd.append('files', file, file.name));
+        const res = await fetch(endpoint('/v1/ads-lab/campaign'), {method:'POST', body:fd});
         const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.detail || data.message || `Extraction failed (HTTP ${res.status})`);
-        state.results = Array.isArray(data.items) ? data.items : [];
-        if (!state.results.length) throw new Error('The extraction API returned no items.');
+        if (!res.ok) throw new Error(data.detail || data.message || `Campaign failed (HTTP ${res.status})`);
+        state.campaign = data;
+        state.campaignItems = Array.isArray(data.items) ? data.items : [];
+        state.results = state.campaignItems.map(row => ({
+          filename: row.filename,
+          ok: !!row.extract_ok,
+          error: row.extract_error || row.compare_error,
+          attributes: row.attributes || {},
+          raw_result: row.attributes || {}
+        }));
+        if (!state.campaignItems.length) throw new Error('Campaign returned no SKU items.');
         refreshForFilters();
-        $('uploadSummary').textContent = `Extraction returned ${state.results.filter(i => i.ok).length}/${state.assets.length} successful result(s).`;
+        $('uploadSummary').textContent = `Campaign ${data.campaign_id} · ranked ${state.campaignItems.length} SKU(s) for ${filtersLabel(f)}.`;
       } catch (e) {
-        console.error('[ads_lab] extraction failed', e);
+        console.error('[ads_lab] campaign failed', e);
+        state.campaign = null;
+        state.campaignItems = [];
         state.results = state.assets.map(({file}) => ({filename:file.name, ok:false, error:e.message, attributes:{}}));
         refreshForFilters();
-        $('uploadSummary').textContent = `Extraction failed: ${e.message}.`;
+        $('uploadSummary').textContent = `Campaign failed: ${e.message}.`;
       } finally { setLoading(false); }
     }
     function downloadCSV() {
       const list = makeRankedAssets(); const f = currentFilters();
-      const rows = [['rank','geo_pin','geo_area','age_bucket','gender','rfm_segment','filename','color','pattern','commodity','material','size','brand','segment_fit_score']];
-      list.forEach(r => rows.push([r.rank, f.pin_code, f.pin_code ? labelForPin(f.pin_code) : 'All areas', f.age_group || 'All ages', displayGender(f.gender), f.rfm_segment || 'All RFM', r.asset.file.name, r.attrs.color, r.attrs.pattern, r.attrs.commodity, r.attrs.material, r.attrs.size, r.attrs.brand, r.fit.score ?? '']));
+      const rows = [['rank','brand','geo_pins','age_bucket','gender','rfm_segment','filename','color','pattern','commodity','material','size','sku_brand','rank_score']];
+      list.forEach(r => rows.push([r.rank, f.brand_name, (f.pin_codes || []).join('|'), f.age_group || 'All ages', displayGender(f.gender), f.rfm_segment || 'All RFM', r.asset.file.name, r.attrs.color, r.attrs.pattern, r.attrs.commodity, r.attrs.material, r.attrs.size, r.attrs.brand, r.fit.score ?? '']));
       const csv = rows.map(row => row.map(v => `"${String(v ?? '').replace(/"/g,'""')}"`).join(',')).join('\r\n');
       const url = URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8;'})); const a = document.createElement('a'); a.href = url; a.download = 'ads_lab_segment_ranking.csv'; a.click(); URL.revokeObjectURL(url);
     }

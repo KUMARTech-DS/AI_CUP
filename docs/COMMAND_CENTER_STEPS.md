@@ -7,7 +7,7 @@ Full GCP API list + deploy: **[GCP_COMMAND_CENTER.md](GCP_COMMAND_CENTER.md)**
 | Folder | Role |
 |--------|------|
 | `web/` | UI (login, Geo, Ads Lab) |
-| `command_center/` | New BFF APIs (does not change `api/` or `worker/`) |
+| `command_center/` | BFF APIs (does not change `worker/` extraction) |
 | `command_center_data/` | Sample CSVs + pin population (**load into BQ**; not runtime fallback) |
 
 ## Data path
