@@ -26,6 +26,59 @@
     .creative-card.rank-1 { border-color:#00ff88; box-shadow:0 0 22px rgba(0,255,136,.09); }
     .tag { display:inline-flex; align-items:center; gap:.3rem; border-radius:999px; border:1px solid #374151; padding:.15rem .5rem; font-size:10px; color:#d1d5db; background:rgba(17,24,39,.8); }
     .muted { color:#9ca3af; }
+    
+    /* Audience taste: one horizontal rail; categories never stack vertically. */
+    .taste-rail {
+      display: flex;
+      flex-flow: row nowrap;
+      gap: 12px;
+      width: 100%;
+      overflow-x: auto;
+      overflow-y: hidden;
+      padding: 2px 2px 12px;
+      scroll-behavior: smooth;
+      scroll-snap-type: x proximity;
+      overscroll-behavior-x: contain;
+      scrollbar-width: thin;
+      scrollbar-color: #253449 #0b0c10;
+    }
+    .taste-rail::-webkit-scrollbar { height: 8px; }
+    .taste-rail::-webkit-scrollbar-track { background: #0b0c10; border-radius: 4px; }
+    .taste-rail::-webkit-scrollbar-thumb { background: #253449; border-radius: 4px; }
+    .taste-rail::-webkit-scrollbar-thumb:hover { background: #00f3ff; }
+
+    .taste-card {
+      flex: 0 0 240px;
+      width: 240px;
+      min-width: 240px;
+      height: 175px;
+      max-height: 175px;
+      display: flex;
+      flex-direction: column;
+      overflow-hidden;
+      scroll-snap-align: start;
+      background: rgba(15, 20, 30, 0.9);
+      border: 1px solid rgba(0, 243, 255, 0.25);
+      border-radius: 10px;
+      padding: 12px;
+    }
+    .taste-card .taste-body {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: #273449 transparent;
+      padding-right: 2px;
+    }
+    .taste-card .taste-title {
+      color: #00f3ff;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .07em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
     /* Restore the original interactive horizontal 3D coverflow for ranked creatives. */
     .creative-rail {
       display:flex; gap:1.5rem; align-items:stretch; overflow-x:auto; overflow-y:hidden;
@@ -116,27 +169,72 @@
             <div class="min-w-0">
               <p class="text-[10px] uppercase tracking-[.2em] text-cyan-400 font-bold">Current target</p>
               <h2 id="segmentTitle" class="text-lg sm:text-xl font-bold mt-1">Loading audience…</h2>
-              <p id="profileNote" class="text-xs text-gray-400 mt-2 max-w-3xl">Profile metrics are loading from the command-center API.</p><p class="text-[10px] text-gray-500 mt-2">When an exact cohort has no garment observations, the UI uses the closest available fallback profile, labels the relaxed dimensions, and ranks every uploaded creative against that available profile.</p>
+              <p id="profileNote" class="text-xs text-gray-400 mt-2 max-w-3xl">Profile metrics are loading from the command-center API.</p>
+              <p class="text-[10px] text-gray-500 mt-2">When an exact cohort has no garment observations, the UI uses the closest available fallback profile, labels the relaxed dimensions, and ranks every uploaded creative against that available profile.</p>
             </div>
-            <div class="grid grid-cols-3 gap-2 min-w-[250px]">
-              <div class="bg-gray-950/70 border border-gray-800 rounded-lg p-3"><p class="text-[9px] uppercase tracking-wider text-gray-500">Customers</p><p id="audienceCustomers" class="font-mono text-lg text-cyan-300 mt-1">—</p></div>
-              <div class="bg-gray-950/70 border border-gray-800 rounded-lg p-3"><p class="text-[9px] uppercase tracking-wider text-gray-500">Orders</p><p id="audienceOrders" class="font-mono text-lg text-violet-300 mt-1">—</p></div>
-              <div class="bg-gray-950/70 border border-gray-800 rounded-lg p-3"><p class="text-[9px] uppercase tracking-wider text-gray-500">Revenue</p><p id="audienceRevenue" class="font-mono text-lg text-emerald-300 mt-1">—</p></div>
+            <div class="min-w-[150px]">
+              <div class="bg-gray-950/70 border border-gray-800 rounded-lg p-3">
+                <p class="text-[9px] uppercase tracking-wider text-gray-500">Customers</p>
+                <p id="audienceCustomers" class="font-mono text-lg text-cyan-300 mt-1">—</p>
+              </div>
+              <!-- Hidden fields preserved for JS logic compatibility -->
+              <div class="hidden">
+                <p id="audienceOrders"></p>
+                <p id="audienceRevenue"></p>
+              </div>
             </div>
           </div>
           <div id="audienceCoverage" role="status" aria-live="polite" class="mt-4 rounded-lg border border-amber-500/50 bg-amber-950/30 p-3">
             <p id="audienceCoverageTitle" class="text-[11px] font-bold tracking-wide text-amber-200">CHECKING AUDIENCE-COUNT COVERAGE</p>
-            <p id="audienceCoverageDetail" class="text-xs text-amber-100/90 mt-1">Checking whether customer/order/revenue totals match the selected audience.</p>
+            <p id="audienceCoverageDetail" class="text-xs text-amber-100/90 mt-1">Checking whether customer totals match the selected audience.</p>
           </div>
           <div id="tasteCoverage" role="status" aria-live="polite" class="mt-3 rounded-lg border border-amber-500/50 bg-amber-950/30 p-3">
             <p id="tasteCoverageTitle" class="text-[11px] font-bold tracking-wide text-amber-200">CHECKING GARMENT-PREFERENCE COVERAGE</p>
             <p id="tasteCoverageDetail" class="text-xs text-amber-100/90 mt-1">Checking whether garment observations match the selected audience.</p>
           </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 mt-4">
-            <div class="bg-gray-950/65 border border-gray-800 rounded-lg p-3"><p class="text-[10px] uppercase tracking-wider text-gray-500 mb-2"><i class="fa-solid fa-palette mr-1 text-violet-400"></i>Top observed colors</p><div id="insightColors" class="flex flex-wrap gap-1.5"><span class="muted text-xs">No profile loaded</span></div></div>
-            <div class="bg-gray-950/65 border border-gray-800 rounded-lg p-3"><p class="text-[10px] uppercase tracking-wider text-gray-500 mb-2"><i class="fa-solid fa-shapes mr-1 text-pink-400"></i>Top patterns</p><div id="insightPatterns" class="flex flex-wrap gap-1.5"><span class="muted text-xs">No profile loaded</span></div></div>
-            <div class="bg-gray-950/65 border border-gray-800 rounded-lg p-3"><p class="text-[10px] uppercase tracking-wider text-gray-500 mb-2"><i class="fa-solid fa-ruler mr-1 text-cyan-400"></i>Top sizes</p><div id="insightSizes" class="flex flex-wrap gap-1.5"><span class="muted text-xs">No profile loaded</span></div></div>
-            <div class="bg-gray-950/65 border border-gray-800 rounded-lg p-3"><p class="text-[10px] uppercase tracking-wider text-gray-500 mb-2"><i class="fa-solid fa-shirt mr-1 text-amber-400"></i>Top garment types</p><div id="insightCommodities" class="flex flex-wrap gap-1.5"><span class="muted text-xs">No profile loaded</span></div></div>
+          
+          <!-- Audience Taste Profile - Single Horizontal Scrollable Row -->
+          <div class="mt-4">
+            <div class="flex items-end justify-between gap-3 mb-2">
+              <div>
+                <h3 class="text-xs font-bold uppercase tracking-wider text-gray-200">
+                  Audience Taste Profile
+                </h3>
+                <p class="text-[10px] text-gray-400 mt-0.5">
+                  Percentage share derived from actual filtered observations (Category Denominator).
+                </p>
+              </div>
+              <span class="text-[10px] text-gray-500 flex-none">
+                Scroll horizontally →
+              </span>
+            </div>
+
+            <div id="tasteRail" class="taste-rail" tabindex="0" role="region" aria-label="Horizontally scrollable audience taste categories">
+              <div class="taste-card">
+                <h4 class="taste-title"><i class="fa-solid fa-palette mr-1"></i> Colors</h4>
+                <div id="insightColors" class="taste-body space-y-1.5"><span class="muted text-xs">No profile loaded</span></div>
+              </div>
+              <div class="taste-card">
+                <h4 class="taste-title"><i class="fa-solid fa-shapes mr-1"></i> Patterns</h4>
+                <div id="insightPatterns" class="taste-body space-y-1.5"><span class="muted text-xs">No profile loaded</span></div>
+              </div>
+              <div class="taste-card">
+                <h4 class="taste-title"><i class="fa-solid fa-ruler mr-1"></i> Sizes</h4>
+                <div id="insightSizes" class="taste-body space-y-1.5"><span class="muted text-xs">No profile loaded</span></div>
+              </div>
+              <div class="taste-card">
+                <h4 class="taste-title"><i class="fa-solid fa-shirt mr-1"></i> Garment Types</h4>
+                <div id="insightCommodities" class="taste-body space-y-1.5"><span class="muted text-xs">No profile loaded</span></div>
+              </div>
+              <div class="taste-card">
+                <h4 class="taste-title"><i class="fa-solid fa-vest mr-1"></i> Materials</h4>
+                <div id="insightMaterials" class="taste-body space-y-1.5"><span class="muted text-xs">No profile loaded</span></div>
+              </div>
+              <div class="taste-card">
+                <h4 class="taste-title"><i class="fa-solid fa-tag mr-1"></i> Brands</h4>
+                <div id="insightBrands" class="taste-body space-y-1.5"><span class="muted text-xs">No profile loaded</span></div>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -213,8 +311,7 @@
     }
     function setLoading(show, text = 'Working…') {
       state.loading = show; $('loadingText').textContent = text;
-      $('loadingOverlay').classList.toggle('hidden', !show); $('loadingOverlay').classList.toggle('flex', show);
-      $('runButton').disabled = show || state.assets.length === 0;
+      $('loadingOverlay').classList.toggle('hidden', !show); $('loadingOverlay').classList.toggle('flex', show);$('runButton').disabled = show || state.assets.length === 0;
     }
     function selectOptions(el, firstLabel, rows, selected = '') {
       el.innerHTML = `<option value="">${esc(firstLabel)}</option>` + rows.map((row) => {
@@ -296,7 +393,6 @@
           if (Object.keys(parsed).length) return parsed;
         }
       }
-      // Also accept an aggregate object where single-value attribute columns exist.
       const singulars = {
         colors: ['color','primary_color'], patterns: ['pattern'], sizes: ['size','size_normalized'],
         materials: ['material','material_type'], brands: ['brand','brand_name'], commodities: ['commodity','commodity_type','name']
@@ -315,8 +411,6 @@
     }
     function metricCellRows() {
       const m = state.metrics || {};
-      // New payload: one row per geo × age × gender × RFM cell, with brands pooled.
-      // Older payloads remain supported as a compatibility fallback.
       const rows = m.garment_segment_cells || m.garment_cells || m.garmentCells || m.garment_profiles || m.segment_garment_cells || [];
       return Array.isArray(rows) ? rows : [];
     }
@@ -332,9 +426,6 @@
     function filterTiers(filters) {
       const selected = FILTER_KEYS.filter(k => filters[k]);
       const tiers = [];
-      // First aggregate over every unselected dimension: e.g. geo + age means all genders and all RFM segments.
-      // If that exact roll-up has no garment observations, preserve geo when possible and relax age before geo.
-      // The selected filters are never silently presented as exact once a fallback is needed.
       const dropOrder = ['rfm_segment','gender','age_group','pin_code'];
       let keep = selected.slice();
       tiers.push({keep: keep.slice(), label: tierLabel(keep, filters, true)});
@@ -379,13 +470,33 @@
         requestedKeys: FILTER_KEYS.filter(k => Boolean(filters[k])), keptKeys: [], isFallback: true
       };
     }
-    function topN(distribution, limit = 4) {
+    function topN(distribution, limit = 8) {
       return Object.entries(distribution || {}).filter(([, n]) => Number(n) > 0).sort((a,b) => b[1]-a[1]).slice(0, limit);
     }
-    function renderChips(id, distribution) {
-      const node = $(id); const rows = topN(distribution, 5);
-      node.innerHTML = rows.length ? rows.map(([name, count]) => `<span class="tag" title="Observed count: ${esc(count)}">${esc(name)} <span class="text-cyan-400">${esc(count)}</span></span>`).join('') : '<span class="text-xs text-gray-500">No observations for this profile</span>';
+    
+    // Render attribute percentages using the category denominator
+    function renderTastePercentages(id, distribution) {
+      const node = $(id); 
+      const rows = topN(distribution, 10);
+      if (!rows.length) {
+        node.innerHTML = '<span class="text-[11px] text-gray-500">No observations for this profile</span>';
+        return;
+      }
+      const total = rows.reduce((sum, [, count]) => sum + Number(count), 0) || 1;
+      node.innerHTML = rows.map(([name, count]) => {
+        const pct = Math.round((Number(count) / total) * 100);
+        return `<div class="text-[11px] mb-2">
+          <div class="flex justify-between items-center mb-1">
+            <span class="text-gray-300 truncate max-w-[140px]" title="${esc(name)}">${esc(name)}</span>
+            <span class="font-mono text-cyan-300 text-[10px]">${pct}% <span class="text-gray-500">(${count})</span></span>
+          </div>
+          <div class="w-full bg-gray-900 rounded-full h-1 overflow-hidden border border-gray-800">
+            <div class="bg-gradient-to-r from-violet-500 to-cyan-400 h-full rounded-full" style="width: ${pct}%"></div>
+          </div>
+        </div>`;
+      }).join('');
     }
+
     function metricRowsForAudience() {
       const m = state.metrics || {};
       for (const key of ['customer_cells','demographic_cells','segment_cells','audience_cells','customer_segments']) {
@@ -397,46 +508,41 @@
       const rows = metricRowsForAudience();
       const selectedKeys = FILTER_KEYS.filter(k => Boolean(filters[k]));
       if (rows.length) {
-        // Do not relax selected dimensions for audience counts. Since customer_cells is a full
-        // geo × age × gender × RFM cube, sum across only the dimensions the user left as “All”.
         const matched = rows.filter(r => matches(r, filters, selectedKeys));
         const sum = (key) => matched.reduce((acc, r) => acc + (Number(r[key] ?? 0) || 0), 0);
         if (selectedKeys.length > 0 && matched.length === 0) {
           return {
             customers: 0, orders: 0, revenue: 0, source: 'Exact selected dimensions in customer_cells; no matching rows',
             coverage: 'empty-segment', coverageTitle: 'NO CUSTOMER RECORDS FOR THIS FILTER COMBINATION',
-            coverageDetail: `The selected audience (${filtersLabel(filters)}) has no matching customer-cell rows in BigQuery. Customer, order and revenue totals are shown as 0 rather than substituting broader area-level totals. Garment ranking may still use a clearly labelled broader preference profile if no exact garment observations exist.`
+            coverageDetail: `The selected audience (${filtersLabel(filters)}) has no matching customer-cell rows in BigQuery. Customer totals are shown as 0.`
           };
         }
         let coverage, coverageTitle, coverageDetail;
         if (selectedKeys.length === FILTER_KEYS.length) {
           coverage = 'exact-segment';
           coverageTitle = 'EXACT SEGMENT-LEVEL TOTALS';
-          coverageDetail = 'Customer, order and revenue totals match this exact geo × age × gender × RFM selection.';
+          coverageDetail = 'Customer totals match this exact geo × age × gender × RFM selection.';
         } else if (selectedKeys.length === 0) {
           coverage = 'overall';
           coverageTitle = 'OVERALL TOTALS — NO SEGMENT FILTERS';
-          coverageDetail = 'Totals include all available customer cells. Select any combination of geo, age, gender and RFM to roll up the selected dimensions while combining only fields left as All.';
+          coverageDetail = 'Totals include all available customer cells.';
         } else {
           const used = selectedKeys.map(k => ({pin_code:'geo',age_group:'age',gender:'gender',rfm_segment:'RFM'}[k])).join(' × ');
           const combined = FILTER_KEYS.filter(k => !filters[k]).map(k => ({pin_code:'geo',age_group:'age',gender:'gender',rfm_segment:'RFM'}[k])).join(', ');
           coverage = 'partial-filter';
           coverageTitle = 'FILTERED AUDIENCE TOTALS — UNSELECTED DIMENSIONS COMBINED';
-          coverageDetail = `Totals match the selected dimensions (${used}). Unselected dimensions (${combined || 'none'}) are intentionally combined. No selected filter was relaxed.`;
+          coverageDetail = `Totals match the selected dimensions (${used}). Unselected dimensions (${combined || 'none'}) are intentionally combined.`;
         }
         return { customers:sum('customers'), orders:sum('orders'), revenue:sum('revenue'), source: 'customer_cells rolled up over unselected dimensions', coverage, coverageTitle, coverageDetail };
       }
-      // If full segment rows are absent altogether, make the gap explicit; never silently use pin_geo.
       const pin = filters.pin_code;
       const area = pin ? state.metrics?.pin_geo?.[String(pin)] : null;
       return {
         customers: null, orders: null, revenue: null,
-        source: area ? 'Only area aggregate is present; audience cells are missing' : 'Audience cell aggregates are missing',
+        source: area ? 'Only area aggregate is present' : 'Audience cell aggregates are missing',
         coverage: area ? 'area-only' : 'missing',
-        coverageTitle: area ? 'AREA-LEVEL TOTALS AVAILABLE — DEMOGRAPHIC TOTALS UNAVAILABLE' : 'SEGMENT TOTALS UNAVAILABLE',
-        coverageDetail: area
-          ? `The API only provides area-level totals for ${labelForPin(pin)}. These values are deliberately not substituted for the selected audience. Deploy a metrics payload with customer_cells grouped by pin_code × age_group × gender × rfm_segment.`
-          : 'The metrics payload has no customer_cells/audience_cells array. Deploy the updated aggregation so the UI can count exact and partial audience selections.'
+        coverageTitle: area ? 'AREA-LEVEL TOTALS AVAILABLE' : 'SEGMENT TOTALS UNAVAILABLE',
+        coverageDetail: area ? `API only provides area-level totals for ${labelForPin(pin)}.` : 'Metrics payload has no customer_cells.'
       };
     }
     function renderCoverage(stats) {
@@ -452,19 +558,8 @@
         'missing': 'mt-4 rounded-lg border border-red-500/70 bg-red-950/40 p-3',
         'empty-segment': 'mt-4 rounded-lg border border-rose-500/70 bg-rose-950/40 p-3'
       };
-      const textStyles = {
-        'exact-segment': 'text-[11px] font-bold tracking-wide text-emerald-200',
-        'partial-filter': 'text-[11px] font-bold tracking-wide text-sky-200',
-        'overall': 'text-[11px] font-bold tracking-wide text-slate-200',
-        'broader-fallback': 'text-[11px] font-bold tracking-wide text-amber-200',
-        'area-only': 'text-[11px] font-bold tracking-wide text-red-200',
-        'missing': 'text-[11px] font-bold tracking-wide text-red-200',
-        'empty-segment': 'text-[11px] font-bold tracking-wide text-rose-200'
-      };
       banner.className = styles[stats.coverage] || styles.missing;
-      title.className = textStyles[stats.coverage] || textStyles.missing;
       title.textContent = stats.coverageTitle || 'DATA COVERAGE STATUS';
-      detail.className = 'text-xs mt-1 leading-relaxed ' + (['area-only','missing','broader-fallback','empty-segment'].includes(stats.coverage) ? 'text-red-100/95' : 'text-gray-200');
       detail.textContent = stats.coverageDetail || stats.source || '';
     }
     function renderTasteCoverage(profile, filters) {
@@ -476,55 +571,35 @@
       if (!profile || !profile.cellCount || !Object.values(profile.distributions || {}).some(d => Object.keys(d || {}).length)) {
         coverage = 'missing';
         heading = 'NO GARMENT OBSERVATIONS FOR THIS PROFILE';
-        explanation = `No usable garment-observation aggregate is available for ${filtersLabel(filters)}. The page will not invent a preference profile or score. Verify garment_cells in /v1/metrics and add reviewed garment observations for this segment.`;
+        explanation = `No usable garment-observation aggregate is available for ${filtersLabel(filters)}.`;
       } else if (selected.length === 0) {
         coverage = 'overall';
         heading = 'OVERALL GARMENT PROFILE — NO AUDIENCE FILTERS SELECTED';
-        explanation = `This profile pools all available garment observations (${profile.cellCount} grouped cells). Select geo, age, gender and RFM to narrow the profile.`;
+        explanation = `This profile pools all available garment observations (${profile.cellCount} grouped cells).`;
       } else if (profile.isFallback) {
         const retained = profile.keptKeys || [];
         const retainedLabel = retained.length ? retained.map(k => ({pin_code:'geo',age_group:'age',gender:'gender',rfm_segment:'RFM'}[k] || k)).join(' × ') : 'overall observations';
         coverage = retained.length === 1 && retained[0] === 'pin_code' ? 'area-only' : 'broader-fallback';
-        heading = coverage === 'area-only'
-          ? 'AREA-LEVEL GARMENT PROFILE ONLY — OTHER FILTERS RELAXED'
-          : 'BROADER GARMENT PROFILE — NOT THE EXACT SELECTED SEGMENT';
+        heading = coverage === 'area-only' ? 'AREA-LEVEL GARMENT PROFILE ONLY' : 'BROADER GARMENT PROFILE';
         const relaxed = selected.filter(k => !retained.includes(k)).map(k => ({pin_code:'geo',age_group:'age',gender:'gender',rfm_segment:'RFM'}[k] || k));
-        explanation = `Requested audience: ${filtersLabel(filters)}. Observed garment preferences came from ${retainedLabel} (${profile.cellCount} grouped cell(s)); filters relaxed: ${relaxed.length ? relaxed.join(', ') : 'none'}. Ranking is therefore based on a broader observed profile, not the exact requested segment. More usable garment observations may be needed for this exact cohort.`;
+        explanation = `Observed garment preferences came from ${retainedLabel} (${profile.cellCount} grouped cell(s)); filters relaxed: ${relaxed.length ? relaxed.join(', ') : 'none'}.`;
       } else if (selected.length === FILTER_KEYS.length) {
         coverage = 'exact-segment';
         heading = 'EXACT SEGMENT-LEVEL GARMENT PROFILE';
-        explanation = `Garment preference observations match all four selected dimensions: geo × age × gender × RFM. Matched grouped cells: ${profile.cellCount}.`;
+        explanation = `Garment preference observations match all four selected dimensions. Matched cells: ${profile.cellCount}.`;
       } else {
         coverage = 'partial-filter';
         heading = 'FILTERED GARMENT PROFILE — UNSELECTED DIMENSIONS COMBINED';
         const used = selected.map(k => ({pin_code:'geo',age_group:'age',gender:'gender',rfm_segment:'RFM'}[k] || k)).join(' × ');
-        explanation = `Preferences respect the selected dimensions (${used || 'none'}); unselected dimensions are combined. Matched grouped cells: ${profile.cellCount}. Select all four dimensions for a fully specified segment, when observations exist.`;
+        explanation = `Preferences respect selected dimensions (${used || 'none'}). Matched cells: ${profile.cellCount}.`;
       }
-      const styles = {
-        'exact-segment':'mt-3 rounded-lg border border-emerald-500/50 bg-emerald-950/25 p-3',
-        'partial-filter':'mt-3 rounded-lg border border-sky-500/50 bg-sky-950/25 p-3',
-        'overall':'mt-3 rounded-lg border border-slate-500/50 bg-slate-950/50 p-3',
-        'broader-fallback':'mt-3 rounded-lg border border-amber-500/60 bg-amber-950/35 p-3',
-        'area-only':'mt-3 rounded-lg border border-red-500/70 bg-red-950/40 p-3',
-        'missing':'mt-3 rounded-lg border border-red-500/70 bg-red-950/40 p-3'
-      };
-      const titleStyles = {
-        'exact-segment':'text-[11px] font-bold tracking-wide text-emerald-200',
-        'partial-filter':'text-[11px] font-bold tracking-wide text-sky-200',
-        'overall':'text-[11px] font-bold tracking-wide text-slate-200',
-        'broader-fallback':'text-[11px] font-bold tracking-wide text-amber-200',
-        'area-only':'text-[11px] font-bold tracking-wide text-red-200',
-        'missing':'text-[11px] font-bold tracking-wide text-red-200'
-      };
-      banner.className = styles[coverage] || styles.missing;
-      title.className = titleStyles[coverage] || titleStyles.missing;
+      banner.className = 'mt-3 rounded-lg border border-' + (coverage === 'exact-segment' ? 'emerald' : coverage === 'partial-filter' ? 'sky' : 'amber') + '-500/50 bg-gray-950/40 p-3';
       title.textContent = heading;
-      detail.className = 'text-xs mt-1 leading-relaxed ' + (['missing','area-only','broader-fallback'].includes(coverage) ? 'text-red-100/95' : 'text-gray-200');
       detail.textContent = explanation;
     }
 
     function fmtNumber(n) { return n === null || n === undefined || !Number.isFinite(Number(n)) ? '—' : Number(n).toLocaleString('en-IN', {maximumFractionDigits:0}); }
-    function fmtCurrency(n) { return n === null || n === undefined || !Number.isFinite(Number(n)) ? '—' : '₹' + Number(n).toLocaleString('en-IN', {maximumFractionDigits:0}); }
+    
     function refreshForFilters() {
       if (!state.metrics) return;
       const filters = currentFilters();
@@ -532,12 +607,18 @@
       $('segmentTitle').textContent = filtersLabel(filters);
       const stats = audienceStats(filters);
       $('audienceCustomers').textContent = fmtNumber(stats.customers);
-      $('audienceOrders').textContent = fmtNumber(stats.orders);
-      $('audienceRevenue').textContent = fmtCurrency(stats.revenue);
       renderCoverage(stats);
       renderTasteCoverage(state.profile, filters);
-      $('profileNote').textContent = `Audience totals source: ${stats.source}. Garment preference source: ${state.profile.label}; observed garment-profile cells used: ${state.profile.cellCount}. Fit score is deterministic and heuristic; no campaign click or conversion outcomes are available in this data.`;
-      for (const [id, group] of [['insightColors','color'],['insightPatterns','pattern'],['insightSizes','size'],['insightCommodities','commodity']]) renderChips(id, state.profile.distributions[group]);
+      $('profileNote').textContent = `Audience totals source: ${stats.source}. Garment preference source: ${state.profile.label}; observed cells used: ${state.profile.cellCount}.`;
+      
+      // Render percentages into the 6 categories in the single horizontal rail
+      renderTastePercentages('insightColors', state.profile.distributions.color);
+      renderTastePercentages('insightPatterns', state.profile.distributions.pattern);
+      renderTastePercentages('insightSizes', state.profile.distributions.size);
+      renderTastePercentages('insightCommodities', state.profile.distributions.commodity);
+      renderTastePercentages('insightMaterials', state.profile.distributions.material);
+      renderTastePercentages('insightBrands', state.profile.distributions.brand);
+      
       renderCreatives();
     }
 
@@ -575,10 +656,6 @@
       const score = Math.round((weightedTotal / usedWeight) * 100);
       return { score, evidence: matchedDimensions, reason: `${matchedDimensions} attribute group(s) compared with observed preference counts` };
     }
-    function getItemForAsset(asset, index) {
-      const result = state.results.find(r => normal(r.filename) === normal(asset.file.name)) || state.results[index] || null;
-      return result;
-    }
     function makeRankedAssets() {
       const usedResultIndexes = new Set();
       const ranked = state.assets.map((asset, index) => {
@@ -604,20 +681,18 @@
     function renderCreatives() {
       const list = makeRankedAssets();
       $('rankCount').textContent = `${list.length} creative${list.length === 1 ? '' : 's'}`;
-      $('emptyState').classList.toggle('hidden', list.length > 0);
-      $('creativeGrid').innerHTML = list.map(row => {
+      $('emptyState').classList.toggle('hidden', list.length > 0);$('creativeGrid').innerHTML = list.map(row => {
         const {asset,item,attrs,fit,rank} = row;
         const status = item ? (item.ok ? (item.status || 'Extracted') : 'Extraction failed') : 'Awaiting extraction';
         const scoreText = fit.score === null ? 'N/A' : `${fit.score}/100`;
         const tags = extractedTags(attrs);
-        const reason = fit.score === null ? (fit.reason || 'No comparable segment profile') : `${fit.reason}. Relative preference score, not predicted ad performance.`;
+        const reason = fit.score === null ? (fit.reason || 'No comparable segment profile') : `${fit.reason}. Relative preference score.`;
         return `<article class="creative-card holo-card rank-${Math.min(rank, 5)} ${rank === 1 && fit.score !== null ? 'rank-1' : ''}" role="listitem" tabindex="0">
           <div class="relative h-48 flex-none bg-gray-950 border-b border-gray-800"><img src="${asset.src}" alt="${esc(asset.file.name)}" class="w-full h-full object-contain" loading="lazy"><div class="absolute top-3 left-3 tag ${rank === 1 && fit.score !== null ? 'border-emerald-400 text-emerald-300' : ''}">#${rank} ${rank === 1 && fit.score !== null ? '· TOP FIT' : ''}</div><div class="absolute top-3 right-3 tag">${esc(status)}</div></div>
           <div class="card-body p-4 space-y-3"><div class="flex items-start justify-between gap-3"><h4 class="font-semibold text-sm break-all">${esc(asset.file.name)}</h4><div class="text-right shrink-0"><p class="text-[9px] uppercase tracking-wider text-gray-500">Segment fit</p><p class="font-mono text-xl ${fit.score === null ? 'text-gray-500' : rank === 1 ? 'text-emerald-300' : 'text-cyan-300'}">${scoreText}</p></div></div>
           <div class="flex flex-wrap gap-1.5">${tags.length ? tags.map(t => `<span class="tag">${esc(t)}</span>`).join('') : '<span class="text-xs text-gray-500">No normalized attributes returned</span>'}</div>
           <div class="border-t border-gray-800 pt-2"><p class="text-[9px] uppercase tracking-wider text-gray-500 mb-1">Ranked for</p><p class="text-[10px] text-cyan-200 leading-relaxed">${esc(filtersLabel())}</p><p class="text-[10px] text-gray-500 mt-2 leading-relaxed">${esc(reason)}</p></div></div></article>`;
       }).join('');
-      // When a segment changes, bring the new #1 creative back into view.
       $('creativeGrid').scrollTo({ left: 0, behavior: 'smooth' });
       renderMatrix(list);
     }
@@ -638,20 +713,19 @@
       try {
         state.assets = await Promise.all(chosen.map(readAsDataUrl));
         state.results = [];
-        $('uploadSummary').textContent = `${state.assets.length} file(s) selected. Each file will render exactly once.`;
+        $('uploadSummary').textContent = `${state.assets.length} file(s) selected.`;
         $('runButton').disabled = false;
         renderCreatives();
       } catch (e) { alert(e.message); }
     }
-    const dropzone = $('dropzone'); const fileInput = $('fileInput');
+    const dropzone = $('dropzone'); const fileInput =$('fileInput');
     dropzone.addEventListener('click', () => fileInput.click());
     dropzone.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click(); } });
     dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
     dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
     dropzone.addEventListener('drop', e => { e.preventDefault(); dropzone.classList.remove('dragover'); processFiles(e.dataTransfer.files); });
     fileInput.addEventListener('change', e => { processFiles(e.target.files); fileInput.value = ''; });
-    ['filterArea','filterAge','filterGender','filterRfm'].forEach(id => $(id).addEventListener('change', refreshForFilters));
-    $('runButton').addEventListener('click', runAnalysis);
+    ['filterArea','filterAge','filterGender','filterRfm'].forEach(id => $(id).addEventListener('change', refreshForFilters));$('runButton').addEventListener('click', runAnalysis);
 
     async function runAnalysis() {
       if (!state.assets.length || state.loading) return;
@@ -663,29 +737,23 @@
         if (!res.ok) throw new Error(data.detail || data.message || `Extraction failed (HTTP ${res.status})`);
         state.results = Array.isArray(data.items) ? data.items : [];
         if (!state.results.length) throw new Error('The extraction API returned no items.');
-        const notFound = state.assets.filter(a => !state.results.some(r => normal(r.filename) === normal(a.file.name)));
-        if (notFound.length) console.warn('[ads_lab] extraction items could not be matched by filename; index matching will be used for those files', notFound.map(a => a.file.name));
         refreshForFilters();
-        $('uploadSummary').textContent = `Extraction returned ${state.results.filter(i => i.ok).length}/${state.assets.length} successful result(s). Needs-review results are not automatically approved.`;
+        $('uploadSummary').textContent = `Extraction returned ${state.results.filter(i => i.ok).length}/${state.assets.length} successful result(s).`;
       } catch (e) {
         console.error('[ads_lab] extraction failed', e);
-        // Keep each preview exactly once; failed requests do not get a fake score.
         state.results = state.assets.map(({file}) => ({filename:file.name, ok:false, error:e.message, attributes:{}}));
         refreshForFilters();
-        $('uploadSummary').textContent = `Extraction failed: ${e.message}. Previews retained with no score.`;
+        $('uploadSummary').textContent = `Extraction failed: ${e.message}.`;
       } finally { setLoading(false); }
     }
     function downloadCSV() {
       const list = makeRankedAssets(); const f = currentFilters();
-      const rows = [['rank','geo_pin','geo_area','age_bucket','gender','rfm_segment','filename','color','pattern','commodity','material','size','brand','segment_fit_score','score_type']];
-      list.forEach(r => rows.push([r.rank, f.pin_code, f.pin_code ? labelForPin(f.pin_code) : 'All areas', f.age_group || 'All ages', displayGender(f.gender), f.rfm_segment || 'All RFM', r.asset.file.name, r.attrs.color, r.attrs.pattern, r.attrs.commodity, r.attrs.material, r.attrs.size, r.attrs.brand, r.fit.score ?? '', 'deterministic heuristic; not CTR/conversion prediction']));
+      const rows = [['rank','geo_pin','geo_area','age_bucket','gender','rfm_segment','filename','color','pattern','commodity','material','size','brand','segment_fit_score']];
+      list.forEach(r => rows.push([r.rank, f.pin_code, f.pin_code ? labelForPin(f.pin_code) : 'All areas', f.age_group || 'All ages', displayGender(f.gender), f.rfm_segment || 'All RFM', r.asset.file.name, r.attrs.color, r.attrs.pattern, r.attrs.commodity, r.attrs.material, r.attrs.size, r.attrs.brand, r.fit.score ?? '']));
       const csv = rows.map(row => row.map(v => `"${String(v ?? '').replace(/"/g,'""')}"`).join(',')).join('\r\n');
       const url = URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8;'})); const a = document.createElement('a'); a.href = url; a.download = 'ads_lab_segment_ranking.csv'; a.click(); URL.revokeObjectURL(url);
     }
-    $('downloadButton').addEventListener('click', downloadCSV);
-    $('creativePrev').addEventListener('click', () => $('creativeGrid').scrollBy({left: -360, behavior: 'smooth'}));
-    $('creativeNext').addEventListener('click', () => $('creativeGrid').scrollBy({left: 360, behavior: 'smooth'}));
-    $('creativeGrid').addEventListener('keydown', (event) => {
+    $('downloadButton').addEventListener('click', downloadCSV);$('creativePrev').addEventListener('click', () => $('creativeGrid').scrollBy({left: -360, behavior: 'smooth'}));$('creativeNext').addEventListener('click', () => $('creativeGrid').scrollBy({left: 360, behavior: 'smooth'}));$('creativeGrid').addEventListener('keydown', (event) => {
       if (event.key === 'ArrowRight') $('creativeGrid').scrollBy({left: 360, behavior: 'smooth'});
       if (event.key === 'ArrowLeft') $('creativeGrid').scrollBy({left: -360, behavior: 'smooth'});
     });
