@@ -747,7 +747,59 @@
       if (event.key === 'ArrowRight') $('creativeGrid').scrollBy({left: 360, behavior: 'smooth'});
       if (event.key === 'ArrowLeft') $('creativeGrid').scrollBy({left: -360, behavior: 'smooth'});
     });
+    window.SUFFAI_CHAT_CONFIG = {
+      page: 'ads_lab',
+      getContext: () => {
+        if (!state.metrics) throw new Error('Audience metrics are still loading. Please try again in a moment.');
+        const filters = currentFilters();
+        const profile = state.profile || createProfile(filters);
+        const stats = audienceStats(filters);
+        const ranked = makeRankedAssets().slice(0, 20).map(row => ({
+          filename: row.asset?.file?.name || 'Uploaded creative',
+          extraction_status: row.item ? (row.item.ok ? (row.item.status || 'success') : 'failed') : 'pending',
+          extraction_error: row.item && !row.item.ok ? String(row.item.error || 'Extraction failed') : null,
+          extracted_attributes: {
+            color: row.attrs.color || null, pattern: row.attrs.pattern || null,
+            commodity: row.attrs.commodity || null, material: row.attrs.material || null,
+            size: row.attrs.size || null, brand: row.attrs.brand || null,
+            confidence: row.attrs.confidence || null
+          },
+          segment_fit_score: row.fit.score,
+          rank: row.rank,
+          score_definition: 'Relative preference heuristic (0-100), based on weighted overlap between extracted attribute groups and observed segment preference counts; not a conversion probability or uplift.',
+          evidence_groups: row.fit.evidence,
+          explanation: row.fit.reason
+        }));
+        const summarizeDistribution = dist => Object.fromEntries(
+          Object.entries(dist || {}).map(([key, values]) => [
+            key, topN(values, 8).map(([value, count]) => ({ value, count }))
+          ])
+        );
+        return {
+          active_filters: filters,
+          active_filters_label: filtersLabel(filters),
+          audience_metrics: {
+            customers: stats.customers ?? null,
+            source: stats.source || null
+          },
+          audience_profile: {
+            label: profile.label,
+            is_fallback: Boolean(profile.isFallback),
+            requested_filter_keys: profile.requestedKeys || [],
+            matched_filter_keys: profile.keptKeys || [],
+            observed_cell_count: profile.cellCount || 0,
+            top_preference_distributions: summarizeDistribution(profile.distributions)
+          },
+          uploaded_creatives: ranked,
+          creative_count: state.assets.length,
+          extraction_completed_count: state.results.filter(item => item && item.ok).length,
+          extraction_failed_count: state.results.filter(item => item && !item.ok).length,
+          data_source: 'Current Ads Lab session, /v1/metrics, and /v1/ads-lab/extract'
+        };
+      }
+    };
     loadMetrics();
   </script>
+  <script src="./chatbot.js"></script>
 </body>
 </html>

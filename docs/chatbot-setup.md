@@ -12,7 +12,8 @@ The shared chatbot is embedded on `web/geo.html` and `web/ads_lab.html`. It send
    - `VERTEX_LOCATION=asia-south1` (or your configured Vertex AI region)
    - `GOOGLE_CLOUD_PROJECT=<your-project-id>` (or use the existing `GCP_PROJECT` / `BQ_PROJECT` configuration)
 4. Deploy the API with the updated `requirements.txt` so `google-genai` is installed.
-5. Deploy the updated `web/` directory, including `web/chatbot.js`.
+5. Set `API_PUBLIC_URL` on `suffai-command-center` to the base URL of `suffai-api`. The Command Center proxies `/v1/chat/assistant` to the API so the browser can keep using the same origin.
+6. Deploy the updated `web/` directory and `command_center/main.py`, including `web/chatbot.js`.
 
 Use the existing deployment pipeline and service account; do not put service-account keys or Gemini API keys in frontend code.
 
