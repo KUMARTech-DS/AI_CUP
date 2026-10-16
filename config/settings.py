@@ -50,7 +50,8 @@ class Settings:
 
     # Vertex AI
     VERTEX_LOCATION = os.getenv("VERTEX_LOCATION", "asia-south1")
-    VERTEX_MODEL = os.getenv("VERTEX_MODEL", "gemini-2.0-flash")
+    VERTEX_MODEL = os.getenv("VERTEX_MODEL", "gemini-2.0-flash")  # extraction / other Vertex workflows
+    CHAT_VERTEX_MODEL = os.getenv("CHAT_VERTEX_MODEL", "gemini-2.5-flash")
     ENABLE_VERTEX = _bool("ENABLE_VERTEX", False)
 
     # Auth — Identity Platform (Firebase-compatible) + optional demo JWT
