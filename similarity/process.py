@@ -14,11 +14,6 @@ from similarity.settings import settings
 log = logging.getLogger("similarity.process")
 
 PIN_RE = re.compile(r"^\d{6}$")
-# Filename: {useruuid}_{orderuuid}_{itemuuid}.jpg|png (any folder prefix OK)
-_FILENAME_RE = re.compile(
-    r"(?P<user>[^/_]+)_(?P<order>[^/_]+)_(?P<item>[^/]+)\.(?P<ext>jpe?g|png)$",
-    re.IGNORECASE,
-)
 
 
 def _best_match(
@@ -34,36 +29,17 @@ def _best_match(
     return best_id, best_score
 
 
-def parse_image_filename(object_key: str) -> Dict[str, Optional[str]]:
-    """Parse useruuid_orderuuid_itemuuid.jpg|png from the object key basename."""
-    name = object_key.strip("/").split("/")[-1]
-    m = _FILENAME_RE.search(name)
-    if not m:
-        return {}
-    return {
-        "user_uuid": m.group("user").strip(),
-        "order_uuid": m.group("order").strip(),
-        "item_uuid": m.group("item").strip(),
-    }
-
-
 def resolve_context(payload: Dict[str, Any], gcs_metadata: Dict[str, str], object_key: str) -> Dict[str, Optional[str]]:
-    """
-    Context resolution (priority):
-      1) GCS metadata / Pub/Sub attrs (override)
-      2) Filename useruuid_orderuuid_itemuuid.ext → user_uuid
-      3) Path garments/{user}/{pin}/… (legacy)
-      4) PIN from BQ customers._id = user_uuid when not already set
-    """
+    """Prefer GCS metadata, then Pub/Sub/payload attrs, then path."""
     path_ctx = parse_path_context(object_key)
-    file_ctx = parse_image_filename(object_key)
     attrs = payload.get("attributes") if isinstance(payload.get("attributes"), dict) else {}
 
     def pick(*keys: str) -> Optional[str]:
         for k in keys:
-            for source in (gcs_metadata, attrs, payload, file_ctx, path_ctx):
+            for source in (gcs_metadata, attrs, payload, path_ctx):
                 if not isinstance(source, dict):
                     continue
+                # case-insensitive for metadata
                 for sk, sv in source.items():
                     if str(sk).lower() == k.lower() and sv not in (None, ""):
                         return str(sv).strip()
@@ -72,19 +48,7 @@ def resolve_context(payload: Dict[str, Any], gcs_metadata: Dict[str, str], objec
     user_uuid = pick("user_uuid", "userUuid", "user_id")
     pin_code = pick("pin_code", "pinCode", "order_pin_code")
     brand = pick("brand", "brand_name", "brandName")
-    order_uuid = pick("order_uuid")
-    item_uuid = pick("item_uuid")
-
-    if user_uuid and not pin_code:
-        pin_code = bq_sync.lookup_pin_for_user(user_uuid)
-
-    return {
-        "user_uuid": user_uuid,
-        "pin_code": pin_code,
-        "brand_name": brand,
-        "order_uuid": order_uuid,
-        "item_uuid": item_uuid,
-    }
+    return {"user_uuid": user_uuid, "pin_code": pin_code, "brand_name": brand}
 
 
 def process_upload(payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -115,11 +79,7 @@ def process_upload(payload: Dict[str, Any]) -> Dict[str, Any]:
     brand_name = ctx["brand_name"]
 
     if not user_uuid or not pin_code:
-        msg = (
-            "Need user_uuid (from filename useruuid_orderuuid_itemuuid.ext or metadata) "
-            "and pin_code (from BQ customers._id lookup or metadata). "
-            f"parsed user={user_uuid!r} pin={pin_code!r}"
-        )
+        msg = "user_uuid and pin_code required (GCS metadata, Pub/Sub attrs, or path garments/{user}/{pin}/…)"
         log.error("missing_context key=%s user=%s pin=%s", object_key, user_uuid, pin_code)
         if settings.DATABASE_URL:
             db.record_event(
@@ -136,9 +96,6 @@ def process_upload(payload: Dict[str, Any]) -> Dict[str, Any]:
             "status": "skipped_missing_context",
             "error": msg,
             "gcs_object_key": image.object_key,
-            "user_uuid": user_uuid,
-            "order_uuid": ctx.get("order_uuid"),
-            "item_uuid": ctx.get("item_uuid"),
         }
 
     if not PIN_RE.match(pin_code):

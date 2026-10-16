@@ -123,6 +123,47 @@ def compute_metrics() -> dict[str, Any]:
     return payload
 
 
+def _similarity_base() -> str:
+    return (os.getenv("SIMILARITY_URL") or "").rstrip("/")
+
+
+def _proxy_similarity(path: str, query: Optional[str] = None) -> Any:
+    """Forward Admin requests to suffai-similarity (same-origin for the UI)."""
+    base = _similarity_base()
+    if not base:
+        raise HTTPException(503, "SIMILARITY_URL not set (Cloud Run URL of suffai-similarity)")
+    url = f"{base}{path}"
+    if query:
+        url = f"{url}?{query}"
+    try:
+        import google.auth.transport.requests  # type: ignore
+        import google.oauth2.id_token  # type: ignore
+        import urllib.request
+        import urllib.error
+    except ImportError as exc:
+        raise HTTPException(503, f"Missing GCP libs: {exc}") from exc
+
+    headers = {"Accept": "application/json"}
+    try:
+        auth_req = google.auth.transport.requests.Request()
+        token = google.oauth2.id_token.fetch_id_token(auth_req, base)
+        headers["Authorization"] = f"Bearer {token}"
+    except Exception:
+        log.warning("Could not fetch ID token for SIMILARITY_URL; calling without auth")
+
+    req = urllib.request.Request(url, method="GET", headers=headers)
+    try:
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            return json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace")
+        log.error("similarity proxy HTTP %s path=%s detail=%s", exc.code, path, detail[:500])
+        raise HTTPException(exc.code, detail or str(exc)) from exc
+    except Exception as exc:
+        log.exception("similarity proxy failed path=%s", path)
+        raise HTTPException(503, f"similarity unreachable: {exc}") from exc
+
+
 @app.get("/health")
 def health():
     return {
@@ -131,9 +172,44 @@ def health():
         "use_bq": _env_bool("USE_BQ", True),
         "project": bool(os.getenv("GOOGLE_CLOUD_PROJECT") or os.getenv("GCP_PROJECT")),
         "extraction_url": bool(os.getenv("EXTRACTION_URL")),
+        "similarity_url": bool(_similarity_base()),
         "gcs_bucket": bool(os.getenv("GCS_IMAGE_BUCKET")),
         "database_url": bool(os.getenv("DATABASE_URL")),
     }
+
+
+@app.get("/v1/admin/unique-summary")
+def admin_unique_summary(pin: Optional[str] = None, brand: Optional[str] = None):
+    from urllib.parse import urlencode
+
+    q = urlencode({k: v for k, v in {"pin": pin, "brand": brand}.items() if v})
+    return _proxy_similarity("/v1/admin/unique-garments/summary", q or None)
+
+
+@app.get("/v1/admin/unique-garments")
+def admin_unique_garments(
+    pin: Optional[str] = None,
+    brand: Optional[str] = None,
+    user_uuid: Optional[str] = None,
+    limit: int = 50,
+    offset: int = 0,
+):
+    from urllib.parse import urlencode
+
+    q = urlencode(
+        {
+            k: v
+            for k, v in {
+                "pin": pin,
+                "brand": brand,
+                "user_uuid": user_uuid,
+                "limit": limit,
+                "offset": offset,
+            }.items()
+            if v is not None and v != ""
+        }
+    )
+    return _proxy_similarity("/v1/admin/unique-garments", q or None)
 
 
 @app.get("/v1/metrics")
@@ -286,7 +362,13 @@ def root():
         return RedirectResponse(url="/login.html")
     return {
         "service": "suffai-command-center",
-        "endpoints": ["/health", "/v1/metrics", "POST /v1/ads-lab/extract"],
+        "endpoints": [
+            "/health",
+            "/v1/metrics",
+            "POST /v1/ads-lab/extract",
+            "/v1/admin/unique-summary",
+            "/v1/admin/unique-garments",
+        ],
     }
 
 

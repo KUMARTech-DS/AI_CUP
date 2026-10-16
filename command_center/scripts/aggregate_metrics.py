@@ -122,11 +122,8 @@ def build(customers, orders, commodities, pin_pop: dict) -> dict:
             month = str(o.get("scheduled_date") or "")[:7] or "unknown"
             bump_count(cell["orders_by_month"], month)
 
-    # garment_cells: same dimensions + brand, retained for brand-level drilldowns.
+    # garment_cells: same dims + brand
     garment_cells: dict[tuple, dict] = {}
-    # garment_segment_cells: exact geo × age_group × gender × RFM cells pooled across brands.
-    # The UI can roll these up over any unselected dimension, e.g. geo × age with all genders/RFM.
-    garment_segment_cells: dict[tuple, dict] = {}
     for g in commodities:
         c = cust_by_id.get(str(g.get("customer_id")))
         if not c:
@@ -171,35 +168,6 @@ def build(customers, orders, commodities, pin_pop: dict) -> dict:
         except (TypeError, ValueError):
             pass
 
-        # Pool the same garment observation into the four-dimension segment row.
-        seg_key = cell_key(c.get("pin_code"), age_group(c.get("age")), c.get("gender"), c.get("rfm_segment"))
-        seg = garment_segment_cells.setdefault(
-            seg_key,
-            {
-                "pin_code": seg_key[0], "age_group": seg_key[1], "gender": seg_key[2], "rfm_segment": seg_key[3],
-                "garments": 0, "brands": {}, "sizes": {}, "colors": {}, "patterns": {}, "materials": {},
-                "sleeve_types": {}, "collar_types": {}, "names": {},
-                "confidence_sum": 0.0, "confidence_n": 0, "low_confidence_n": 0,
-            },
-        )
-        seg["garments"] += 1
-        bump_count(seg["brands"], brand)
-        bump_count(seg["sizes"], str(g.get("size") or "unknown"))
-        bump_count(seg["colors"], str(g.get("color") or "unknown"))
-        bump_count(seg["patterns"], str(g.get("pattern") or "unknown"))
-        bump_count(seg["materials"], str(g.get("material") or "unknown"))
-        bump_count(seg["sleeve_types"], str(g.get("sleeve_type") or "unknown"))
-        bump_count(seg["collar_types"], str(g.get("collar_type") or "unknown"))
-        bump_count(seg["names"], str(g.get("name") or "unknown"))
-        try:
-            score = float(g.get("confidence_score") or 0)
-            seg["confidence_sum"] += score
-            seg["confidence_n"] += 1
-            if score < 0.8:
-                seg["low_confidence_n"] += 1
-        except (TypeError, ValueError):
-            pass
-
     def finalize_customer(cell: dict) -> dict:
         n = cell.pop("coord_n")
         lat_sum = cell.pop("lat_sum")
@@ -227,25 +195,8 @@ def build(customers, orders, commodities, pin_pop: dict) -> dict:
             "low_confidence_n": cell["low_confidence_n"],
         }
 
-    def finalize_segment_garment(cell: dict) -> dict:
-        return {
-            **{k: cell[k] for k in ("pin_code", "age_group", "gender", "rfm_segment", "garments")},
-            "brands": [{"value": k, "count": v} for k, v in sorted(cell["brands"].items(), key=lambda x: -x[1])],
-            "sizes": [{"value": k, "count": v} for k, v in sorted(cell["sizes"].items(), key=lambda x: -x[1])],
-            "colors": [{"value": k, "count": v} for k, v in sorted(cell["colors"].items(), key=lambda x: -x[1])],
-            "patterns": [{"value": k, "count": v} for k, v in sorted(cell["patterns"].items(), key=lambda x: -x[1])],
-            "materials": [{"value": k, "count": v} for k, v in sorted(cell["materials"].items(), key=lambda x: -x[1])],
-            "sleeve_types": [{"value": k, "count": v} for k, v in sorted(cell["sleeve_types"].items(), key=lambda x: -x[1])],
-            "collar_types": [{"value": k, "count": v} for k, v in sorted(cell["collar_types"].items(), key=lambda x: -x[1])],
-            "names": [{"value": k, "count": v} for k, v in sorted(cell["names"].items(), key=lambda x: -x[1])[:10]],
-            "confidence_sum": round(cell["confidence_sum"], 4),
-            "confidence_n": cell["confidence_n"],
-            "low_confidence_n": cell["low_confidence_n"],
-        }
-
     cust_list = [finalize_customer(c) for c in customer_cells.values()]
     garm_list = [finalize_garment(c) for c in garment_cells.values()]
-    segment_garm_list = [finalize_segment_garment(c) for c in garment_segment_cells.values()]
 
     # PIN hubs for map (centroid + population from JSON)
     pin_agg: dict[str, dict] = {}
@@ -307,21 +258,8 @@ def build(customers, orders, commodities, pin_pop: dict) -> dict:
             "brands": brands,
         },
         "pin_geo": pin_geo,
-        # Exact audience counts by all four dimensions. Browser rollups may sum over unselected fields.
         "customer_cells": cust_list,
-        "audience_cells": cust_list,
-        # Brand-level detail is retained; segment-level profile pools across brands so any combination
-        # of selected filters (e.g. geo + age with all genders/RFM) can be matched and aggregated.
         "garment_cells": garm_list,
-        "garment_segment_cells": segment_garm_list,
-        "aggregation_meta": {
-            "audience_dimensions": ["pin_code", "age_group", "gender", "rfm_segment"],
-            "garment_dimensions": ["pin_code", "age_group", "gender", "rfm_segment"],
-            "garment_profile_pools_brands": True,
-            "supports_rollups_over_unselected_dimensions": True,
-            "age_group_definition": ["<18", "18-24", "25-34", "35-44", "45-54", "55+"],
-            "note": "A missing cell means no source observations for that exact cohort; it must be shown as a transparent fallback, not fabricated as exact data."
-        },
     }
 
 
@@ -351,7 +289,7 @@ def main():
     payload = build(customers, orders, commodities, pin_pop)
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-    print(f"Wrote {args.out} ({len(payload['customer_cells'])} audience cells, {len(payload['garment_cells'])} brand cells, {len(payload['garment_segment_cells'])} segment garment cells)")
+    print(f"Wrote {args.out} ({len(payload['customer_cells'])} customer cells, {len(payload['garment_cells'])} garment cells)")
 
 
 if __name__ == "__main__":

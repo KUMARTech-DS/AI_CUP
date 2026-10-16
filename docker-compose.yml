@@ -27,7 +27,25 @@ services:
       PORT: "8080"
       ENABLE_VERTEX: "false"
 
-  # web/ UI + /v1/metrics + /v1/ads-lab/extract
+  similarity:
+    build:
+      context: .
+      dockerfile: Dockerfile.similarity
+    ports:
+      - "8084:8080"
+    environment:
+      PORT: "8080"
+      ENABLE_VERTEX: ${ENABLE_VERTEX:-false}
+      USE_BQ: ${USE_BQ:-false}
+      BQ_DATASET: ${BQ_DATASET:-suffai_ops}
+      GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:-}
+      GCS_IMAGE_BUCKET: ${GCS_IMAGE_BUCKET:-}
+      DATABASE_URL: ${DATABASE_URL:-}
+      VERTEX_LOCATION: ${VERTEX_LOCATION:-asia-south1}
+      SIMILARITY_THRESHOLD: ${SIMILARITY_THRESHOLD:-0.92}
+      CORS_ORIGINS: "*"
+
+  # web/ UI + /v1/metrics + /v1/ads-lab/extract + Admin proxy
   command_center:
     build:
       context: .
@@ -41,4 +59,7 @@ services:
       BQ_DATASET: ${BQ_DATASET:-suffai_ops}
       GCS_IMAGE_BUCKET: ${GCS_IMAGE_BUCKET:-}
       EXTRACTION_URL: ${EXTRACTION_URL:-}
+      SIMILARITY_URL: ${SIMILARITY_URL:-http://similarity:8080}
       CORS_ORIGINS: "*"
+    depends_on:
+      - similarity

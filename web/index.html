@@ -138,13 +138,14 @@
       <div class="brand-mark">SA</div>
       <div>
         <h1>SuffAI Command Center</h1>
-        <p>Geo intelligence · Ads Lab</p>
+        <p>Geo · Ads Lab · Admin</p>
       </div>
     </div>
 
     <nav class="tabs" aria-label="Sections">
       <button type="button" class="tab active" data-tab="geo">Geo</button>
       <button type="button" class="tab" data-tab="ads">Ads Lab</button>
+      <button type="button" class="tab" data-tab="admin">Admin</button>
     </nav>
 
     <div class="right">
@@ -156,6 +157,7 @@
   <div class="frame-wrap">
     <iframe id="frame-geo" title="Geo" src="./geo.html"></iframe>
     <iframe id="frame-ads" class="hidden" title="Ads Lab" src="./ads_lab.html"></iframe>
+    <iframe id="frame-admin" class="hidden" title="Admin" src="./admin.html"></iframe>
   </div>
 
   <script>
@@ -164,7 +166,8 @@
 
     const tabs = {
       geo: document.getElementById('frame-geo'),
-      ads: document.getElementById('frame-ads')
+      ads: document.getElementById('frame-ads'),
+      admin: document.getElementById('frame-admin')
     };
 
     document.querySelectorAll('.tab').forEach(btn => {

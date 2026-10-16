@@ -15,14 +15,14 @@
       theme: {
         extend: {
           colors: {
-            ink: '#FAF8F4',
-            panel: '#FFFFFF',
-            raised: '#F0ECE4',
-            line: '#E4DED3',
-            muted: '#777066',
-            soft: '#292722',
-            accent: '#89765C',
-            accent2: '#66513B'
+            ink: '#0a0c0f',
+            panel: '#12161c',
+            raised: '#1a2029',
+            line: '#2a3340',
+            muted: '#8a94a3',
+            soft: '#d2d8e0',
+            accent: '#c4a574',
+            accent2: '#7d9b8a'
           },
           fontFamily: {
             display: ['Cormorant Garamond', 'Georgia', 'serif'],
@@ -35,14 +35,14 @@
   </script>
   <style>
     :root {
-      --ink: #FAF8F4;
-      --panel: #FFFFFF;
-      --raised: #F0ECE4;
-      --line: #E4DED3;
-      --muted: #777066;
-      --soft: #292722;
-      --accent: #89765C;
-      --accent2: #66513B;
+      --ink: #0a0c0f;
+      --panel: #12161c;
+      --raised: #1a2029;
+      --line: #2a3340;
+      --muted: #8a94a3;
+      --soft: #d2d8e0;
+      --accent: #c4a574;
+      --accent2: #7d9b8a;
       --sidebar-w: 280px;
     }
     * { box-sizing: border-box; }
@@ -50,7 +50,10 @@
       margin: 0;
       font-family: Outfit, system-ui, sans-serif;
       color: var(--soft);
-      background-color: var(--ink);
+      background:
+        radial-gradient(900px 480px at 80% -10%, rgba(196, 165, 116, 0.08), transparent 50%),
+        radial-gradient(700px 400px at 0% 40%, rgba(125, 155, 138, 0.07), transparent 45%),
+        var(--ink);
     }
     .font-display { font-family: 'Cormorant Garamond', Georgia, serif; }
     .font-mono { font-family: 'IBM Plex Mono', monospace; }
@@ -65,7 +68,7 @@
     .sidebar {
       width: var(--sidebar-w);
       flex-shrink: 0;
-      background: #FFFFFF;
+      background: rgba(18, 22, 28, 0.97);
       border-right: 1px solid var(--line);
       display: flex;
       flex-direction: column;
@@ -109,7 +112,7 @@
       border-radius: 10px;
       border: 1px solid var(--line);
       background: var(--raised);
-      color: var(--soft);
+      color: #fff;
       font-size: 13px;
       font-weight: 500;
       cursor: pointer;
@@ -117,7 +120,7 @@
       transition: border-color 0.15s, background 0.15s;
     }
     .drop-btn:hover, .drop.open .drop-btn {
-      border-color: var(--accent);
+      border-color: rgba(196, 165, 116, 0.55);
     }
     .drop-btn .chev {
       color: var(--muted);
@@ -142,8 +145,8 @@
       overflow-y: auto;
       border-radius: 10px;
       border: 1px solid var(--line);
-      background: #FFFFFF;
-      box-shadow: 0 16px 40px rgba(0,0,0,0.1);
+      background: #0e1218;
+      box-shadow: 0 16px 40px rgba(0,0,0,0.45);
       padding: 0.35rem;
     }
     .drop.open .drop-panel { display: block; }
@@ -157,7 +160,7 @@
       color: var(--soft);
       cursor: pointer;
     }
-    .drop-item:hover { background: rgba(137, 118, 92, 0.08); }
+    .drop-item:hover { background: rgba(196, 165, 116, 0.08); }
     .drop-item input { accent-color: var(--accent); }
     .btn-reset {
       width: 100%;
@@ -172,7 +175,7 @@
       letter-spacing: 0.04em;
       cursor: pointer;
     }
-    .btn-reset:hover { color: var(--soft); border-color: var(--accent); }
+    .btn-reset:hover { color: #fff; border-color: var(--accent); }
 
     /* Main column */
     .main {
@@ -190,7 +193,7 @@
       gap: 1rem;
       padding: 0.85rem 1.35rem;
       border-bottom: 1px solid var(--line);
-      background: rgba(255, 255, 255, 0.85);
+      background: rgba(18, 22, 28, 0.85);
       backdrop-filter: blur(10px);
     }
     .icon-btn {
@@ -205,7 +208,7 @@
       justify-content: center;
       font-size: 16px;
     }
-    .icon-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .icon-btn:hover { border-color: var(--accent); color: #fff; }
 
     .kpi-row {
       display: flex;
@@ -231,7 +234,7 @@
       font-family: 'IBM Plex Mono', monospace;
       font-size: 1rem;
       font-weight: 600;
-      color: var(--soft);
+      color: #fff;
     }
 
     .scroll {
@@ -248,26 +251,26 @@
       border-bottom: 1px solid var(--line);
     }
     #map { width: 100%; height: 100%; }
-    .leaflet-container { background: #E4DED3 !important; font-family: Outfit, sans-serif; }
+    .leaflet-container { background: #0a0d12 !important; font-family: Outfit, sans-serif; }
     .leaflet-popup-content-wrapper {
-      background: #FFFFFF; color: var(--soft); border-radius: 10px;
-      border: 1px solid var(--line); box-shadow: 0 12px 32px rgba(0,0,0,.1);
+      background: #12161c; color: #d2d8e0; border-radius: 10px;
+      border: 1px solid #2a3340; box-shadow: 0 12px 32px rgba(0,0,0,.4);
     }
-    .leaflet-popup-tip { background: #FFFFFF; }
+    .leaflet-popup-tip { background: #12161c; }
     .leaflet-control-zoom a {
-      background: #FFFFFF !important; color: var(--soft) !important; border-color: var(--line) !important;
+      background: #12161c !important; color: #d2d8e0 !important; border-color: #2a3340 !important;
     }
     .map-pin-label {
-      background: rgba(255, 255, 255, 0.92);
-      border: 1px solid rgba(137, 118, 92, 0.45);
-      color: var(--soft);
+      background: rgba(18, 22, 28, 0.92);
+      border: 1px solid rgba(196, 165, 116, 0.45);
+      color: #f5f0e8;
       padding: 3px 8px;
       border-radius: 6px;
       font-size: 11px;
       font-weight: 600;
       letter-spacing: 0.02em;
       white-space: nowrap;
-      box-shadow: 0 4px 14px rgba(0,0,0,0.1);
+      box-shadow: 0 4px 14px rgba(0,0,0,0.35);
     }
     .map-pin-label::before {
       content: '';
@@ -298,7 +301,7 @@
       margin-top: 0.25rem;
       font-family: 'IBM Plex Mono', monospace;
       font-size: 0.95rem;
-      color: var(--soft);
+      color: #fff;
     }
 
     /* Analytics below map */
@@ -320,7 +323,7 @@
       font-family: 'Cormorant Garamond', Georgia, serif;
       font-size: 1.85rem;
       font-weight: 600;
-      color: var(--soft);
+      color: #fff;
       letter-spacing: -0.01em;
       line-height: 1.1;
     }
@@ -356,11 +359,10 @@
     }
 
     .card {
-      background: #FFFFFF;
+      background: rgba(26, 32, 41, 0.9);
       border: 1px solid var(--line);
       border-radius: 14px;
       padding: 1.15rem 1.2rem;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.03);
     }
     .card-title {
       font-size: 10px;
@@ -374,7 +376,7 @@
       font-family: 'Cormorant Garamond', Georgia, serif;
       font-size: 1.55rem;
       font-weight: 600;
-      color: var(--soft);
+      color: #fff;
       line-height: 1.25;
       margin: 0;
     }
@@ -384,7 +386,7 @@
       padding: 0.35rem 0.7rem;
       border-radius: 999px;
       border: 1px solid var(--line);
-      background: var(--raised);
+      background: rgba(10, 12, 15, 0.55);
       font-size: 11px;
       color: var(--soft);
       text-transform: capitalize;
@@ -400,13 +402,13 @@
     .swatch-chip {
       height: 64px;
       border-radius: 12px;
-      border: 1px solid var(--line);
-      box-shadow: inset 0 0 0 1px rgba(0,0,0,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,0.2);
     }
     .swatch-card .name {
       margin-top: 0.45rem;
       font-size: 12px;
-      color: var(--soft);
+      color: #fff;
       text-transform: capitalize;
     }
     .swatch-card .pct {
@@ -426,18 +428,18 @@
     .bar-track {
       height: 7px;
       border-radius: 99px;
-      background: var(--raised);
+      background: #0a0c0f;
       border: 1px solid var(--line);
       overflow: hidden;
     }
     .bar-fill {
       height: 100%;
       border-radius: 99px;
-      background: linear-gradient(90deg, #66513B, var(--accent));
+      background: linear-gradient(90deg, #8a7350, var(--accent));
     }
 
     ::-webkit-scrollbar { width: 8px; height: 8px; }
-    ::-webkit-scrollbar-thumb { background: #DED7CB; border-radius: 8px; }
+    ::-webkit-scrollbar-thumb { background: #2f3a48; border-radius: 8px; }
   </style>
 </head>
 <body class="h-full">
@@ -451,7 +453,7 @@
     <aside id="sidebar" class="sidebar">
       <div class="sidebar-head">
         <div class="text-[10px] font-semibold tracking-[0.14em] uppercase text-muted">Filters</div>
-        <div class="font-display text-[1.55rem] text-soft leading-none mt-1">Audience</div>
+        <div class="font-display text-[1.55rem] text-white leading-none mt-1">Audience</div>
         <p class="text-[12px] text-muted mt-1.5 leading-snug">Refine by location, demography & wardrobe brand.</p>
       </div>
       <div class="sidebar-body" id="filterBar">
@@ -515,7 +517,7 @@
         <div class="flex items-center gap-3 min-w-0">
           <button type="button" class="icon-btn" id="btnToggle" title="Toggle filters">☰</button>
           <div class="min-w-0">
-            <div class="font-display text-[1.45rem] text-soft leading-none tracking-tight">SuffAI Command Center</div>
+            <div class="font-display text-[1.45rem] text-white leading-none tracking-tight">SuffAI Command Center</div>
             <div class="text-[11px] text-muted mt-0.5 truncate">Spatial demand · Audience taste · Assortment briefing</div>
           </div>
         </div>
@@ -631,10 +633,10 @@
     const selection = { pin: [], age: [], gender: [], rfm: [], brand: [] };
 
     const CHART = {
-      color: '#89765C',
-      colorAlt: '#66513B',
-      grid: '#E4DED3',
-      tick: '#777066'
+      color: '#c4a574',
+      colorAlt: '#7d9b8a',
+      grid: 'rgba(42, 51, 64, 0.9)',
+      tick: '#8a94a3'
     };
 
     const COLOR_HEX = {
@@ -707,7 +709,7 @@
         <div class="share-row">
           <span class="capitalize truncate" title="${r.value}">${r.value}</span>
           <div class="bar-track"><div class="bar-fill" style="width:${r.pct}%"></div></div>
-          <span class="font-mono text-[11px] text-right text-soft">${r.pct}%</span>
+          <span class="font-mono text-[11px] text-right text-white">${r.pct}%</span>
         </div>
       `).join('');
     }
@@ -783,8 +785,10 @@
       const revenue = cust.reduce((s, c) => s + c.revenue, 0);
       const garments = garm.reduce((s, c) => s + c.garments, 0);
 
-      $('kpiCust').textContent = customers.toLocaleString();$('kpiRev').textContent = '₹' + Math.round(revenue).toLocaleString();
-      $('kpiOrd').textContent = orders.toLocaleString();$('kpiGar').textContent = garments.toLocaleString();
+      $('kpiCust').textContent = customers.toLocaleString();
+      $('kpiRev').textContent = '₹' + Math.round(revenue).toLocaleString();
+      $('kpiOrd').textContent = orders.toLocaleString();
+      $('kpiGar').textContent = garments.toLocaleString();
       const jobsN = DATA.extraction_jobs_count;
       $('kpiJobs').textContent = (jobsN == null ? '—' : Number(jobsN).toLocaleString());
 
@@ -810,7 +814,8 @@
       const topSize = withShare(sizes).sort((a, b) => b.count - a.count)[0];
 
       if (!garments) {
-        $('tasteHeadline').textContent = 'No garment observations for this filter set.';$('tastePills').innerHTML = '';
+        $('tasteHeadline').textContent = 'No garment observations for this filter set.';
+        $('tastePills').innerHTML = '';
       } else {
         const parts = [];
         if (topColor) parts.push(topColor.value);
@@ -829,7 +834,8 @@
       renderColorStory(colors);
       renderShareRows($('patternMix'), patterns, 'No pattern signals');
       renderShareRows($('sleeveMix'), sleeves, 'No sleeve data');
-      renderShareRows($('collarMix'), collars, 'No collar data');$('materialMix').innerHTML = withShare(materials).slice(0, 8).map(m =>
+      renderShareRows($('collarMix'), collars, 'No collar data');
+      $('materialMix').innerHTML = withShare(materials).slice(0, 8).map(m =>
         `<span class="pill capitalize">${m.value} <b>${m.pct}%</b></span>`
       ).join('') || '<span class="text-[13px] text-muted">No material signals</span>';
 
@@ -892,16 +898,16 @@
         });
         const marker = L.marker([g.centroid_lat, g.centroid_lon], { icon })
           .bindPopup(
-            `<strong style="color:#292722;font-size:13px">${name}</strong><br/>` +
-            `<span style="color:#777066">PIN ${pin}</span><br/>` +
+            `<strong style="color:#fff;font-size:13px">${name}</strong><br/>` +
+            `<span style="color:#8a94a3">PIN ${pin}</span><br/>` +
             `Customers: <b>${g.customers}</b> · Orders: <b>${g.orders}</b>`
           );
         markersLayer.addLayer(marker);
 
         L.circleMarker([g.centroid_lat, g.centroid_lon], {
           radius: 5,
-          color: '#89765C',
-          fillColor: '#89765C',
+          color: '#c4a574',
+          fillColor: '#c4a574',
           fillOpacity: 0.9,
           weight: 0
         }).addTo(markersLayer);
@@ -915,8 +921,8 @@
 
       [[1000, 0.07], [2200, 0.045], [3800, 0.025]].forEach(([r, opacity]) => {
         const c = L.circle([lat, lon], {
-          radius: r, color: '#89765C', weight: 1,
-          fillColor: '#89765C', fillOpacity: opacity
+          radius: r, color: '#c4a574', weight: 1,
+          fillColor: '#c4a574', fillOpacity: opacity
         }).addTo(map);
         circleLayers.push(c);
       });
@@ -944,10 +950,10 @@
           plugins: {
             legend: { display: false },
             tooltip: {
-              backgroundColor: '#FFFFFF',
-              titleColor: '#292722',
-              bodyColor: '#777066',
-              borderColor: '#E4DED3',
+              backgroundColor: '#12161c',
+              titleColor: '#fff',
+              bodyColor: '#d2d8e0',
+              borderColor: '#2a3340',
               borderWidth: 1,
               padding: 10
             }
@@ -986,7 +992,8 @@
       p.addEventListener('click', e => e.stopPropagation());
     });
 
-    $('btnToggle').addEventListener('click', () => {$('sidebar').classList.toggle('collapsed');
+    $('btnToggle').addEventListener('click', () => {
+      $('sidebar').classList.toggle('collapsed');
       setTimeout(() => map && map.invalidateSize(), 300);
     });
 
@@ -1003,7 +1010,7 @@
 
     async function boot() {
       map = L.map('map', { center: [12.97, 77.59], zoom: 11, zoomControl: false });
-      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
         attribution: 'Tiles &copy; Esri',
         maxZoom: 16
       }).addTo(map);
@@ -1014,6 +1021,7 @@
       brandChart = makeBar('brandChart');
       rfmChart = makeBar('rfmChart');
 
+      // Live metrics from BigQuery via command-center API (no static fallback)
       const apiBase = (window.DASHBOARD_API || '').replace(/\/$/, '');
       const metricsUrl = apiBase ? (apiBase + '/v1/metrics') : '/v1/metrics';
       let res;
@@ -1048,9 +1056,9 @@
 
     boot().catch(err => {
       document.body.innerHTML =
-        `<div style="padding:3rem;font-family:Outfit,sans-serif;color:#292722;background:#FAF8F4;min-height:100vh">
-          <h1 style="color:#292722">Dashboard failed to load</h1>
-          <p style="color:#777066">${err.message}</p>
+        `<div style="padding:3rem;font-family:Outfit,sans-serif;color:#d2d8e0;background:#0a0c0f;min-height:100vh">
+          <h1 style="color:#fff">Dashboard failed to load</h1>
+          <p style="color:#8a94a3">${err.message}</p>
         </div>`;
     });
   </script>
