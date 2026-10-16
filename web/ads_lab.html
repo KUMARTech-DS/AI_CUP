@@ -1,615 +1,635 @@
 <!DOCTYPE html>
 <html lang="en" class="h-full bg-[#0b0c10] text-gray-100">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>THRED_SPATIAL AI - Pro Ads Lab</title>
-    <script src="./config.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        obsidian: '#0b0c10',
-                        glass: 'rgba(22, 27, 34, 0.6)',
-                        cyanGlow: '#00f3ff',
-                        emeraldGlow: '#00ff88',
-                    }
-                }
-            }
-        }
-    </script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Inter', sans-serif; }
-        .font-mono { font-family: 'JetBrains Mono', monospace; }
-        
-        /* Scrollbars */
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: #0b0c10; }
-        ::-webkit-scrollbar-thumb { background: #1f293d; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #00f3ff; }
-        .hide-scroll::-webkit-scrollbar { display: none; }
-        .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
-
-        .glass-panel {
-            background: rgba(18, 22, 31, 0.82);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-        }
-
-        /* 3D Holographic Grid Background */
-        .holographic-grid {
-            background-color: #0b0c10;
-            background-image: 
-                linear-gradient(rgba(0, 243, 255, 0.15) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(0, 243, 255, 0.15) 1px, transparent 1px);
-            background-size: 40px 40px;
-            background-position: center center;
-            position: relative;
-        }
-        .holographic-grid::after {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: radial-gradient(circle at center, transparent 0%, #0b0c10 80%);
-            pointer-events: none;
-        }
-
-        /* 3D Coverflow */
-        .holo-scroll-container {
-            display: flex;
-            overflow-x: auto;
-            perspective: 1200px;
-            padding: 2rem 4rem 3rem 2rem;
-            gap: 1.5rem;
-            align-items: center;
-            position: relative;
-            z-index: 10;
-        }
-        
-        .holo-card {
-            flex-shrink: 0;
-            width: 320px;
-            height: 420px;
-            transform: rotateY(-25deg) translateZ(-40px);
-            transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
-            transform-style: preserve-3d;
-            background: rgba(15, 20, 30, 0.85);
-            backdrop-filter: blur(8px);
-            border: 1px solid rgba(0, 243, 255, 0.4);
-            border-radius: 12px;
-            box-shadow: -15px 15px 25px rgba(0,0,0,0.6), inset 0 0 20px rgba(0, 243, 255, 0.1);
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            cursor: pointer;
-        }
-
-        .holo-card:hover {
-            transform: rotateY(0deg) translateZ(40px) scale(1.05) !important;
-            background: rgba(18, 22, 31, 0.98);
-            z-index: 20;
-            border-color: #00ff88;
-            box-shadow: 0 10px 40px rgba(0, 255, 136, 0.2), inset 0 0 30px rgba(0, 255, 136, 0.15);
-            opacity: 1 !important;
-        }
-
-        /* Spatial Scaling */
-        .rank-1 { border-color: #00ff88; }
-        .rank-2 { border-color: #00f3ff; }
-        .rank-3 { border-color: #8a2be2; }
-        .rank-4 { border-color: #6b7280; opacity: 0.85; transform: rotateY(-28deg) translateZ(-50px); }
-        .rank-5 { border-color: #ef4444; opacity: 0.75; transform: rotateY(-30deg) translateZ(-60px); }
-
-        .upload-zone { border: 2px dashed rgba(0, 243, 255, 0.3); transition: all 0.3s ease; }
-        .upload-zone.dragover { border-color: #00f3ff; background: rgba(0, 243, 255, 0.05); }
-        
-        .custom-checkbox {
-            appearance: none; width: 16px; height: 16px; border: 1px solid #4b5563; border-radius: 4px; background-color: #111827; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;
-        }
-        .custom-checkbox:checked { background-color: #00f3ff; border-color: #00f3ff; }
-        .custom-checkbox:checked::after { content: '\f00c'; font-family: 'Font Awesome 6 Free'; font-weight: 900; color: #000; font-size: 10px; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>THRED_SPATIAL AI - Ads Lab</title>
+  <script src="./config.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root { color-scheme: dark; }
+    body { font-family: Inter, sans-serif; }
+    .font-mono { font-family: 'JetBrains Mono', monospace; }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #0b0c10; }
+    ::-webkit-scrollbar-thumb { background: #1f293d; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #00f3ff; }
+    .glass-panel { background: rgba(18,22,31,.88); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,.08); }
+    .holographic-grid { background-color:#0b0c10; background-image:linear-gradient(rgba(0,243,255,.075) 1px,transparent 1px),linear-gradient(90deg,rgba(0,243,255,.075) 1px,transparent 1px); background-size:40px 40px; }
+    .upload-zone { border:2px dashed rgba(0,243,255,.3); transition:all .2s ease; }
+    .upload-zone.dragover { border-color:#00f3ff; background:rgba(0,243,255,.08); }
+    .field { width:100%; background:#111827; border:1px solid #374151; color:#f9fafb; border-radius:.5rem; padding:.55rem .65rem; font-size:.75rem; }
+    .field:focus { outline:2px solid rgba(0,243,255,.4); border-color:#00f3ff; }
+    .creative-card { background:rgba(15,20,30,.94); border:1px solid rgba(0,243,255,.22); border-radius:12px; overflow:hidden; min-width:0; }
+    .creative-card.rank-1 { border-color:#00ff88; box-shadow:0 0 22px rgba(0,255,136,.09); }
+    .tag { display:inline-flex; align-items:center; gap:.3rem; border-radius:999px; border:1px solid #374151; padding:.15rem .5rem; font-size:10px; color:#d1d5db; background:rgba(17,24,39,.8); }
+    .muted { color:#9ca3af; }
+  </style>
 </head>
 <body class="h-screen flex flex-col overflow-hidden bg-[#0b0c10] text-gray-200">
-    <script>
-      if (localStorage.getItem('suffai_demo_session') !== '1') {
-        location.replace('./login.html');
-      }
-    </script>
+  <script>
+    if (localStorage.getItem('suffai_demo_session') !== '1') location.replace('./login.html');
+  </script>
 
-    <!-- Header -->
-    <header class="glass-panel z-30 border-b border-gray-800 px-4 py-3 flex-none flex items-center justify-between">
-        <div class="flex items-center space-x-3">
-            <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-violet-600 via-cyan-500 to-emerald-400 p-[2px] flex items-center justify-center">
-                <div class="bg-obsidian w-full h-full rounded-[10px] flex items-center justify-center">
-                    <i class="fa-solid fa-ranking-star text-cyan-400 text-lg"></i>
-                </div>
-            </div>
-            <div>
-                <h1 class="font-extrabold text-xl tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-white via-cyan-300 to-violet-400 font-mono">
-                    PRO ADS LAB <span class="text-xs px-2 py-0.5 rounded bg-cyan-900/60 text-cyan-300 border border-cyan-500/40">Creative Optimizer</span>
-                </h1>
-                <p class="text-[11px] text-gray-400">Holographic Demo x Geo x RFM Visualizer</p>
-            </div>
+  <header class="glass-panel z-30 border-b border-gray-800 px-4 py-3 flex-none flex items-center justify-between gap-4">
+    <div class="flex items-center gap-3 min-w-0">
+      <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-violet-600 via-cyan-500 to-emerald-400 p-[2px] flex-none"><div class="bg-[#0b0c10] w-full h-full rounded-[10px] flex items-center justify-center"><i class="fa-solid fa-ranking-star text-cyan-400 text-lg"></i></div></div>
+      <div class="min-w-0">
+        <h1 class="font-extrabold text-lg sm:text-xl tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-white via-cyan-300 to-violet-400 font-mono">PRO ADS LAB <span class="text-[10px] px-2 py-0.5 rounded bg-cyan-900/60 text-cyan-300 border border-cyan-500/40">Segment Fit</span></h1>
+        <p class="text-[11px] text-gray-400">Rank uploaded creatives for a selected geo × age × gender × RFM audience.</p>
+      </div>
+    </div>
+    <div id="apiStatus" class="tag flex-none"><span class="w-1.5 h-1.5 rounded-full bg-yellow-400"></span> Loading BigQuery profile…</div>
+  </header>
+
+  <main class="flex-1 flex min-h-0 overflow-hidden">
+    <aside class="w-80 max-w-[45vw] flex-none border-r border-gray-800 bg-gray-950/85 flex flex-col p-4 gap-5 overflow-y-auto z-20">
+      <section class="space-y-3">
+        <h2 class="text-xs font-bold uppercase tracking-wider flex items-center gap-2"><span class="w-5 h-5 rounded bg-violet-900/50 text-violet-300 flex items-center justify-center text-[10px] border border-violet-500/30">1</span> Audience segment</h2>
+        <label class="block text-[10px] text-gray-400 uppercase tracking-wider">Geo area / PIN code<select id="filterArea" class="field mt-1"><option value="">Loading areas…</option></select></label>
+        <label class="block text-[10px] text-gray-400 uppercase tracking-wider">Age bucket<select id="filterAge" class="field mt-1"><option value="">All age groups</option></select></label>
+        <label class="block text-[10px] text-gray-400 uppercase tracking-wider">Gender<select id="filterGender" class="field mt-1"><option value="">All genders</option></select></label>
+        <label class="block text-[10px] text-gray-400 uppercase tracking-wider">RFM segment<select id="filterRfm" class="field mt-1"><option value="">All RFM segments</option></select></label>
+        <p class="text-[10px] text-gray-500 leading-relaxed">Changing any filter refreshes the segment profile and re-ranks the uploaded creatives.</p>
+      </section>
+
+      <section class="space-y-3 flex-1 flex flex-col min-h-[180px]">
+        <h2 class="text-xs font-bold uppercase tracking-wider flex items-center gap-2"><span class="w-5 h-5 rounded bg-cyan-900/50 text-cyan-300 flex items-center justify-center text-[10px] border border-cyan-500/30">2</span> Upload creatives</h2>
+        <input type="file" id="fileInput" multiple accept="image/*" class="hidden">
+        <div id="dropzone" role="button" tabindex="0" class="upload-zone rounded-xl flex flex-col items-center justify-center text-center p-5 cursor-pointer bg-gray-950/50 min-h-[130px]">
+          <i class="fa-solid fa-cloud-arrow-up text-3xl text-cyan-500/70 mb-3"></i>
+          <span class="text-xs text-gray-200 font-semibold">Click or drop images</span>
+          <span class="text-[10px] text-gray-500 mt-1">Every uploaded image appears once.</span>
         </div>
-    </header>
+        <p id="uploadSummary" class="text-[10px] text-gray-500">No creatives uploaded.</p>
+        <button id="runButton" type="button" class="w-full py-3 bg-gradient-to-r from-violet-600 to-cyan-500 hover:from-violet-500 hover:to-cyan-400 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl text-sm font-bold flex justify-center items-center gap-2 transition-all" disabled><i class="fa-solid fa-wand-magic-sparkles"></i><span>Extract & rank creatives</span></button>
+        <p class="text-[10px] text-gray-500 leading-relaxed">Extraction calls the deployed extraction API. Ranking uses a deterministic segment-fit heuristic from available BigQuery garment observations; it is not a click/conversion prediction.</p>
+      </section>
+    </aside>
 
-    <main class="flex-1 flex overflow-hidden">
-        
-        <!-- Left Sidebar: Configuration -->
-        <aside class="w-80 flex-none border-r border-gray-800 bg-gray-950/80 flex flex-col p-4 space-y-6 z-20">
-            <!-- Zones -->
-            <div class="space-y-3">
-                <h2 class="text-xs font-bold text-gray-200 uppercase tracking-wider flex items-center space-x-2">
-                    <span class="w-5 h-5 rounded bg-violet-900/50 text-violet-300 flex items-center justify-center text-[10px] border border-violet-500/30">1</span>
-                    <span>Target Areas</span>
-                </h2>
-                <div id="targetAreas" class="space-y-2 bg-gray-900/50 p-3 rounded-xl border border-gray-800 shadow-inner max-h-40 overflow-y-auto">
-                    <span class="text-[10px] text-gray-500">Loading areas from metrics…</span>
-                </div>
+    <section class="flex-1 min-w-0 relative flex flex-col holographic-grid overflow-hidden">
+      <div id="loadingOverlay" class="absolute inset-0 z-50 hidden items-center justify-center bg-black/60 backdrop-blur-sm"><div class="text-center"><i class="fa-solid fa-circle-notch text-4xl text-cyan-400 animate-spin mb-4"></i><p id="loadingText" class="text-sm font-mono">Loading…</p></div></div>
+      <div class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
+        <section class="glass-panel rounded-xl p-4 sm:p-5">
+          <div class="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-4">
+            <div class="min-w-0">
+              <p class="text-[10px] uppercase tracking-[.2em] text-cyan-400 font-bold">Current target</p>
+              <h2 id="segmentTitle" class="text-lg sm:text-xl font-bold mt-1">Loading audience…</h2>
+              <p id="profileNote" class="text-xs text-gray-400 mt-2 max-w-3xl">Profile metrics are loading from the command-center API.</p>
             </div>
-
-            <!-- Upload -->
-            <div class="space-y-3 flex-1 flex flex-col">
-                <h2 class="text-xs font-bold text-gray-200 uppercase tracking-wider flex items-center space-x-2">
-                    <span class="w-5 h-5 rounded bg-cyan-900/50 text-cyan-300 flex items-center justify-center text-[10px] border border-cyan-500/30">2</span>
-                    <span>Upload Creatives</span>
-                </h2>
-                <input type="file" id="fileInput" multiple accept="image/*" class="hidden">
-                <div id="dropzone" class="upload-zone flex-1 rounded-xl flex flex-col items-center justify-center text-center p-6 cursor-pointer bg-gray-950/50 min-h-[120px]">
-                    <i class="fa-solid fa-cloud-arrow-up text-3xl text-cyan-500/50 mb-3"></i>
-                    <span class="text-xs text-gray-300 font-semibold block">Click or Drop Images</span>
-                    <span class="text-[10px] text-gray-500 mt-1">Select variants to rank</span>
-                </div>
+            <div class="grid grid-cols-3 gap-2 min-w-[250px]">
+              <div class="bg-gray-950/70 border border-gray-800 rounded-lg p-3"><p class="text-[9px] uppercase tracking-wider text-gray-500">Customers</p><p id="audienceCustomers" class="font-mono text-lg text-cyan-300 mt-1">—</p></div>
+              <div class="bg-gray-950/70 border border-gray-800 rounded-lg p-3"><p class="text-[9px] uppercase tracking-wider text-gray-500">Orders</p><p id="audienceOrders" class="font-mono text-lg text-violet-300 mt-1">—</p></div>
+              <div class="bg-gray-950/70 border border-gray-800 rounded-lg p-3"><p class="text-[9px] uppercase tracking-wider text-gray-500">Revenue</p><p id="audienceRevenue" class="font-mono text-lg text-emerald-300 mt-1">—</p></div>
             </div>
-
-            <button onclick="runAnalysis()" class="w-full py-3 bg-gradient-to-r from-violet-600 to-cyan-500 hover:from-violet-500 hover:to-cyan-400 text-white rounded-xl text-sm font-bold shadow-[0_0_15px_rgba(0,243,255,0.4)] flex justify-center items-center space-x-2 transition-all">
-                <i class="fa-solid fa-radar"></i>
-                <span>Execute AI Ranker</span>
-            </button>
-        </aside>
-
-        <!-- Right Main Area: 3D Holographic View -->
-        <section class="flex-1 relative flex flex-col holographic-grid overflow-hidden">
-            
-            <!-- Loading State -->
-            <div id="loadingOverlay" class="absolute inset-0 z-50 flex flex-col items-center justify-center hidden backdrop-blur-sm">
-                <i class="fa-solid fa-crosshairs text-4xl text-cyan-400 animate-spin mb-4 shadow-[0_0_20px_rgba(0,243,255,0.8)] rounded-full"></i>
-                <h3 class="text-sm font-bold text-white font-mono">Simulating Audience Response</h3>
-                <p class="text-xs text-gray-400 mt-2">Mapping image aesthetics against geospatial segments...</p>
-            </div>
-
-            <!-- Empty State -->
-            <div id="emptyState" class="absolute inset-0 flex flex-col items-center justify-center opacity-40 z-10">
-                <i class="fa-solid fa-cubes text-6xl text-cyan-900 mb-4"></i>
-                <p class="text-sm font-mono text-cyan-600">Awaiting visual asset injection.</p>
-            </div>
-
-            <!-- Results Data (Scrollable Container) -->
-            <div id="resultsContent" class="flex-1 flex flex-col hidden h-full w-full z-10 overflow-y-auto">
-                
-                <!-- 3D Horizontal Scroll Section (Fixed minimum height) -->
-                <div class="min-h-[520px] flex-none border-b border-gray-800/50 relative flex flex-col">
-                    
-                    <!-- Dynamic Area Header & Filter -->
-                    <div class="px-6 py-4 flex items-center justify-between z-20">
-                        <div class="flex items-center space-x-4">
-                            <h3 class="text-sm font-bold text-white flex items-center space-x-2">
-                                <i class="fa-solid fa-layer-group text-cyan-400"></i>
-                                <span>Spatial Creative Ranking:</span>
-                            </h3>
-                            <select id="areaSelect" class="bg-gray-900/80 border border-gray-700 text-white text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:border-cyan-400 transition-colors cursor-pointer">
-                                <option>All areas</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <!-- Enhanced Area Insights Bar (Top Trends) -->
-                    <div class="px-6 py-3 bg-gray-950/80 border-y border-gray-800 flex items-center space-x-6 overflow-x-auto hide-scroll z-20 shadow-md">
-                        <div class="flex items-center space-x-2 shrink-0 bg-emerald-900/20 px-3 py-1.5 rounded border border-emerald-500/30">
-                            <i class="fa-solid fa-arrow-trend-up text-emerald-500"></i>
-                            <span class="text-[10px] uppercase text-emerald-400 font-bold tracking-wider">Overall Area Lift:</span>
-                            <span class="text-sm font-mono font-bold text-emerald-300">+18.4%</span>
-                        </div>
-                        <div class="w-px h-6 bg-gray-800 shrink-0"></div>
-                        <div class="flex items-center space-x-2 shrink-0">
-                            <i class="fa-solid fa-palette text-violet-400"></i>
-                            <span class="text-[10px] uppercase text-gray-500 font-bold tracking-wider">Colors:</span>
-                            <span class="text-[11px] font-mono text-gray-200">1. Obsidian 2. Sage 3. Crimson 4. Sand 5. Navy</span>
-                        </div>
-                        <div class="w-px h-6 bg-gray-800 shrink-0"></div>
-                        <div class="flex items-center space-x-2 shrink-0">
-                            <i class="fa-solid fa-ruler text-cyan-400"></i>
-                            <span class="text-[10px] uppercase text-gray-500 font-bold tracking-wider">Sizes:</span>
-                            <span class="text-[11px] font-mono text-gray-200">L (38%), XL (28%), M (18%), XXL (10%), S (6%)</span>
-                        </div>
-                        <div class="w-px h-6 bg-gray-800 shrink-0"></div>
-                        <div class="flex items-center space-x-2 shrink-0">
-                            <i class="fa-solid fa-shapes text-pink-400"></i>
-                            <span class="text-[10px] uppercase text-gray-500 font-bold tracking-wider">Patterns:</span>
-                            <span class="text-[11px] font-mono text-gray-200">1. Solid 2. Minimal Logo 3. Colorblock 4. Acid Wash 5. Stripe</span>
-                        </div>
-                        <div class="w-px h-6 bg-gray-800 shrink-0"></div>
-                        <div class="flex items-center space-x-2 shrink-0">
-                            <i class="fa-solid fa-tag text-amber-400"></i>
-                            <span class="text-[10px] uppercase text-gray-500 font-bold tracking-wider">Commodity:</span>
-                            <span class="text-[11px] font-mono text-gray-200">1. Oversized Hoodies 2. Tech Joggers 3. Boxy Tees</span>
-                        </div>
-                    </div>
-
-                    <!-- Holographic Scroll Container -->
-                    <div class="holo-scroll-container hide-scroll w-full flex-1">
-                        
-                        <!-- Card 1 -->
-                        <div class="holo-card rank-1">
-                            <div class="card-img-container h-44 w-full bg-gradient-to-br from-[#1e1b2e] to-obsidian flex items-center justify-center border-b border-emerald-500/30 relative overflow-hidden">
-                                <i class="fa-solid fa-shirt text-6xl text-gray-300 drop-shadow-2xl relative z-10"></i>
-                                <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPjxyZWN0IHdpZHRoPSI0IiBoZWlnaHQ9IjQiIGZpbGw9InRyYW5zcGFyZW50Ii8+PHBhdGggZD0iTTAgMEwyIDBMMiAyTDAgMloiIGZpbGw9InJnYmEoMCwgMjQzLCAyNTUsIDAuMSkiLz48L3N2Zz4=')] opacity-30 pointer-events-none z-10"></div>
-                            </div>
-                            <div class="p-4 flex-1 flex flex-col bg-gray-900/50 justify-between">
-                                <div>
-                                    <div class="flex items-center justify-between mb-3 pb-2 border-b border-gray-800">
-                                        <span class="text-[10px] font-black px-2 py-0.5 rounded bg-emerald-500 text-obsidian shadow-[0_0_8px_#00ff88]"><i class="fa-solid fa-trophy mr-1"></i>RANK #1</span>
-                                        <span class="text-[10px] font-mono text-emerald-300">IMG_HW_OBSIDIAN.JPG</span>
-                                    </div>
-                                    <p class="text-[9px] text-gray-500 font-mono uppercase tracking-wider mb-1">Target Segment Trigger</p>
-                                    <p class="text-[10px] text-cyan-300 font-mono mb-2 bg-cyan-900/20 px-1.5 py-0.5 rounded inline-block border border-cyan-500/20">Indiranagar | 18-26 | Male | Champions</p>
-                                    <p class="text-[9px] text-gray-500 font-mono uppercase tracking-wider mb-1">AI Reasoning</p>
-                                    <p class="text-[11px] text-gray-300 leading-relaxed">Deep hues correlate perfectly with local Gen-Z aesthetic preferences, capturing high-frequency spenders with a high propensity for solid pattern streetwear.</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Card 2 -->
-                        <div class="holo-card rank-2">
-                            <div class="card-img-container h-44 w-full bg-gradient-to-br from-[#2e3b2e] to-obsidian flex items-center justify-center border-b border-cyan-500/30 relative overflow-hidden">
-                                <i class="fa-solid fa-shirt text-6xl text-gray-400 drop-shadow-2xl relative z-10"></i>
-                                <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPjxyZWN0IHdpZHRoPSI0IiBoZWlnaHQ9IjQiIGZpbGw9InRyYW5zcGFyZW50Ii8+PHBhdGggZD0iTTAgMEwyIDBMMiAyTDAgMloiIGZpbGw9InJnYmEoMCwgMjQzLCAyNTUsIDAuMSkiLz48L3N2Zz4=')] opacity-30 pointer-events-none z-10"></div>
-                            </div>
-                            <div class="p-4 flex-1 flex flex-col bg-gray-900/50 justify-between">
-                                <div>
-                                    <div class="flex items-center justify-between mb-3 pb-2 border-b border-gray-800">
-                                        <span class="text-[10px] font-black px-2 py-0.5 rounded bg-cyan-500 text-obsidian shadow-[0_0_8px_#00f3ff]">RANK #2</span>
-                                        <span class="text-[10px] font-mono text-cyan-300">IMG_SAGE_JOGGER.JPG</span>
-                                    </div>
-                                    <p class="text-[9px] text-gray-500 font-mono uppercase tracking-wider mb-1">Target Segment Trigger</p>
-                                    <p class="text-[10px] text-cyan-300 font-mono mb-2 bg-cyan-900/20 px-1.5 py-0.5 rounded inline-block border border-cyan-500/20">Indiranagar | 27-35 | Female | Potential Loyalist</p>
-                                    <p class="text-[9px] text-gray-500 font-mono uppercase tracking-wider mb-1">AI Reasoning</p>
-                                    <p class="text-[11px] text-gray-300 leading-relaxed">Utility/cargo styling hits the high-income millennial demographic well, though the sage green slightly under-indexes against obsidian tones.</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Card 3 -->
-                        <div class="holo-card rank-3">
-                            <div class="card-img-container h-44 w-full bg-gradient-to-br from-[#3d192b] to-obsidian flex items-center justify-center border-b border-violet-500/30 relative overflow-hidden">
-                                <i class="fa-solid fa-shirt text-6xl text-gray-500 drop-shadow-2xl relative z-10"></i>
-                                <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPjxyZWN0IHdpZHRoPSI0IiBoZWlnaHQ9IjQiIGZpbGw9InRyYW5zcGFyZW50Ii8+PHBhdGggZD0iTTAgMEwyIDBMMiAyTDAgMloiIGZpbGw9InJnYmEoMCwgMjQzLCAyNTUsIDAuMSkiLz48L3N2Zz4=')] opacity-30 pointer-events-none z-10"></div>
-                            </div>
-                            <div class="p-4 flex-1 flex flex-col bg-gray-900/50 justify-between">
-                                <div>
-                                    <div class="flex items-center justify-between mb-3 pb-2 border-b border-gray-800">
-                                        <span class="text-[10px] font-black px-2 py-0.5 rounded bg-violet-500 text-white shadow-[0_0_8px_#8a2be2]">RANK #3</span>
-                                        <span class="text-[10px] font-mono text-violet-300">IMG_CRIMSON_GTEE.JPG</span>
-                                    </div>
-                                    <p class="text-[9px] text-gray-500 font-mono uppercase tracking-wider mb-1">Target Segment Trigger</p>
-                                    <p class="text-[10px] text-cyan-300 font-mono mb-2 bg-cyan-900/20 px-1.5 py-0.5 rounded inline-block border border-cyan-500/20">Indiranagar | 18-26 | Unisex | At Risk</p>
-                                    <p class="text-[9px] text-gray-500 font-mono uppercase tracking-wider mb-1">AI Reasoning</p>
-                                    <p class="text-[11px] text-gray-300 leading-relaxed">High contrast captures attention for re-engagement of lapsed buyers. However, bold graphics violate the top 'Solid' pattern trend, limiting broader scale.</p>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Card 4 -->
-                        <div class="holo-card rank-4">
-                            <div class="card-img-container h-44 w-full bg-gray-900 flex items-center justify-center border-b border-gray-700 relative overflow-hidden">
-                                <i class="fa-solid fa-image text-6xl text-gray-600 relative z-10"></i>
-                            </div>
-                            <div class="p-4 flex-1 flex flex-col bg-gray-900/50 justify-between">
-                                <div>
-                                    <div class="flex items-center justify-between mb-3 pb-2 border-b border-gray-800">
-                                        <span class="text-[10px] font-black px-2 py-0.5 rounded bg-gray-600 text-white">RANK #4</span>
-                                        <span class="text-[10px] font-mono text-gray-400">IMG_LINEN_BASIC.JPG</span>
-                                    </div>
-                                    <p class="text-[9px] text-gray-500 font-mono uppercase tracking-wider mb-1">Target Segment Trigger</p>
-                                    <p class="text-[10px] text-gray-400 font-mono mb-2 bg-gray-800/50 px-1.5 py-0.5 rounded inline-block border border-gray-700">Indiranagar | 36-45 | Male | New Customer</p>
-                                    <p class="text-[9px] text-gray-500 font-mono uppercase tracking-wider mb-1">AI Reasoning</p>
-                                    <p class="text-[11px] text-gray-400 leading-relaxed">Average performance predicted. Misses key local aesthetic triggers (Heavyweight material) required to capture primary high-LTV segments.</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Card 5 -->
-                        <div class="holo-card rank-5">
-                            <div class="card-img-container h-44 w-full bg-gray-900 flex items-center justify-center border-b border-gray-800 relative overflow-hidden">
-                                <i class="fa-solid fa-image text-6xl text-gray-600 relative z-10"></i>
-                            </div>
-                            <div class="p-4 flex-1 flex flex-col bg-gray-900/50 justify-between">
-                                <div>
-                                    <div class="flex items-center justify-between mb-3 pb-2 border-b border-gray-800">
-                                        <span class="text-[10px] font-black px-2 py-0.5 rounded bg-red-600 text-white">RANK #5</span>
-                                        <span class="text-[10px] font-mono text-gray-400">IMG_NEON_ACTIVE.JPG</span>
-                                    </div>
-                                    <p class="text-[9px] text-gray-500 font-mono uppercase tracking-wider mb-1">Target Segment Trigger</p>
-                                    <p class="text-[10px] text-gray-400 font-mono mb-2 bg-gray-800/50 px-1.5 py-0.5 rounded inline-block border border-gray-700">Broad | All Ages | Unisex | Low Spend</p>
-                                    <p class="text-[9px] text-gray-500 font-mono uppercase tracking-wider mb-1">AI Reasoning</p>
-                                    <p class="text-[11px] text-gray-400 leading-relaxed">Color saturation severely violates dominant local aesthetic (Dark/Muted tones). High risk of immediate scroll fatigue.</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Matrix Table -->
-                <div class="flex-none p-6 pb-12 relative z-20 flex flex-col">
-                    <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-xs font-bold text-gray-200 uppercase tracking-wider flex items-center space-x-2">
-                            <i class="fa-solid fa-table text-violet-400"></i>
-                            <span>Detailed Performance Matrix View</span>
-                        </h3>
-                        <button onclick="downloadCSV()" class="px-4 py-2 bg-gradient-to-r from-emerald-600 to-cyan-500 hover:from-emerald-500 hover:to-cyan-400 rounded-lg text-xs font-bold text-white transition-all flex items-center space-x-2 shadow-[0_0_10px_rgba(0,255,136,0.3)]">
-                            <i class="fa-solid fa-file-csv"></i>
-                            <span>Export Matrix CSV</span>
-                        </button>
-                    </div>
-                    
-                    <div class="border border-cyan-500/20 rounded-xl overflow-hidden bg-gray-950/60 backdrop-blur-md shadow-[0_0_30px_rgba(0,243,255,0.05)]">
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left text-xs whitespace-nowrap">
-                                <thead class="bg-gradient-to-r from-gray-900 to-obsidian border-b border-gray-800 text-gray-400 font-mono text-[10px] uppercase tracking-wider">
-                                    <tr>
-                                        <th class="px-5 py-4">Geo Area</th>
-                                        <th class="px-5 py-4">Age Bucket</th>
-                                        <th class="px-5 py-4">Gender</th>
-                                        <th class="px-5 py-4">RFM Segment</th>
-                                        <th class="px-5 py-4">Top Creative (Image ID)</th>
-                                        <th class="px-5 py-4 text-right">Score</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-gray-800/50 text-gray-300">
-                                    <tr class="hover:bg-cyan-900/10 transition duration-200 group">
-                                        <td class="px-5 py-4 text-white font-medium">Indiranagar</td>
-                                        <td class="px-5 py-4">18-26</td>
-                                        <td class="px-5 py-4">Male</td>
-                                        <td class="px-5 py-4 text-emerald-400 font-medium">Champions</td>
-                                        <td class="px-5 py-4 font-mono text-cyan-300 group-hover:text-cyan-200 transition">IMG_HW_OBSIDIAN.JPG</td>
-                                        <td class="px-5 py-4 text-right font-mono text-emerald-400 font-bold">—</td>
-                                    </tr>
-                                    <tr class="hover:bg-cyan-900/10 transition duration-200 group">
-                                        <td class="px-5 py-4 text-white font-medium">Indiranagar</td>
-                                        <td class="px-5 py-4">27-35</td>
-                                        <td class="px-5 py-4">Female</td>
-                                        <td class="px-5 py-4 text-blue-400 font-medium">Potential Loyalist</td>
-                                        <td class="px-5 py-4 font-mono text-cyan-300 group-hover:text-cyan-200 transition">IMG_SAGE_JOGGER.JPG</td>
-                                        <td class="px-5 py-4 text-right font-mono text-emerald-400 font-bold">—</td>
-                                    </tr>
-                                    <tr class="hover:bg-cyan-900/10 transition duration-200 group">
-                                        <td class="px-5 py-4 text-white font-medium">Koramangala</td>
-                                        <td class="px-5 py-4">18-26</td>
-                                        <td class="px-5 py-4">Unisex</td>
-                                        <td class="px-5 py-4 text-pink-400 font-medium">At Risk</td>
-                                        <td class="px-5 py-4 font-mono text-cyan-300 group-hover:text-cyan-200 transition">IMG_CRIMSON_GTEE.JPG</td>
-                                        <td class="px-5 py-4 text-right font-mono text-emerald-400 font-bold">—</td>
-                                    </tr>
-                                    <tr class="hover:bg-cyan-900/10 transition duration-200 group">
-                                        <td class="px-5 py-4 text-gray-400 font-medium">Indiranagar</td>
-                                        <td class="px-5 py-4 text-gray-400">36-45</td>
-                                        <td class="px-5 py-4 text-gray-400">Male</td>
-                                        <td class="px-5 py-4 text-gray-500 font-medium">New Customer</td>
-                                        <td class="px-5 py-4 font-mono text-gray-400 group-hover:text-gray-300 transition">IMG_LINEN_BASIC.JPG</td>
-                                        <td class="px-5 py-4 text-right font-mono text-gray-400">—</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
+          </div>
+          <div id="audienceCoverage" role="status" aria-live="polite" class="mt-4 rounded-lg border border-amber-500/50 bg-amber-950/30 p-3">
+            <p id="audienceCoverageTitle" class="text-[11px] font-bold tracking-wide text-amber-200">CHECKING AUDIENCE-COUNT COVERAGE</p>
+            <p id="audienceCoverageDetail" class="text-xs text-amber-100/90 mt-1">Checking whether customer/order/revenue totals match the selected audience.</p>
+          </div>
+          <div id="tasteCoverage" role="status" aria-live="polite" class="mt-3 rounded-lg border border-amber-500/50 bg-amber-950/30 p-3">
+            <p id="tasteCoverageTitle" class="text-[11px] font-bold tracking-wide text-amber-200">CHECKING GARMENT-PREFERENCE COVERAGE</p>
+            <p id="tasteCoverageDetail" class="text-xs text-amber-100/90 mt-1">Checking whether garment observations match the selected audience.</p>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 mt-4">
+            <div class="bg-gray-950/65 border border-gray-800 rounded-lg p-3"><p class="text-[10px] uppercase tracking-wider text-gray-500 mb-2"><i class="fa-solid fa-palette mr-1 text-violet-400"></i>Top observed colors</p><div id="insightColors" class="flex flex-wrap gap-1.5"><span class="muted text-xs">No profile loaded</span></div></div>
+            <div class="bg-gray-950/65 border border-gray-800 rounded-lg p-3"><p class="text-[10px] uppercase tracking-wider text-gray-500 mb-2"><i class="fa-solid fa-shapes mr-1 text-pink-400"></i>Top patterns</p><div id="insightPatterns" class="flex flex-wrap gap-1.5"><span class="muted text-xs">No profile loaded</span></div></div>
+            <div class="bg-gray-950/65 border border-gray-800 rounded-lg p-3"><p class="text-[10px] uppercase tracking-wider text-gray-500 mb-2"><i class="fa-solid fa-ruler mr-1 text-cyan-400"></i>Top sizes</p><div id="insightSizes" class="flex flex-wrap gap-1.5"><span class="muted text-xs">No profile loaded</span></div></div>
+            <div class="bg-gray-950/65 border border-gray-800 rounded-lg p-3"><p class="text-[10px] uppercase tracking-wider text-gray-500 mb-2"><i class="fa-solid fa-shirt mr-1 text-amber-400"></i>Top garment types</p><div id="insightCommodities" class="flex flex-wrap gap-1.5"><span class="muted text-xs">No profile loaded</span></div></div>
+          </div>
         </section>
-    </main>
 
-    <script>
-        const dropzone = document.getElementById('dropzone');
-        const fileInput = document.getElementById('fileInput');
-        let uploadedFiles = []; // File objects for API
-        let uploadedImages = []; // preview {src, name, file}
-        let lastExtractItems = [];
-        let METRICS = null;
+        <section>
+          <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 mb-3">
+            <div><h3 class="text-sm font-bold text-white"><i class="fa-solid fa-layer-group text-cyan-400 mr-2"></i>Creative ranking for this segment</h3><p class="text-[10px] text-gray-500 mt-1">One card per uploaded file. Scores and order update when the segment changes.</p></div>
+            <span id="rankCount" class="tag">0 creatives</span>
+          </div>
+          <div id="emptyState" class="glass-panel rounded-xl min-h-[220px] flex flex-col items-center justify-center text-center p-8"><i class="fa-solid fa-images text-5xl text-cyan-900 mb-4"></i><p class="text-sm font-mono text-cyan-300">Upload garment creatives to begin.</p><p class="text-xs text-gray-500 mt-2">After extraction, each uploaded image will be ranked against the selected audience profile.</p></div>
+          <div id="creativeGrid" class="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-4"></div>
+        </section>
 
-        const apiBase = () => (window.DASHBOARD_API || '').replace(/\/$/, '');
-        const metricsUrl = () => (apiBase() ? apiBase() + '/v1/metrics' : '/v1/metrics');
-        const extractUrl = () => (apiBase() ? apiBase() + '/v1/ads-lab/extract' : '/v1/ads-lab/extract');
+        <section class="glass-panel rounded-xl overflow-hidden">
+          <div class="p-4 border-b border-gray-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"><div><h3 class="text-xs font-bold uppercase tracking-wider"><i class="fa-solid fa-table text-violet-400 mr-2"></i>Segment ranking matrix</h3><p class="text-[10px] text-gray-500 mt-1">Contains the same filtered and sorted images as the cards above.</p></div><button id="downloadButton" type="button" class="px-3 py-2 bg-emerald-700 hover:bg-emerald-600 rounded-lg text-xs font-bold text-white"><i class="fa-solid fa-file-csv mr-2"></i>Export CSV</button></div>
+          <div class="overflow-x-auto"><table class="w-full text-left text-xs whitespace-nowrap"><thead class="bg-gray-900/90 text-gray-400 font-mono text-[10px] uppercase"><tr><th class="px-4 py-3">Rank</th><th class="px-4 py-3">Creative</th><th class="px-4 py-3">Geo</th><th class="px-4 py-3">Age</th><th class="px-4 py-3">Gender</th><th class="px-4 py-3">RFM</th><th class="px-4 py-3">Extracted taste</th><th class="px-4 py-3 text-right">Segment fit</th></tr></thead><tbody id="matrixBody" class="divide-y divide-gray-800/80"><tr><td colspan="8" class="px-4 py-8 text-center text-gray-500">Upload images to populate the matrix.</td></tr></tbody></table></div>
+        </section>
+      </div>
+    </section>
+  </main>
 
-        async function loadMetricsForFilters() {
-            let res;
-            try {
-                res = await fetch(metricsUrl());
-            } catch (e) {
-                console.error('[ads_lab] metrics fetch failed', e);
-                const box = document.getElementById('targetAreas');
-                if (box) box.innerHTML = '<span class="text-[10px] text-red-400">Metrics unreachable — check /v1/metrics</span>';
-                return;
-            }
-            if (!res.ok) {
-                let detail = '';
-                try {
-                    const body = await res.json();
-                    detail = body.detail || body.message || '';
-                } catch (_) {}
-                console.error('[ads_lab] metrics HTTP', res.status, detail);
-                const box = document.getElementById('targetAreas');
-                if (box) box.innerHTML = `<span class="text-[10px] text-red-400">Metrics failed (${res.status}): ${detail || 'BigQuery / IAM'}</span>`;
-                return;
-            }
-            METRICS = await res.json();
-            const box = document.getElementById('targetAreas');
-            const sel = document.getElementById('areaSelect');
-            const pins = (METRICS.filters && METRICS.filters.pin_codes) || [];
-            const pinGeo = METRICS.pin_geo || {};
-            if (!pins.length) {
-                box.innerHTML = '<span class="text-[10px] text-gray-500">No PIN areas in metrics</span>';
-                return;
-            }
-            box.innerHTML = pins.map((pin, i) => {
-                const label = (pinGeo[pin] && pinGeo[pin].area_label) ? pinGeo[pin].area_label : pin;
-                const checked = i < 2 ? 'checked' : '';
-                return `<label class="flex items-center space-x-3 cursor-pointer"><input type="checkbox" ${checked} class="custom-checkbox" value="${pin}"><span class="text-xs text-gray-300 hover:text-white transition">${label} (${pin})</span></label>`;
-            }).join('');
-            sel.innerHTML = '<option value="">All areas</option>' + pins.map(pin => {
-                const label = (pinGeo[pin] && pinGeo[pin].area_label) ? pinGeo[pin].area_label : pin;
-                return `<option value="${pin}">${label}</option>`;
-            }).join('');
+  <script>
+    'use strict';
+    const $ = (id) => document.getElementById(id);
+    const state = { metrics: null, assets: [], results: [], profile: null, loading: false };
+    const FILTER_KEYS = ['pin_code', 'age_group', 'gender', 'rfm_segment'];
+    const GROUPS = {
+      color: { keys: ['colors', 'color_counts', 'primary_colors', 'color_distribution'], weight: 25 },
+      pattern: { keys: ['patterns', 'pattern_counts', 'pattern_distribution'], weight: 20 },
+      commodity: { keys: ['commodities', 'commodity_types', 'garment_types', 'names'], weight: 20 },
+      material: { keys: ['materials', 'material_types', 'material_counts'], weight: 15 },
+      size: { keys: ['sizes', 'size_counts', 'size_distribution'], weight: 10 },
+      brand: { keys: ['brands', 'brand_counts', 'brand_distribution'], weight: 10 }
+    };
+    const apiBase = () => (window.DASHBOARD_API || '').replace(/\/$/, '');
+    const endpoint = (path) => (apiBase() ? apiBase() : '') + path;
 
-            // Optional insight strip from metrics (taste)
-            const garm = METRICS.garment_cells || [];
-            const colors = {};
-            const sizes = {};
-            garm.forEach(c => {
-                (c.colors || []).forEach(x => { colors[x.value] = (colors[x.value] || 0) + x.count; });
-                (c.sizes || []).forEach(x => { sizes[x.value] = (sizes[x.value] || 0) + x.count; });
-            });
-            const topColors = Object.entries(colors).sort((a,b)=>b[1]-a[1]).slice(0,5).map(x=>x[0]);
-            const topSizes = Object.entries(sizes).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([s,n]) => `${s}`);
-            const colorEl = document.querySelector('.fa-palette')?.parentElement?.querySelector('.font-mono');
-            const sizeEl = document.querySelector('.fa-ruler')?.parentElement?.querySelector('.font-mono');
-            if (colorEl && topColors.length) colorEl.textContent = topColors.join(' · ');
-            if (sizeEl && topSizes.length) sizeEl.textContent = topSizes.join(', ');
+    function esc(value) {
+      return String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+    }
+    function normal(value) { return String(value ?? '').trim().toLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' '); }
+    function normalizedGender(value) {
+      const g = normal(value);
+      if (['f','female','woman','women'].includes(g)) return 'f';
+      if (['m','male','man','men'].includes(g)) return 'm';
+      if (['u','unisex','unknown'].includes(g)) return g;
+      return g;
+    }
+    function normalizedValue(key, value) {
+      if (key === 'gender') return normalizedGender(value);
+      if (key === 'pin_code') return String(value ?? '').replace(/\.0$/, '').trim();
+      return normal(value);
+    }
+    function currentFilters() {
+      return { pin_code: $('filterArea').value, age_group: $('filterAge').value, gender: $('filterGender').value, rfm_segment: $('filterRfm').value };
+    }
+    function displayGender(value) {
+      const g = normalizedGender(value);
+      if (g === 'f') return 'Female'; if (g === 'm') return 'Male'; if (g === 'u') return 'Unisex';
+      return value || 'All genders';
+    }
+    function labelForPin(pin) {
+      const obj = state.metrics?.pin_geo?.[String(pin)];
+      return obj?.area_label ? `${obj.area_label} (${pin})` : (pin ? String(pin) : 'All areas');
+    }
+    function filtersLabel(f = currentFilters()) {
+      return [f.pin_code ? labelForPin(f.pin_code) : 'All areas', f.age_group || 'All ages', displayGender(f.gender), f.rfm_segment || 'All RFM segments'].join(' × ');
+    }
+    function setApiStatus(ok, msg) {
+      $('apiStatus').innerHTML = `<span class="w-1.5 h-1.5 rounded-full ${ok ? 'bg-emerald-400' : 'bg-red-400'}"></span>${esc(msg)}`;
+    }
+    function setLoading(show, text = 'Working…') {
+      state.loading = show; $('loadingText').textContent = text;
+      $('loadingOverlay').classList.toggle('hidden', !show); $('loadingOverlay').classList.toggle('flex', show);
+      $('runButton').disabled = show || state.assets.length === 0;
+    }
+    function selectOptions(el, firstLabel, rows, selected = '') {
+      el.innerHTML = `<option value="">${esc(firstLabel)}</option>` + rows.map((row) => {
+        const value = typeof row === 'object' ? row.value : row;
+        const label = typeof row === 'object' ? row.label : row;
+        return `<option value="${esc(value)}" ${String(value) === String(selected) ? 'selected' : ''}>${esc(label)}</option>`;
+      }).join('');
+    }
+    async function loadMetrics() {
+      try {
+        const res = await fetch(endpoint('/v1/metrics'), { cache: 'no-store' });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.detail || `Metrics API returned HTTP ${res.status}`);
+        state.metrics = data;
+        const f = data.filters || {};
+        const pins = (f.pin_codes || Object.keys(data.pin_geo || {})).map(String);
+        selectOptions($('filterArea'), 'All areas', pins.map(pin => ({value:pin, label:labelForPin(pin)})), pins[0] || '');
+        selectOptions($('filterAge'), 'All age groups', f.age_groups || []);
+        selectOptions($('filterGender'), 'All genders', (f.genders || []).map(g => ({value:g, label:displayGender(g)})));
+        selectOptions($('filterRfm'), 'All RFM segments', f.rfm_segments || []);
+        setApiStatus(true, `BigQuery metrics loaded · ${data.source || 'source not labelled'}`);
+        refreshForFilters();
+      } catch (e) {
+        console.error('[ads_lab] unable to load metrics', e);
+        setApiStatus(false, 'Metrics unavailable');
+        $('profileNote').textContent = `Could not load the BigQuery profile: ${e.message}`;
+        $('creativeGrid').innerHTML = '';
+      }
+    }
+
+    function rowValue(row, key) {
+      const aliases = {
+        pin_code: ['pin_code','pin','geo_key','pincode'],
+        age_group: ['age_group','age_bucket','age_band'],
+        gender: ['gender','sex'],
+        rfm_segment: ['rfm_segment','rfm','segment']
+      }[key] || [key];
+      for (const k of aliases) if (row && row[k] !== undefined && row[k] !== null && row[k] !== '') return row[k];
+      return undefined;
+    }
+    function matches(row, filters, keepKeys) {
+      for (const key of keepKeys) {
+        const wanted = filters[key];
+        if (!wanted) continue;
+        const actual = rowValue(row, key);
+        if (actual === undefined || normalizedValue(key, actual) !== normalizedValue(key, wanted)) return false;
+      }
+      return true;
+    }
+    function asDistribution(raw) {
+      const output = {};
+      if (Array.isArray(raw)) {
+        for (const item of raw) {
+          if (item == null) continue;
+          if (typeof item === 'string' || typeof item === 'number') {
+            const v = String(item); output[v] = (output[v] || 0) + 1; continue;
+          }
+          const value = item.value ?? item.name ?? item.label ?? item.key ?? item.brand ?? item.color ?? item.pattern ?? item.size ?? item.material ?? item.commodity_type;
+          const count = Number(item.count ?? item.n ?? item.quantity ?? item.total ?? 1);
+          if (value !== undefined && Number.isFinite(count)) output[String(value)] = (output[String(value)] || 0) + Math.max(0, count);
         }
-
-        dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
-        dropzone.addEventListener('dragleave', () => { dropzone.classList.remove('dragover'); });
-        dropzone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dropzone.classList.remove('dragover');
-            processFiles(e.dataTransfer.files);
-        });
-        dropzone.addEventListener('click', () => { fileInput.click(); });
-        fileInput.addEventListener('change', (e) => { processFiles(e.target.files); });
-
-        function processFiles(files) {
-            uploadedFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
-            uploadedImages = [];
-            if (uploadedFiles.length === 0) return;
-            let loaded = 0;
-            uploadedFiles.forEach(file => {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    uploadedImages.push({ src: e.target.result, name: file.name.toUpperCase(), file });
-                    loaded++;
-                    if (loaded === uploadedFiles.length) updateDropzoneUI(loaded);
-                };
-                reader.readAsDataURL(file);
-            });
+      } else if (raw && typeof raw === 'object') {
+        for (const [key, v] of Object.entries(raw)) {
+          const count = Number(typeof v === 'object' ? (v.count ?? v.n ?? v.quantity ?? 1) : v);
+          if (Number.isFinite(count)) output[key] = Math.max(0, count);
         }
-
-        function updateDropzoneUI(count) {
-            dropzone.innerHTML = `<i class="fa-solid fa-circle-check text-3xl text-emerald-500 mb-2"></i><span class="text-xs text-emerald-300 font-semibold block">${count} Assets Loaded</span>`;
-            dropzone.style.borderColor = '#00ff88';
-            dropzone.style.background = 'rgba(0, 255, 136, 0.05)';
+      } else if (typeof raw === 'string' && raw.trim()) output[raw.trim()] = 1;
+      return output;
+    }
+    function categoryDistribution(cell, config) {
+      for (const key of config.keys) {
+        if (cell && cell[key] !== undefined) {
+          const parsed = asDistribution(cell[key]);
+          if (Object.keys(parsed).length) return parsed;
         }
-
-        /** Dummy score 0–100 (not CTR). Random per call for demo ranking. */
-        function dummyScore() {
-            return Math.floor(Math.random() * 101);
+      }
+      // Also accept an aggregate object where single-value attribute columns exist.
+      const singulars = {
+        colors: ['color','primary_color'], patterns: ['pattern'], sizes: ['size','size_normalized'],
+        materials: ['material','material_type'], brands: ['brand','brand_name'], commodities: ['commodity','commodity_type','name']
+      };
+      for (const [plural, candidates] of Object.entries(singulars)) {
+        if (config.keys.includes(plural)) {
+          for (const k of candidates) if (cell?.[k] !== undefined && cell[k] !== null && cell[k] !== '') {
+            const count = k === 'brand' || k === 'brand_name'
+              ? Number(cell.garments ?? cell.brand_count ?? 1)
+              : Number(cell[`${k}_count`] || 1);
+            return { [String(cell[k])]: Number.isFinite(count) && count > 0 ? count : 1 };
+          }
         }
-
-        function fillCardsFromExtract(items) {
-            const cards = document.querySelectorAll('.holo-card');
-            cards.forEach((card, index) => {
-                const item = items[index] || items[index % items.length];
-                if (!item) return;
-                const imgContainer = card.querySelector('.card-img-container');
-                const preview = uploadedImages[index] || uploadedImages[index % uploadedImages.length];
-                if (preview && imgContainer) {
-                    imgContainer.innerHTML = `
-                        <img src="${preview.src}" class="w-full h-full object-cover opacity-90 relative z-10" />
-                        <div class="absolute inset-0 bg-cyan-500 mix-blend-color opacity-10 pointer-events-none z-30"></div>
-                    `;
-                }
-                const attrs = item.attributes || {};
-                const meta = card.querySelector('p.text-\\[10px\\]') || card.querySelector('p.font-mono');
-                const title = card.querySelector('h4, .font-bold');
-                const fileNameSpan = card.querySelector('span.font-mono');
-                const bits = [attrs.color, attrs.pattern, attrs.size, attrs.sleeve_type, attrs.collar_type].filter(Boolean);
-                if (meta) meta.textContent = bits.length ? bits.join(' · ') : (item.ok ? 'Extracted' : (item.error || 'Failed'));
-                if (title && attrs.name) title.textContent = attrs.name;
-                if (fileNameSpan) fileNameSpan.textContent = (item.filename || preview?.name || 'IMG').toString().toUpperCase();
-                const scoreEl = card.querySelector('.text-emerald-400, .text-cyan-300');
-                if (scoreEl && item.ok) {
-                    item._score = item._score != null ? item._score : dummyScore();
-                    scoreEl.textContent = 'Score ' + item._score;
-                }
-            });
-
-            const tbody = document.querySelector('#resultsContent tbody');
-            if (tbody && items.length) {
-                const pin = document.getElementById('areaSelect')?.value || '';
-                const area = (METRICS && METRICS.pin_geo && METRICS.pin_geo[pin] && METRICS.pin_geo[pin].area_label) || pin || 'All';
-                tbody.innerHTML = items.map((it) => {
-                    const a = it.attributes || {};
-                    if (it.ok && it._score == null) it._score = dummyScore();
-                    return `<tr class="border-b border-gray-800/60">
-                        <td class="px-5 py-4 text-white font-medium">${area}</td>
-                        <td class="px-5 py-4 text-gray-300">${a.size || '—'}</td>
-                        <td class="px-5 py-4 text-gray-300">${a.color || '—'}</td>
-                        <td class="px-5 py-4 text-emerald-400 font-medium">${a.brand || '—'}</td>
-                        <td class="px-5 py-4 font-mono text-cyan-300">${(it.filename || '').toUpperCase()}</td>
-                        <td class="px-5 py-4 text-right text-emerald-300 font-mono">${it.ok ? it._score : '—'}</td>
-                    </tr>`;
-                }).join('');
-            }
+      }
+      return {};
+    }
+    function metricCellRows() {
+      const m = state.metrics || {};
+      const rows = m.garment_cells || m.garmentCells || m.garment_profiles || m.segment_garment_cells || [];
+      return Array.isArray(rows) ? rows : [];
+    }
+    function tierLabel(keep, filters, exact = false) {
+      const names = {pin_code:'geo', age_group:'age', gender:'gender', rfm_segment:'RFM'};
+      if (!keep.length) return 'Overall observed profile';
+      const chosen = keep.map(k => names[k]);
+      const allSelected = FILTER_KEYS.every(k => filters[k]);
+      if (exact && allSelected) return 'Exact geo × age × gender × RFM segment';
+      if (exact) return `Profile for selected ${chosen.join(' × ')}`;
+      return `Broader profile: ${chosen.join(' × ')}`;
+    }
+    function filterTiers(filters) {
+      const selected = FILTER_KEYS.filter(k => filters[k]);
+      const tiers = [];
+      // Prefer exact audience; if it has no observed garment profile, relax RFM, then gender, then age, while retaining geo.
+      const dropOrder = ['rfm_segment','gender','age_group','pin_code'];
+      let keep = selected.slice();
+      tiers.push({keep: keep.slice(), label: tierLabel(keep, filters, true)});
+      for (const key of dropOrder) {
+        if (keep.includes(key)) {
+          keep = keep.filter(k => k !== key);
+          if (!tiers.some(t => t.keep.join('|') === keep.join('|'))) tiers.push({keep: keep.slice(), label: tierLabel(keep, filters, false)});
         }
-
-        async function runAnalysis() {
-            if (uploadedFiles.length === 0) { alert('Please upload creative images first.'); return; }
-
-            document.getElementById('emptyState').classList.add('hidden');
-            document.getElementById('resultsContent').classList.add('hidden');
-            document.getElementById('loadingOverlay').classList.remove('hidden');
-            document.getElementById('loadingOverlay').classList.add('flex');
-
-            try {
-                const fd = new FormData();
-                uploadedFiles.forEach(f => fd.append('files', f, f.name));
-                const res = await fetch(extractUrl(), { method: 'POST', body: fd });
-                const data = await res.json().catch(() => ({}));
-                if (!res.ok) throw new Error(data.detail || data.message || ('Extract failed HTTP ' + res.status));
-                lastExtractItems = data.items || [];
-                fillCardsFromExtract(lastExtractItems);
-            } catch (err) {
-                console.error('[ads_lab] extract failed', err);
-                alert('Extraction failed: ' + err.message + '\nShowing previews without scores.');
-                fillCardsFromExtract(uploadedImages.map(u => ({
-                    ok: false, filename: u.name, error: String(err.message), attributes: {}
-                })));
-            } finally {
-                document.getElementById('loadingOverlay').classList.add('hidden');
-                document.getElementById('loadingOverlay').classList.remove('flex');
-                document.getElementById('resultsContent').classList.remove('hidden');
-            }
+      }
+      if (!tiers.some(t => t.keep.length === 0)) tiers.push({keep: [], label: 'Overall observed profile'});
+      return tiers;
+    }
+    function createProfile(filters) {
+      const cells = metricCellRows();
+      const tiers = filterTiers(filters);
+      for (const tier of tiers) {
+        const picked = cells.filter(c => matches(c, filters, tier.keep));
+        const dist = {};
+        for (const [group, config] of Object.entries(GROUPS)) {
+          dist[group] = {};
+          for (const cell of picked) {
+            const values = categoryDistribution(cell, config);
+            for (const [value, count] of Object.entries(values)) dist[group][value] = (dist[group][value] || 0) + count;
+          }
         }
-
-        function downloadCSV() {
-            const rows = [['Geo Area', 'Color', 'Size', 'Brand', 'Filename', 'Score']];
-            const pin = document.getElementById('areaSelect')?.value || '';
-            const area = (METRICS && METRICS.pin_geo && METRICS.pin_geo[pin] && METRICS.pin_geo[pin].area_label) || 'All';
-            (lastExtractItems.length ? lastExtractItems : uploadedImages.map(u => ({ filename: u.name, attributes: {}, ok: true }))).forEach((it) => {
-                const a = it.attributes || {};
-                if (it.ok && it._score == null) it._score = dummyScore();
-                rows.push([area, a.color || '', a.size || '', a.brand || '', it.filename || '', it.ok ? it._score : '']);
-            });
-            const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
-            const link = document.createElement('a');
-            link.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
-            link.download = 'Spatial_Creative_Matrix.csv';
-            link.click();
+        const available = Object.values(dist).some(d => Object.keys(d).length > 0);
+        if (available) {
+          const selectedKeys = FILTER_KEYS.filter(k => Boolean(filters[k]));
+          return {
+            distributions: dist,
+            label: tier.label,
+            cellCount: picked.length,
+            requestedKeys: selectedKeys,
+            keptKeys: tier.keep.slice(),
+            isFallback: tier.keep.length !== selectedKeys.length || tier.keep.some(k => !selectedKeys.includes(k))
+          };
         }
+      }
+      return {
+        distributions: Object.fromEntries(Object.keys(GROUPS).map(k => [k, {}])),
+        label: 'No garment observations available', cellCount: 0,
+        requestedKeys: FILTER_KEYS.filter(k => Boolean(filters[k])), keptKeys: [], isFallback: true
+      };
+    }
+    function topN(distribution, limit = 4) {
+      return Object.entries(distribution || {}).filter(([, n]) => Number(n) > 0).sort((a,b) => b[1]-a[1]).slice(0, limit);
+    }
+    function renderChips(id, distribution) {
+      const node = $(id); const rows = topN(distribution, 5);
+      node.innerHTML = rows.length ? rows.map(([name, count]) => `<span class="tag" title="Observed count: ${esc(count)}">${esc(name)} <span class="text-cyan-400">${esc(count)}</span></span>`).join('') : '<span class="text-xs text-gray-500">No observations for this profile</span>';
+    }
+    function metricRowsForAudience() {
+      const m = state.metrics || {};
+      for (const key of ['customer_cells','demographic_cells','segment_cells','audience_cells','customer_segments']) {
+        if (Array.isArray(m[key])) return m[key];
+      }
+      return [];
+    }
+    function audienceStats(filters) {
+      const rows = metricRowsForAudience();
+      const selectedKeys = FILTER_KEYS.filter(k => Boolean(filters[k]));
+      if (rows.length) {
+        const tier = filterTiers(filters).find(t => rows.some(r => matches(r, filters, t.keep)));
+        if (tier) {
+          const matched = rows.filter(r => matches(r, filters, tier.keep));
+          const sum = (key) => matched.reduce((acc, r) => acc + (Number(r[key] ?? 0) || 0), 0);
+          const exactAllFour = FILTER_KEYS.every(k => Boolean(filters[k]) && tier.keep.includes(k));
+          const everySelectedDimensionUsed = selectedKeys.every(k => tier.keep.includes(k));
+          let coverage, coverageTitle, coverageDetail;
+          if (exactAllFour) {
+            coverage = 'exact-segment';
+            coverageTitle = 'EXACT SEGMENT-LEVEL TOTALS';
+            coverageDetail = 'Customer, order and revenue values match this exact geo × age × gender × RFM selection.';
+          } else if (selectedKeys.length === 0) {
+            coverage = 'overall';
+            coverageTitle = 'OVERALL TOTALS — NO SEGMENT FILTERS';
+            coverageDetail = 'Values cover the overall available aggregate. Select geo, age, gender and RFM to request an exact audience segment.';
+          } else if (everySelectedDimensionUsed) {
+            coverage = 'partial-filter';
+            coverageTitle = 'PARTIALLY FILTERED TOTALS — NOT A FULL 4-DIMENSION SEGMENT';
+            coverageDetail = `Totals respect the selected fields (${tier.label}), while unselected dimensions are combined. Select all four fields for a fully specified audience.`;
+          } else {
+            coverage = 'broader-fallback';
+            coverageTitle = 'BROADER FALLBACK — NOT THE EXACT SELECTED SEGMENT';
+            coverageDetail = `The available aggregate only supports ${tier.label}. One or more selected filters were relaxed, so these totals/profile do not represent the requested segment. Update the metrics aggregation to emit rows by geo × age_group × gender × rfm_segment.`;
+          }
+          return { customers:sum('customers'), orders:sum('orders'), revenue:sum('revenue'), source: tier.label, coverage, coverageTitle, coverageDetail };
+        }
+      }
+      // pin_geo contains area-level aggregates only. Make this fallback explicit in the UI.
+      const pin = filters.pin_code;
+      const area = pin ? state.metrics?.pin_geo?.[String(pin)] : null;
+      if (area) {
+        return {
+          customers: area.customers ?? null, orders: area.orders ?? null, revenue: area.revenue ?? null,
+          source: 'Area-level aggregate from pin_geo', coverage: 'area-only',
+          coverageTitle: 'AREA-LEVEL TOTALS ONLY — NOT DEMOGRAPHIC SEGMENT COUNTS',
+          coverageDetail: `The values above describe all available customers/orders/revenue in ${labelForPin(pin)}, across ages, genders and RFM segments. They are not the selected geo × age × gender × RFM audience size. This is a backend data-coverage gap: /v1/metrics needs audience aggregates grouped by pin_code, age_group, gender and rfm_segment.`
+        };
+      }
+      return {
+        customers: null, orders: null, revenue: null, source: 'Segment aggregate counts are not present in the metrics payload',
+        coverage: 'missing', coverageTitle: 'SEGMENT TOTALS UNAVAILABLE',
+        coverageDetail: 'The API does not provide audience-level customer/order/revenue aggregates for this selection. No area-level number is being substituted. Update the metrics aggregation to emit audience cells by geo × age_group × gender × rfm_segment.'
+      };
+    }
+    function renderCoverage(stats) {
+      const banner = $('audienceCoverage');
+      const title = $('audienceCoverageTitle');
+      const detail = $('audienceCoverageDetail');
+      const styles = {
+        'exact-segment': 'mt-4 rounded-lg border border-emerald-500/50 bg-emerald-950/25 p-3',
+        'partial-filter': 'mt-4 rounded-lg border border-sky-500/50 bg-sky-950/25 p-3',
+        'overall': 'mt-4 rounded-lg border border-slate-500/50 bg-slate-950/50 p-3',
+        'broader-fallback': 'mt-4 rounded-lg border border-amber-500/60 bg-amber-950/35 p-3',
+        'area-only': 'mt-4 rounded-lg border border-red-500/70 bg-red-950/40 p-3',
+        'missing': 'mt-4 rounded-lg border border-red-500/70 bg-red-950/40 p-3'
+      };
+      const textStyles = {
+        'exact-segment': 'text-[11px] font-bold tracking-wide text-emerald-200',
+        'partial-filter': 'text-[11px] font-bold tracking-wide text-sky-200',
+        'overall': 'text-[11px] font-bold tracking-wide text-slate-200',
+        'broader-fallback': 'text-[11px] font-bold tracking-wide text-amber-200',
+        'area-only': 'text-[11px] font-bold tracking-wide text-red-200',
+        'missing': 'text-[11px] font-bold tracking-wide text-red-200'
+      };
+      banner.className = styles[stats.coverage] || styles.missing;
+      title.className = textStyles[stats.coverage] || textStyles.missing;
+      title.textContent = stats.coverageTitle || 'DATA COVERAGE STATUS';
+      detail.className = 'text-xs mt-1 leading-relaxed ' + (['area-only','missing','broader-fallback'].includes(stats.coverage) ? 'text-red-100/95' : 'text-gray-200');
+      detail.textContent = stats.coverageDetail || stats.source || '';
+    }
+    function renderTasteCoverage(profile, filters) {
+      const banner = $('tasteCoverage');
+      const title = $('tasteCoverageTitle');
+      const detail = $('tasteCoverageDetail');
+      let coverage, heading, explanation;
+      const selected = FILTER_KEYS.filter(k => Boolean(filters[k]));
+      if (!profile || !profile.cellCount || !Object.values(profile.distributions || {}).some(d => Object.keys(d || {}).length)) {
+        coverage = 'missing';
+        heading = 'NO GARMENT OBSERVATIONS FOR THIS PROFILE';
+        explanation = `No usable garment-observation aggregate is available for ${filtersLabel(filters)}. The page will not invent a preference profile or score. Verify garment_cells in /v1/metrics and add reviewed garment observations for this segment.`;
+      } else if (selected.length === 0) {
+        coverage = 'overall';
+        heading = 'OVERALL GARMENT PROFILE — NO AUDIENCE FILTERS SELECTED';
+        explanation = `This profile pools all available garment observations (${profile.cellCount} grouped cells). Select geo, age, gender and RFM to narrow the profile.`;
+      } else if (profile.isFallback) {
+        const retained = profile.keptKeys || [];
+        const retainedLabel = retained.length ? retained.map(k => ({pin_code:'geo',age_group:'age',gender:'gender',rfm_segment:'RFM'}[k] || k)).join(' × ') : 'overall observations';
+        coverage = retained.length === 1 && retained[0] === 'pin_code' ? 'area-only' : 'broader-fallback';
+        heading = coverage === 'area-only'
+          ? 'AREA-LEVEL GARMENT PROFILE ONLY — OTHER FILTERS RELAXED'
+          : 'BROADER GARMENT PROFILE — NOT THE EXACT SELECTED SEGMENT';
+        const relaxed = selected.filter(k => !retained.includes(k)).map(k => ({pin_code:'geo',age_group:'age',gender:'gender',rfm_segment:'RFM'}[k] || k));
+        explanation = `Requested audience: ${filtersLabel(filters)}. Observed garment preferences came from ${retainedLabel} (${profile.cellCount} grouped cell(s)); filters relaxed: ${relaxed.length ? relaxed.join(', ') : 'none'}. Ranking is therefore based on a broader observed profile, not the exact requested segment. More reviewed garment observations may be needed.`;
+      } else if (selected.length === FILTER_KEYS.length) {
+        coverage = 'exact-segment';
+        heading = 'EXACT SEGMENT-LEVEL GARMENT PROFILE';
+        explanation = `Garment preference observations match all four selected dimensions: geo × age × gender × RFM. Matched grouped cells: ${profile.cellCount}.`;
+      } else {
+        coverage = 'partial-filter';
+        heading = 'FILTERED GARMENT PROFILE — UNSELECTED DIMENSIONS COMBINED';
+        const used = selected.map(k => ({pin_code:'geo',age_group:'age',gender:'gender',rfm_segment:'RFM'}[k] || k)).join(' × ');
+        explanation = `Preferences respect the selected dimensions (${used || 'none'}); unselected dimensions are combined. Matched grouped cells: ${profile.cellCount}. Select all four dimensions for a fully specified segment, when observations exist.`;
+      }
+      const styles = {
+        'exact-segment':'mt-3 rounded-lg border border-emerald-500/50 bg-emerald-950/25 p-3',
+        'partial-filter':'mt-3 rounded-lg border border-sky-500/50 bg-sky-950/25 p-3',
+        'overall':'mt-3 rounded-lg border border-slate-500/50 bg-slate-950/50 p-3',
+        'broader-fallback':'mt-3 rounded-lg border border-amber-500/60 bg-amber-950/35 p-3',
+        'area-only':'mt-3 rounded-lg border border-red-500/70 bg-red-950/40 p-3',
+        'missing':'mt-3 rounded-lg border border-red-500/70 bg-red-950/40 p-3'
+      };
+      const titleStyles = {
+        'exact-segment':'text-[11px] font-bold tracking-wide text-emerald-200',
+        'partial-filter':'text-[11px] font-bold tracking-wide text-sky-200',
+        'overall':'text-[11px] font-bold tracking-wide text-slate-200',
+        'broader-fallback':'text-[11px] font-bold tracking-wide text-amber-200',
+        'area-only':'text-[11px] font-bold tracking-wide text-red-200',
+        'missing':'text-[11px] font-bold tracking-wide text-red-200'
+      };
+      banner.className = styles[coverage] || styles.missing;
+      title.className = titleStyles[coverage] || titleStyles.missing;
+      title.textContent = heading;
+      detail.className = 'text-xs mt-1 leading-relaxed ' + (['missing','area-only','broader-fallback'].includes(coverage) ? 'text-red-100/95' : 'text-gray-200');
+      detail.textContent = explanation;
+    }
 
-        loadMetricsForFilters();
-    </script>
+    function fmtNumber(n) { return n === null || n === undefined || !Number.isFinite(Number(n)) ? '—' : Number(n).toLocaleString('en-IN', {maximumFractionDigits:0}); }
+    function fmtCurrency(n) { return n === null || n === undefined || !Number.isFinite(Number(n)) ? '—' : '₹' + Number(n).toLocaleString('en-IN', {maximumFractionDigits:0}); }
+    function refreshForFilters() {
+      if (!state.metrics) return;
+      const filters = currentFilters();
+      state.profile = createProfile(filters);
+      $('segmentTitle').textContent = filtersLabel(filters);
+      const stats = audienceStats(filters);
+      $('audienceCustomers').textContent = fmtNumber(stats.customers);
+      $('audienceOrders').textContent = fmtNumber(stats.orders);
+      $('audienceRevenue').textContent = fmtCurrency(stats.revenue);
+      renderCoverage(stats);
+      renderTasteCoverage(state.profile, filters);
+      $('profileNote').textContent = `Audience totals source: ${stats.source}. Garment preference source: ${state.profile.label}; observed garment-profile cells used: ${state.profile.cellCount}. Fit score is deterministic and heuristic; no campaign click or conversion outcomes are available in this data.`;
+      for (const [id, group] of [['insightColors','color'],['insightPatterns','pattern'],['insightSizes','size'],['insightCommodities','commodity']]) renderChips(id, state.profile.distributions[group]);
+      renderCreatives();
+    }
+
+    function extractionAttrs(item) {
+      const a = item?.attributes || {}; const r = item?.raw_result || item?.result || {};
+      const take = (...values) => values.find(v => v !== undefined && v !== null && String(v).trim() && !['unknown','n/a','null'].includes(normal(v))) || '';
+      return {
+        color: take(a.color, r.primary_color, r.color, r.secondary_colors?.[0]),
+        pattern: take(a.pattern, r.pattern),
+        commodity: take(a.name, a.commodity_type, r.commodity_type, r.garment_type, r.name),
+        material: take(a.material, r.material_type, r.material),
+        size: take(a.size, r.size_normalized, r.size_raw, r.size),
+        brand: take(a.brand, r.brand_name, r.brand),
+        confidence: take(a.confidence, r.confidence, r.confidence_score)
+      };
+    }
+    function matchScore(attrs, profile) {
+      const dist = profile?.distributions || {};
+      const dimensions = [
+        ['color','color'], ['pattern','pattern'], ['commodity','commodity'], ['material','material'], ['size','size'], ['brand','brand']
+      ];
+      let weightedTotal = 0, usedWeight = 0, matchedDimensions = 0;
+      for (const [attr, group] of dimensions) {
+        const value = attrs[attr]; const distribution = dist[group] || {};
+        const pairs = Object.entries(distribution).filter(([, n]) => Number(n) > 0);
+        if (!value || !pairs.length) continue;
+        const max = Math.max(...pairs.map(([,n]) => Number(n)));
+        if (!max) continue;
+        const found = pairs.find(([name]) => normal(name) === normal(value));
+        const ratio = found ? Number(found[1]) / max : 0;
+        const weight = GROUPS[group].weight;
+        weightedTotal += ratio * weight; usedWeight += weight; matchedDimensions++;
+      }
+      if (usedWeight === 0) return { score: null, evidence: 0, reason: 'No overlapping extracted attributes and observed segment preferences' };
+      const score = Math.round((weightedTotal / usedWeight) * 100);
+      return { score, evidence: matchedDimensions, reason: `${matchedDimensions} attribute group(s) compared with observed preference counts` };
+    }
+    function getItemForAsset(asset, index) {
+      const result = state.results.find(r => normal(r.filename) === normal(asset.file.name)) || state.results[index] || null;
+      return result;
+    }
+    function makeRankedAssets() {
+      const usedResultIndexes = new Set();
+      const ranked = state.assets.map((asset, index) => {
+        let resultIndex = state.results.findIndex((r, i) => !usedResultIndexes.has(i) && normal(r.filename) === normal(asset.file.name));
+        if (resultIndex < 0 && index < state.results.length && !usedResultIndexes.has(index)) resultIndex = index;
+        const item = resultIndex >= 0 ? state.results[resultIndex] : null;
+        if (resultIndex >= 0) usedResultIndexes.add(resultIndex);
+        const attrs = extractionAttrs(item);
+        const fit = item?.ok ? matchScore(attrs, state.profile || createProfile(currentFilters())) : {score:null,evidence:0,reason:item?.error || 'Extraction has not completed'};
+        return { asset, item, attrs, fit, originalIndex:index };
+      });
+      ranked.sort((a,b) => {
+        if (a.fit.score === null && b.fit.score !== null) return 1;
+        if (a.fit.score !== null && b.fit.score === null) return -1;
+        if (a.fit.score !== null && b.fit.score !== null && b.fit.score !== a.fit.score) return b.fit.score - a.fit.score;
+        return a.originalIndex - b.originalIndex;
+      });
+      return ranked.map((item, i) => ({...item, rank:i+1}));
+    }
+    function extractedTags(attrs) {
+      return [attrs.color && `Color: ${attrs.color}`, attrs.pattern && `Pattern: ${attrs.pattern}`, attrs.commodity && `Type: ${attrs.commodity}`, attrs.material && `Material: ${attrs.material}`, attrs.size && `Size: ${attrs.size}`, attrs.brand && `Brand: ${attrs.brand}`].filter(Boolean);
+    }
+    function renderCreatives() {
+      const list = makeRankedAssets();
+      $('rankCount').textContent = `${list.length} creative${list.length === 1 ? '' : 's'}`;
+      $('emptyState').classList.toggle('hidden', list.length > 0);
+      $('creativeGrid').innerHTML = list.map(row => {
+        const {asset,item,attrs,fit,rank} = row;
+        const status = item ? (item.ok ? (item.status || 'Extracted') : 'Extraction failed') : 'Awaiting extraction';
+        const scoreText = fit.score === null ? 'N/A' : `${fit.score}/100`;
+        const tags = extractedTags(attrs);
+        const reason = fit.score === null ? (fit.reason || 'No comparable segment profile') : `${fit.reason}. Relative preference score, not predicted ad performance.`;
+        return `<article class="creative-card ${rank === 1 && fit.score !== null ? 'rank-1' : ''}">
+          <div class="relative aspect-[4/3] bg-gray-950 border-b border-gray-800"><img src="${asset.src}" alt="${esc(asset.file.name)}" class="w-full h-full object-contain" loading="lazy"><div class="absolute top-3 left-3 tag ${rank === 1 && fit.score !== null ? 'border-emerald-400 text-emerald-300' : ''}">#${rank} ${rank === 1 ? '· TOP FIT' : ''}</div><div class="absolute top-3 right-3 tag">${esc(status)}</div></div>
+          <div class="p-4 space-y-3"><div class="flex items-start justify-between gap-3"><h4 class="font-semibold text-sm break-all">${esc(asset.file.name)}</h4><div class="text-right shrink-0"><p class="text-[9px] uppercase tracking-wider text-gray-500">Segment fit</p><p class="font-mono text-xl ${fit.score === null ? 'text-gray-500' : rank === 1 ? 'text-emerald-300' : 'text-cyan-300'}">${scoreText}</p></div></div>
+          <div class="flex flex-wrap gap-1.5">${tags.length ? tags.map(t => `<span class="tag">${esc(t)}</span>`).join('') : '<span class="text-xs text-gray-500">No normalized attributes returned</span>'}</div>
+          <div class="border-t border-gray-800 pt-2"><p class="text-[9px] uppercase tracking-wider text-gray-500 mb-1">Ranked for</p><p class="text-[10px] text-cyan-200 leading-relaxed">${esc(filtersLabel())}</p><p class="text-[10px] text-gray-500 mt-2 leading-relaxed">${esc(reason)}</p></div></div></article>`;
+      }).join('');
+      renderMatrix(list);
+    }
+    function renderMatrix(list) {
+      const f = currentFilters();
+      $('matrixBody').innerHTML = list.length ? list.map(row => {
+        const a = row.attrs; const taste = extractedTags(a).join(' · ') || '—';
+        return `<tr><td class="px-4 py-3 font-mono ${row.rank === 1 ? 'text-emerald-300' : 'text-gray-400'}">#${row.rank}</td><td class="px-4 py-3 text-white">${esc(row.asset.file.name)}</td><td class="px-4 py-3">${esc(f.pin_code ? labelForPin(f.pin_code) : 'All areas')}</td><td class="px-4 py-3">${esc(f.age_group || 'All ages')}</td><td class="px-4 py-3">${esc(displayGender(f.gender))}</td><td class="px-4 py-3">${esc(f.rfm_segment || 'All RFM')}</td><td class="px-4 py-3 whitespace-normal min-w-[220px]">${esc(taste)}</td><td class="px-4 py-3 text-right font-mono ${row.fit.score === null ? 'text-gray-500' : 'text-cyan-300'}">${row.fit.score === null ? 'N/A' : row.fit.score + '/100'}</td></tr>`;
+      }).join('') : '<tr><td colspan="8" class="px-4 py-8 text-center text-gray-500">Upload images to populate the matrix.</td></tr>';
+    }
+
+    function readAsDataUrl(file) {
+      return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve({file, src:reader.result}); reader.onerror = () => reject(new Error(`Could not read ${file.name}`)); reader.readAsDataURL(file); });
+    }
+    async function processFiles(fileList) {
+      const chosen = Array.from(fileList || []).filter(f => f.type && f.type.startsWith('image/'));
+      if (!chosen.length) return;
+      try {
+        state.assets = await Promise.all(chosen.map(readAsDataUrl));
+        state.results = [];
+        $('uploadSummary').textContent = `${state.assets.length} file(s) selected. Each file will render exactly once.`;
+        $('runButton').disabled = false;
+        renderCreatives();
+      } catch (e) { alert(e.message); }
+    }
+    const dropzone = $('dropzone'); const fileInput = $('fileInput');
+    dropzone.addEventListener('click', () => fileInput.click());
+    dropzone.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click(); } });
+    dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+    dropzone.addEventListener('drop', e => { e.preventDefault(); dropzone.classList.remove('dragover'); processFiles(e.dataTransfer.files); });
+    fileInput.addEventListener('change', e => { processFiles(e.target.files); fileInput.value = ''; });
+    ['filterArea','filterAge','filterGender','filterRfm'].forEach(id => $(id).addEventListener('change', refreshForFilters));
+    $('runButton').addEventListener('click', runAnalysis);
+
+    async function runAnalysis() {
+      if (!state.assets.length || state.loading) return;
+      setLoading(true, 'Extracting uploaded garments…');
+      try {
+        const fd = new FormData(); state.assets.forEach(({file}) => fd.append('files', file, file.name));
+        const res = await fetch(endpoint('/v1/ads-lab/extract'), {method:'POST', body:fd});
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.detail || data.message || `Extraction failed (HTTP ${res.status})`);
+        state.results = Array.isArray(data.items) ? data.items : [];
+        if (!state.results.length) throw new Error('The extraction API returned no items.');
+        const notFound = state.assets.filter(a => !state.results.some(r => normal(r.filename) === normal(a.file.name)));
+        if (notFound.length) console.warn('[ads_lab] extraction items could not be matched by filename; index matching will be used for those files', notFound.map(a => a.file.name));
+        refreshForFilters();
+        $('uploadSummary').textContent = `Extraction returned ${state.results.filter(i => i.ok).length}/${state.assets.length} successful result(s). Needs-review results are not automatically approved.`;
+      } catch (e) {
+        console.error('[ads_lab] extraction failed', e);
+        // Keep each preview exactly once; failed requests do not get a fake score.
+        state.results = state.assets.map(({file}) => ({filename:file.name, ok:false, error:e.message, attributes:{}}));
+        refreshForFilters();
+        $('uploadSummary').textContent = `Extraction failed: ${e.message}. Previews retained with no score.`;
+      } finally { setLoading(false); }
+    }
+    function downloadCSV() {
+      const list = makeRankedAssets(); const f = currentFilters();
+      const rows = [['rank','geo_pin','geo_area','age_bucket','gender','rfm_segment','filename','color','pattern','commodity','material','size','brand','segment_fit_score','score_type']];
+      list.forEach(r => rows.push([r.rank, f.pin_code, f.pin_code ? labelForPin(f.pin_code) : 'All areas', f.age_group || 'All ages', displayGender(f.gender), f.rfm_segment || 'All RFM', r.asset.file.name, r.attrs.color, r.attrs.pattern, r.attrs.commodity, r.attrs.material, r.attrs.size, r.attrs.brand, r.fit.score ?? '', 'deterministic heuristic; not CTR/conversion prediction']));
+      const csv = rows.map(row => row.map(v => `"${String(v ?? '').replace(/"/g,'""')}"`).join(',')).join('\r\n');
+      const url = URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8;'})); const a = document.createElement('a'); a.href = url; a.download = 'ads_lab_segment_ranking.csv'; a.click(); URL.revokeObjectURL(url);
+    }
+    $('downloadButton').addEventListener('click', downloadCSV);
+    loadMetrics();
+  </script>
 </body>
 </html>
