@@ -6,7 +6,7 @@ Cloud Run service that:
 2. Extracts attributes with **Vertex AI Gemini**
 3. Writes results to **Cloud SQL** (`extraction_jobs`, `garment_instances`, or `campaigns.metadata`)
 
-Does **not** require redeploying `suffai-api` or `suffai-web`.
+Does **not** require redeploying `suffai-command-center` (unless EXTRACTION_URL / env changes).
 
 ## Env vars (Cloud Run → `suffai-extraction`)
 

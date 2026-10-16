@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# Deploy API + Web + Worker to Cloud Run. Requires: gcloud auth, project set.
+# Deploy Command Center + Extraction (+ optional Similarity) to Cloud Run.
+# suffai-api has been removed — command_center is the BFF.
+# Requires: gcloud auth, project set.
 set -euo pipefail
 
 PROJECT="${GOOGLE_CLOUD_PROJECT:?Set GOOGLE_CLOUD_PROJECT}"
@@ -13,23 +15,8 @@ gcloud artifacts repositories create suffai \
   --location="$REGION" \
   --project="$PROJECT" 2>/dev/null || true
 
-API_IMG="$REGION-docker.pkg.dev/$PROJECT/suffai/suffai-api:latest"
 CC_IMG="$REGION-docker.pkg.dev/$PROJECT/suffai/suffai-command-center:latest"
 WORKER_IMG="$REGION-docker.pkg.dev/$PROJECT/suffai/suffai-extraction:latest"
-
-docker build -f "$ROOT/Dockerfile.api" -t "$API_IMG" "$ROOT"
-docker push "$API_IMG"
-
-gcloud run deploy suffai-api \
-  --image="$API_IMG" \
-  --region="$REGION" \
-  --platform=managed \
-  --allow-unauthenticated \
-  --set-env-vars="ENVIRONMENT=staging,DEMO_AUTH_ENABLED=true,GCP_REGION=$REGION,GOOGLE_CLOUD_PROJECT=$PROJECT" \
-  --project="$PROJECT"
-
-API_URL="$(gcloud run services describe suffai-api --region="$REGION" --project="$PROJECT" --format='value(status.url)')"
-echo "API_URL=$API_URL"
 
 docker build -f "$ROOT/Dockerfile.worker" -t "$WORKER_IMG" "$ROOT"
 docker push "$WORKER_IMG"
@@ -39,14 +26,27 @@ gcloud run deploy suffai-extraction \
   --region="$REGION" \
   --platform=managed \
   --no-allow-unauthenticated \
-  --set-env-vars="ENABLE_VERTEX=false" \
+  --set-env-vars="ENABLE_VERTEX=${ENABLE_VERTEX:-false},GOOGLE_CLOUD_PROJECT=$PROJECT,GCS_IMAGE_BUCKET=${GCS_IMAGE_BUCKET:-${PROJECT}-suffai-garment-images},VERTEX_LOCATION=${VERTEX_LOCATION:-asia-south1}" \
   --project="$PROJECT"
 
 WORKER_URL="$(gcloud run services describe suffai-extraction --region="$REGION" --project="$PROJECT" --format='value(status.url)')"
 
-# Command Center (Geo + Ads Lab) — replaces Next.js web for this product surface
+# Optional: deploy similarity if script present
+if [[ -x "$ROOT/deploy/deploy_similarity.sh" ]]; then
+  echo "Deploying similarity (deploy_similarity.sh)…"
+  "$ROOT/deploy/deploy_similarity.sh" || true
+fi
+
+SIMILARITY_URL="${SIMILARITY_URL:-$(gcloud run services describe suffai-similarity \
+  --region="$REGION" --project="$PROJECT" --format='value(status.url)' 2>/dev/null || true)}"
+
 docker build -f "$ROOT/Dockerfile.command_center" -t "$CC_IMG" "$ROOT"
 docker push "$CC_IMG"
+
+ENV_VARS="USE_BQ=true,BQ_DATASET=suffai_ops,GOOGLE_CLOUD_PROJECT=$PROJECT,GCS_IMAGE_BUCKET=${GCS_IMAGE_BUCKET:-${PROJECT}-suffai-garment-images},EXTRACTION_URL=$WORKER_URL,CORS_ORIGINS=*,ENABLE_VERTEX=${ENABLE_VERTEX:-true},VERTEX_LOCATION=${VERTEX_LOCATION:-asia-south1}"
+if [[ -n "${SIMILARITY_URL:-}" ]]; then
+  ENV_VARS="${ENV_VARS},SIMILARITY_URL=${SIMILARITY_URL}"
+fi
 
 gcloud run deploy suffai-command-center \
   --image="$CC_IMG" \
@@ -54,18 +54,12 @@ gcloud run deploy suffai-command-center \
   --platform=managed \
   --allow-unauthenticated \
   --memory=1Gi \
-  --set-env-vars="USE_BQ=true,BQ_DATASET=suffai_ops,GOOGLE_CLOUD_PROJECT=$PROJECT,GCS_IMAGE_BUCKET=${PROJECT}-suffai-garment-images,EXTRACTION_URL=$WORKER_URL,CORS_ORIGINS=*" \
+  --set-env-vars="$ENV_VARS" \
   --project="$PROJECT"
 
 CC_URL="$(gcloud run services describe suffai-command-center --region="$REGION" --project="$PROJECT" --format='value(status.url)')"
 
-# Point legacy API CORS at command center (api code unchanged; env only)
-gcloud run services update suffai-api \
-  --region="$REGION" \
-  --project="$PROJECT" \
-  --update-env-vars="WEB_ORIGIN=$CC_URL,API_PUBLIC_URL=$API_URL" || true
-
 echo "Command Center: $CC_URL/login.html"
-echo "API:            $API_URL"
 echo "Extraction:     $WORKER_URL"
-echo "Done."
+echo "Similarity:     ${SIMILARITY_URL:-'(not deployed / set SIMILARITY_URL)'}"
+echo "Done. (suffai-api retired)"

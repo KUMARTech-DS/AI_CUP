@@ -124,6 +124,116 @@
       background: #0a0c0f;
     }
     .frame-wrap iframe.hidden { display: none; }
+
+    /* Floating corner bot — Geo / Ads only */
+    .chat-fab {
+      position: fixed;
+      right: 1.25rem;
+      bottom: 1.25rem;
+      z-index: 50;
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      border: 1px solid rgba(196, 165, 116, 0.45);
+      background: rgba(196, 165, 116, 0.22);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    }
+    .chat-fab:hover { background: rgba(196, 165, 116, 0.35); }
+    .chat-fab.open { background: rgba(196, 165, 116, 0.45); }
+    .chat-popup {
+      display: none;
+      position: fixed;
+      right: 1.25rem;
+      bottom: 5.25rem;
+      z-index: 50;
+      width: min(360px, calc(100vw - 2rem));
+      height: min(480px, calc(100vh - 7rem));
+      flex-direction: column;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: rgba(18, 22, 28, 0.98);
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+      overflow: hidden;
+    }
+    body.chat-open .chat-popup { display: flex; }
+    .chat-popup-header {
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid var(--line);
+      font-size: 13px;
+      font-weight: 600;
+      color: #fff;
+    }
+    .chat-popup-header span {
+      display: block;
+      margin-top: 0.25rem;
+      font-size: 11px;
+      font-weight: 400;
+      color: var(--muted);
+    }
+    .chat-log {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0.85rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+    }
+    .chat-bubble {
+      max-width: 95%;
+      padding: 0.65rem 0.75rem;
+      border-radius: 10px;
+      font-size: 13px;
+      line-height: 1.45;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .chat-bubble.user {
+      align-self: flex-end;
+      background: rgba(196, 165, 116, 0.2);
+      border: 1px solid rgba(196, 165, 116, 0.35);
+      color: #fff;
+    }
+    .chat-bubble.assistant {
+      align-self: flex-start;
+      background: #0e1218;
+      border: 1px solid var(--line);
+      color: var(--soft);
+    }
+    .chat-bubble.error {
+      border-color: rgba(248, 113, 113, 0.5);
+      color: #fca5a5;
+    }
+    .chat-form {
+      border-top: 1px solid var(--line);
+      padding: 0.75rem;
+      display: flex;
+      gap: 0.5rem;
+    }
+    .chat-form input {
+      flex: 1;
+      background: #0e1218;
+      border: 1px solid var(--line);
+      color: var(--soft);
+      border-radius: 8px;
+      padding: 0.55rem 0.7rem;
+      font-size: 13px;
+      font-family: inherit;
+    }
+    .chat-form button {
+      border: 1px solid rgba(196, 165, 116, 0.45);
+      background: rgba(196, 165, 116, 0.2);
+      color: #fff;
+      font-weight: 600;
+      font-size: 12px;
+      padding: 0.55rem 0.85rem;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .chat-form button:disabled { opacity: 0.5; cursor: not-allowed; }
   </style>
 </head>
 <body>
@@ -138,13 +248,14 @@
       <div class="brand-mark">SA</div>
       <div>
         <h1>SuffAI Command Center</h1>
-        <p>Geo intelligence · Ads Lab</p>
+        <p>Geo intelligence · Ads Lab · Admin</p>
       </div>
     </div>
 
     <nav class="tabs" aria-label="Sections">
       <button type="button" class="tab active" data-tab="geo">Geo</button>
       <button type="button" class="tab" data-tab="ads">Ads Lab</button>
+      <button type="button" class="tab" data-tab="admin">Admin</button>
     </nav>
 
     <div class="right">
@@ -156,7 +267,22 @@
   <div class="frame-wrap">
     <iframe id="frame-geo" title="Geo" src="./geo.html"></iframe>
     <iframe id="frame-ads" class="hidden" title="Ads Lab" src="./ads_lab.html"></iframe>
+    <iframe id="frame-admin" class="hidden" title="Admin" src="./admin.html"></iframe>
   </div>
+
+  <!-- Corner bot (Geo + Ads Lab only — hidden on Admin) -->
+  <button type="button" class="chat-fab" id="chatFab" aria-label="Open assistant" aria-pressed="false">Bot</button>
+  <aside class="chat-popup" id="chatPopup" aria-label="Dashboard assistant">
+    <div class="chat-popup-header">
+      Dashboard assistant
+      <span id="chatCtxHint">Answers from metrics.json + current Geo/Ads filters.</span>
+    </div>
+    <div class="chat-log" id="chatLog"></div>
+    <form class="chat-form" id="chatForm">
+      <input id="chatInput" type="text" placeholder="Ask about filters, KPIs, or Ads Lab scores…" autocomplete="off" />
+      <button type="submit" id="chatSend">Send</button>
+    </form>
+  </aside>
 
   <script>
     const user = localStorage.getItem('suffai_demo_user') || 'brand';
@@ -164,16 +290,79 @@
 
     const tabs = {
       geo: document.getElementById('frame-geo'),
-      ads: document.getElementById('frame-ads')
+      ads: document.getElementById('frame-ads'),
+      admin: document.getElementById('frame-admin')
     };
+
+    const chatFab = document.getElementById('chatFab');
+
+    window.__CC_CONTEXT__ = {
+      active_tab: 'geo',
+      geo: null,
+      ads: null
+    };
+
+    function setChatVisible(show) {
+      chatFab.style.display = show ? '' : 'none';
+      if (!show) {
+        document.body.classList.remove('chat-open');
+        chatFab.classList.remove('open');
+        chatFab.setAttribute('aria-pressed', 'false');
+        chatFab.textContent = 'Bot';
+      }
+    }
+
+    function updateHint() {
+      document.getElementById('chatCtxHint').textContent =
+        'Tab=' + window.__CC_CONTEXT__.active_tab +
+        (window.__CC_CONTEXT__.geo ? ' · geo ready' : '') +
+        (window.__CC_CONTEXT__.ads ? ' · ads ready' : '') +
+        ' · metrics.json on server';
+    }
+
+    function requestContext(frame) {
+      try {
+        frame.contentWindow.postMessage({ type: 'cc-context-request' }, '*');
+      } catch (e) {
+        console.error('[chat] postMessage failed', e);
+      }
+    }
+
+    function refreshAllContext() {
+      requestContext(tabs.geo);
+      requestContext(tabs.ads);
+      updateHint();
+    }
+
+    window.addEventListener('message', (ev) => {
+      const data = ev.data;
+      if (!data || data.type !== 'cc-context') return;
+      if (data.source === 'geo') {
+        window.__CC_CONTEXT__.geo = {
+          filters: data.filters || {},
+          summary: data.summary || {}
+        };
+      } else if (data.source === 'ads') {
+        window.__CC_CONTEXT__.ads = {
+          filters: data.filters || {},
+          filters_label: data.filters_label || '',
+          ranked: data.ranked || []
+        };
+      }
+      updateHint();
+    });
 
     document.querySelectorAll('.tab').forEach(btn => {
       btn.addEventListener('click', () => {
         const id = btn.dataset.tab;
+        window.__CC_CONTEXT__.active_tab = id;
         document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b === btn));
         Object.entries(tabs).forEach(([key, frame]) => {
           frame.classList.toggle('hidden', key !== id);
         });
+        // Chat is Geo + Ads only (not Admin)
+        setChatVisible(id === 'geo' || id === 'ads');
+        if (id === 'geo' || id === 'ads') refreshAllContext();
       });
     });
 
@@ -182,6 +371,84 @@
       localStorage.removeItem('suffai_demo_user');
       location.href = './login.html';
     });
+
+    chatFab.addEventListener('click', () => {
+      const open = document.body.classList.toggle('chat-open');
+      chatFab.classList.toggle('open', open);
+      chatFab.setAttribute('aria-pressed', open ? 'true' : 'false');
+      chatFab.textContent = open ? '×' : 'Bot';
+      if (open) {
+        refreshAllContext();
+        document.getElementById('chatInput').focus();
+      }
+    });
+
+    function appendBubble(role, text, isError) {
+      const el = document.createElement('div');
+      el.className = 'chat-bubble ' + role + (isError ? ' error' : '');
+      el.textContent = text;
+      const log = document.getElementById('chatLog');
+      log.appendChild(el);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    document.getElementById('chatForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const input = document.getElementById('chatInput');
+      const sendBtn = document.getElementById('chatSend');
+      const message = (input.value || '').trim();
+      if (!message) return;
+
+      refreshAllContext();
+      appendBubble('user', message);
+      input.value = '';
+      sendBtn.disabled = true;
+
+      try {
+        const res = await fetch('/v1/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify({
+            message,
+            context: window.__CC_CONTEXT__,
+            // Explicit filters (legacy chat filter_context) — derived from Geo/Ads UI
+            filter_context: (function () {
+              const c = window.__CC_CONTEXT__ || {};
+              const geoF = (c.geo && c.geo.filters) || {};
+              const adsF = (c.ads && c.ads.filters) || {};
+              return {
+                active_tab: c.active_tab || null,
+                pin_code: geoF.pin || adsF.pin || null,
+                pin_codes: adsF.pins || (geoF.pin ? [geoF.pin] : null),
+                age_group: geoF.age || adsF.age || null,
+                gender: geoF.gender || adsF.gender || null,
+                rfm_segment: geoF.rfm || adsF.rfm || null,
+                brand: adsF.brand || null,
+                brand_name: adsF.brand || null
+              };
+            })()
+          })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          const detail = data.detail || data.message || ('HTTP ' + res.status);
+          const rid = data.request_id ? (' [request_id=' + data.request_id + ']') : '';
+          console.error('[chat] failed', res.status, data);
+          appendBubble('assistant', 'Error: ' + detail + rid, true);
+          return;
+        }
+        appendBubble('assistant', data.answer || '(empty reply)');
+        if (data.request_id) console.info('[chat] ok request_id=', data.request_id);
+      } catch (err) {
+        console.error('[chat] network error', err);
+        appendBubble('assistant', 'Network error: ' + (err.message || String(err)), true);
+      } finally {
+        sendBtn.disabled = false;
+        input.focus();
+      }
+    });
+
+    setTimeout(refreshAllContext, 1200);
   </script>
 </body>
 </html>

@@ -5,7 +5,7 @@
 1. **UI lives in `web/`** — static HTML (login, Geo, Ads Lab), not the old Next.js app.  
 2. **GCP-native metrics:** UI calls `GET /v1/metrics` every load. Data comes **only from BigQuery**. There is **no** local CSV or `metrics.json` fallback — failures return HTTP errors so you can fix BQ/IAM.  
 3. **All of this is under `AI_CUP_updated/`** (for git push / deploy).  
-4. **Existing `api/`, `worker/`, `suffai/` source is unchanged.** New surface is `command_center/` + Cloud Run `suffai-command-center`.
+4. **`suffai-api` is retired.** BFF is `command_center/` on Cloud Run `suffai-command-center`. Extraction (`worker/`) and similarity remain separate.
 
 ---
 
@@ -34,12 +34,22 @@ AI_CUP_updated/
 |--------|------|---------|
 | `GET` | `/health` | Health + env flags |
 | `GET` | `/v1/metrics` | Geo aggregates from **BigQuery only** (+ optional `extraction_jobs_count`) |
-| `POST` | `/v1/ads-lab/extract` | Upload → GCS `demo/` → existing `suffai-extraction` `/v1/extract` |
-| static | `/login.html`, `/index.html`, `/geo.html`, `/ads_lab.html` | UI |
+| `POST` | `/v1/ads-lab/extract` | Upload → GCS `demo/` → existing `suffai-extraction` `/v1/extract` (baseline extract; still available) |
+| `POST` | `/v1/ads-lab/campaign` | **Primary Ads Lab path:** brand SKU campaign — GCS `brands/{brand}/…` → extract (brand overwrite) → similarity compare-pins → rank with PIN+age+gender+RFM |
+| `POST` | `/v1/chat` | Corner bot on Command Center (not legacy `api/`): Vertex Gemini + slim `web/metrics.json` + Geo/Ads UI + optional `filter_context` |
+| `GET` | `/v1/admin/unique-summary` | Admin tab proxy → `suffai-similarity` `/v1/admin/unique-garments/summary` |
+| `GET` | `/v1/admin/unique-garments` | Admin tab proxy → `suffai-similarity` `/v1/admin/unique-garments` |
+| static | `/login.html`, `/index.html`, `/geo.html`, `/ads_lab.html`, `/admin.html`, `/metrics.json` | UI |
 
 **Unchanged:** `suffai-extraction` → `POST /v1/extract` (Vertex-enabled in your env).
 
-**Ads Lab score:** UI shows a **dummy score 0–100** (random in browser). CTR column removed. Ranking is not a live GCP model yet.
+**Combined surface (baseline + Feature 1):** Geo UI + Ads Lab campaign ranking + corner Bot chat + legacy extract endpoint. Do **not** overwrite `command_center/` or `web/` from the `temp/` archive (pre–Feature 1 baseline). Chat lives on CC `POST /v1/chat` only — the retired `suffai-api` / `api/routers/chat.py` path is not restored.
+
+**Chat UI:** floating corner **Bot** on `index.html` (Geo + Ads Lab only; hidden on Admin). Uses `web/metrics.json` summary on the server. Request body may include optional `filter_context` (PIN/age/gender/RFM/brand) merged into the Vertex prompt.
+
+**Admin tab:** `admin.html` in the shell calls CC `/v1/admin/*`, which proxies to similarity (requires `SIMILARITY_URL` + CC SA `run.invoker` on similarity).
+
+**Ads Lab campaign (Part 1):** brand name + multi-PIN + age/gender/RFM → `POST /v1/ads-lab/campaign`. Extraction service unchanged; brand overwritten in BFF. Ranking blends PIN unique-garment similarity (`suffai-similarity` `/v1/similarity/compare-pins`) with metrics taste for the full audience. Tables: `brand_campaigns`, `brand_skus`, `brand_sku_pin_scores` (migration `005_brand_sku_campaigns.sql`). Requires `SIMILARITY_URL` + `DATABASE_URL` on command-center.
 
 ---
 
@@ -106,6 +116,11 @@ Env set by the script (defaults):
 - `GCS_IMAGE_BUCKET` (default `${PROJECT}-suffai-garment-images`)
 - `EXTRACTION_URL` (if set)
 - `CORS_ORIGINS=*`
+- `ENABLE_VERTEX=true` (required for `/v1/chat`)
+- `VERTEX_LOCATION=asia-south1`
+- `VERTEX_CHAT_MODEL=gemini-2.0-flash`
+
+Cloud Run SA needs **Vertex AI User** for chat.
 
 ### Step 5 — (Optional) Cloud SQL for `extraction_jobs_count`
 
@@ -120,7 +135,10 @@ URL=$(gcloud run services describe suffai-command-center \
 
 curl -sS "$URL/health"
 curl -sS "$URL/v1/metrics" | head
-# Open: $URL/login.html   brand / brand123
+# Chat (needs ENABLE_VERTEX=true + web/metrics.json):
+curl -sS -X POST "$URL/v1/chat" -H 'Content-Type: application/json' \
+  -d '{"message":"Summarize top brands","context":{"active_tab":"geo"}}'
+# Open: $URL/login.html   brand / brand123 — corner Bot on Geo/Ads
 ```
 
 ### Alternative — Cloud Build
@@ -151,6 +169,6 @@ Or: `docker compose up --build command_center` (with the same env).
 
 ## Notes
 
-- Does **not** replace `suffai-api` or `suffai-extraction`.  
+- Does **not** replace `suffai-extraction` or `suffai-similarity`.  
 - Pub/Sub + Scheduler CDC / BQ sync jobs are part of the wider stack (`deploy/scheduler.yaml`); leave them as configured.  
 - Old Next.js UI under `web/` has been removed; `web/` is HTML only.
