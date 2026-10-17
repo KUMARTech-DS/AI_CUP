@@ -23,6 +23,10 @@ class SimilaritySettings:
     SIMILARITY_THRESHOLD = float(os.getenv("SIMILARITY_THRESHOLD", "0.92"))
     GLOBAL_CANDIDATE_LIMIT = int(os.getenv("GLOBAL_CANDIDATE_LIMIT", "500"))
     MAX_IMAGE_BYTES = int(os.getenv("MAX_IMAGE_BYTES", str(12 * 1024 * 1024)))
+    # compare-pins (brand SKU vs garments observed in PINs; read-only)
+    COMPARE_PIN_CANDIDATE_LIMIT = int(os.getenv("COMPARE_PIN_CANDIDATE_LIMIT", "2000"))
+    COMPARE_CACHE_SEC = int(os.getenv("COMPARE_CACHE_SEC", "300"))
+    COMPARE_MAX_PINS = int(os.getenv("COMPARE_MAX_PINS", "50"))
     # Same BQ flags as command_center
     USE_BQ = _bool("USE_BQ", True)
     BQ_DATASET = os.getenv("BQ_DATASET", "suffai_ops")

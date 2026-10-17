@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SuffAI Admin — Unique Garments</title>
+  <title>SuffAI Admin — Garments & Campaigns</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="./config.js"></script>
   <script src="./session.js"></script>
@@ -163,6 +163,48 @@
         </table>
       </div>
     </div>
+
+    <div class="mt-10 mb-4 flex items-end justify-between gap-3">
+      <div>
+        <h1 class="text-3xl m-0">1P campaigns</h1>
+        <p class="muted mt-1 mb-0">All brand campaigns — configuration, status, audience, SKUs, Style feed, and simulated marketing KPIs (Reach–ROAS). Launched campaigns are simulated; nothing is delivered to customers.</p>
+      </div>
+      <button type="button" class="primary" id="btnCampaigns">Refresh campaigns</button>
+    </div>
+    <div id="campaignErr" class="err mb-4 hidden"></div>
+    <div class="card mb-6">
+      <div class="overflow-x-auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Created</th>
+              <th>Brand</th>
+              <th>Name</th>
+              <th>Status</th>
+              <th>Run mode</th>
+              <th>Channels</th>
+              <th>Objective</th>
+              <th>Budget</th>
+              <th>Launched</th>
+              <th>Audience</th>
+              <th>SKUs</th>
+              <th>Eligible</th>
+              <th>Recs</th>
+              <th>Style serves</th>
+              <th title="Simulated metrics">Reach</th>
+              <th title="Simulated metrics">Impr.</th>
+              <th title="Simulated metrics">CTR</th>
+              <th title="Simulated metrics">Conv.</th>
+              <th title="Simulated metrics">Rev.</th>
+              <th title="Simulated metrics">Lift</th>
+              <th title="Simulated metrics">ROAS</th>
+              <th>Campaign ID</th>
+            </tr>
+          </thead>
+          <tbody id="campaignBody"></tbody>
+        </table>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -246,8 +288,90 @@
       }
     }
 
+    function esc(v) {
+      return String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+    }
+
+    function fmtImpactNum(v) {
+      if (v == null || v === '') return '—';
+      return Number(v).toLocaleString();
+    }
+    function fmtImpactPct(v) {
+      if (v == null || v === '') return '—';
+      return Number(v).toFixed(1) + '%';
+    }
+    function fmtImpactMoney(v) {
+      if (v == null || v === '') return '—';
+      return '₹' + Math.round(Number(v)).toLocaleString();
+    }
+    function fmtImpactRoas(v) {
+      if (v == null || v === '') return '—';
+      return Number(v).toFixed(1) + 'x';
+    }
+
+    async function loadCampaigns() {
+      const err = document.getElementById('campaignErr');
+      const body = document.getElementById('campaignBody');
+      err.classList.add('hidden');
+      err.textContent = '';
+      body.innerHTML = '<tr><td colspan="22" class="muted">Loading…</td></tr>';
+      try {
+        const res = await fetch((apiBase() || '') + '/v1/admin/campaigns', {
+          headers: { Accept: 'application/json', ...SuffaiSession.authHeaders() },
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.detail || ('HTTP ' + res.status));
+        const rows = data.campaigns || [];
+        if (!rows.length) {
+          body.innerHTML = '<tr><td colspan="22" class="muted">No campaigns yet</td></tr>';
+          return;
+        }
+        body.innerHTML = rows.map((c) => {
+          const pins = c.pin_codes || [];
+          const aud = [
+            pins.length ? (pins.length <= 2 ? pins.join(', ') : pins.length + ' PINs') : 'No PIN',
+            c.age_group || 'All ages',
+            c.gender || 'All genders',
+            c.rfm_segment || 'All RFM',
+          ].join(' × ');
+          const created = (c.created_at || '').replace('T', ' ').slice(0, 16);
+          const i = c.impact || {};
+          return `<tr>
+            <td class="mono">${esc(created)}</td>
+            <td>${esc(c.brand_name)}</td>
+            <td style="white-space:normal;max-width:180px">${esc(c.campaign_name || '—')}</td>
+            <td>${esc(c.status)}</td>
+            <td>${esc(c.run_mode === '1p' ? 'SuffAI (1P)' : c.run_mode === '3p' ? 'External (3P)' : '—')}</td>
+            <td>${esc((c.channels || []).map(ch => ({ in_app: 'In-app', whatsapp: 'WhatsApp', sms: 'SMS' }[ch] || ch)).join(', ') || '—')}</td>
+            <td>${esc(c.objective || '—')}</td>
+            <td class="mono">${esc(fmtImpactMoney(c.budget_inr))}</td>
+            <td class="mono">${esc((c.launched_at || '').replace('T', ' ').slice(0, 16) || '—')}</td>
+            <td style="white-space:normal;max-width:220px">${esc(aud)}</td>
+            <td>${esc(c.sku_count ?? '—')}</td>
+            <td>${esc(c.eligible_users ?? 0)}</td>
+            <td>${esc(c.recommendations_computed ?? 0)}</td>
+            <td>${esc(c.style_feed_serves ?? 0)}</td>
+            <td title="Simulated">${esc(fmtImpactNum(i.reach))}</td>
+            <td title="Simulated">${esc(fmtImpactNum(i.impressions))}</td>
+            <td title="Simulated">${esc(fmtImpactPct(i.ctr))}</td>
+            <td title="Simulated">${esc(fmtImpactNum(i.conversions))}</td>
+            <td title="Simulated">${esc(fmtImpactMoney(i.revenue))}</td>
+            <td title="Simulated">${esc(fmtImpactPct(i.lift))}</td>
+            <td title="Simulated">${esc(fmtImpactRoas(i.roas))}</td>
+            <td class="mono">${c.status === 'launched' ? `<a href="./index.html?tab=style&amp;campaign_id=${encodeURIComponent(c.campaign_id)}" target="_top">${esc(c.campaign_id)}</a>` : esc(c.campaign_id || '')}</td>
+          </tr>`;
+        }).join('');
+      } catch (e) {
+        err.textContent = e.message || String(e);
+        err.classList.remove('hidden');
+        body.innerHTML = '<tr><td colspan="22" class="muted">Unavailable</td></tr>';
+      }
+    }
+
     document.getElementById('btnLoad').addEventListener('click', load);
+    document.getElementById('btnCampaigns').addEventListener('click', loadCampaigns);
     load();
+    loadCampaigns();
   </script>
 </body>
 </html>

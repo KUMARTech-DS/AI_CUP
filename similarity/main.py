@@ -19,6 +19,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from similarity import db
+from similarity.compare import compare_pins
 from similarity.process import process_upload
 from similarity.settings import settings
 
@@ -46,16 +47,6 @@ class ProcessRequest(BaseModel):
     brand: Optional[str] = None
     brand_name: Optional[str] = None
     idempotency_key: Optional[str] = None
-
-
-class ComparePinsRequest(BaseModel):
-    """Brand SKU visual fit vs unique garments in selected PINs (no wardrobe writes)."""
-
-    pin_codes: list[str]
-    gcs_object_key: Optional[str] = None
-    gcs_bucket: Optional[str] = None
-    embedding: Optional[list[float]] = None
-    topk: int = 5
 
 
 def parse_key_object_metadata(envelope: Dict[str, Any]) -> Dict[str, Any]:
@@ -135,24 +126,24 @@ def process_http(body: ProcessRequest):
         raise HTTPException(500, str(exc)) from exc
 
 
+class ComparePinsRequest(BaseModel):
+    gcs_object_key: str
+    gcs_bucket: Optional[str] = None
+    pin_codes: list[str]
+    topk: int = 5
+    include_embedding: bool = True
+
+
 @app.post("/v1/similarity/compare-pins")
 def compare_pins_http(body: ComparePinsRequest):
-    """Embed a brand SKU image and score against PIN unique garments (read-only)."""
-    if not settings.DATABASE_URL:
-        raise HTTPException(503, "DATABASE_URL not set")
-    if not body.pin_codes:
-        raise HTTPException(400, "pin_codes required")
-    if not body.gcs_object_key and not body.embedding:
-        raise HTTPException(400, "gcs_object_key or embedding required")
+    """Read-only: score a brand SKU image against garments observed in the given PINs."""
     try:
-        from similarity.compare_pins import compare_image_to_pins
-
-        return compare_image_to_pins(
-            gcs_object_key=body.gcs_object_key or "",
+        return compare_pins(
+            gcs_object_key=body.gcs_object_key,
             gcs_bucket=body.gcs_bucket,
-            pin_codes=list(body.pin_codes),
-            topk=max(1, min(int(body.topk or 5), 20)),
-            embedding=body.embedding,
+            pin_codes=body.pin_codes,
+            topk=body.topk,
+            include_embedding=body.include_embedding,
         )
     except FileNotFoundError as exc:
         raise HTTPException(404, str(exc)) from exc

@@ -112,6 +112,25 @@
     .holo-card.rank-1 { border-color: #89765C; box-shadow: 0 0 25px rgba(137,118,92,.15); }
     .holo-card .card-body { flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #89765C transparent; color: #292722; }
     
+    .wiz-step { display: inline-flex; align-items: center; gap: .45rem; padding: .4rem .7rem; border-radius: 8px; font-size: 11px; font-weight: 700; color: #777066; }
+    .wiz-step:hover { background: #F0ECE4; color: #292722; }
+    .wiz-num { width: 20px; height: 20px; border-radius: 999px; border: 1px solid #DED7CB; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; background: #FFFFFF; }
+    .wiz-step.current { color: #292722; background: #F0ECE4; }
+    .wiz-step.current .wiz-num { border-color: #89765C; color: #89765C; }
+    .wiz-step.done .wiz-num { background: #89765C; border-color: #89765C; color: #FFFFFF; }
+    .wiz-sep { width: 18px; height: 1px; background: #DED7CB; }
+    .sim-badge { border-color: #89765C; color: #66513B; background: #F7F1E7; font-weight: 600; }
+    .obj-card { position: relative; display: flex; flex-direction: column; gap: .25rem; padding: .7rem .8rem; border: 1px solid #E4DED3; border-radius: 10px; background: #FFFFFF; cursor: pointer; }
+    .obj-card input { position: absolute; opacity: 0; pointer-events: none; }
+    .obj-card:has(input:checked) { border-color: #89765C; box-shadow: 0 0 0 2px rgba(137,118,92,.18); }
+    .sku-pick { display: flex; align-items: center; gap: .6rem; padding: .5rem .6rem; border: 1px solid #E4DED3; border-radius: 10px; background: #FFFFFF; cursor: pointer; }
+    .sku-pick:has(input:checked) { border-color: #89765C; background: #FBF8F2; }
+    .sku-pick.disabled { opacity: .5; cursor: not-allowed; }
+    .est-tile { background: #FFFFFF; border: 1px solid #E4DED3; border-radius: 10px; padding: .6rem .7rem; }
+    .est-tile .lbl { font-size: 9px; text-transform: uppercase; letter-spacing: .08em; color: #777066; font-weight: 600; }
+    .est-tile .val { font-family: 'JetBrains Mono', monospace; font-size: 15px; color: #292722; margin-top: .2rem; }
+    .est-tile .rng { font-size: 10px; color: #777066; margin-top: .1rem; }
+
     @media (max-width: 640px) {
       .creative-rail { padding: 1.2rem 1rem 1.6rem; gap: 1rem; min-height: 500px; }
       .holo-card { flex-basis: 285px; width: 285px; min-width: 285px; height: 475px; min-height: 475px; transform: rotateY(-8deg) translateZ(-10px); }
@@ -161,15 +180,35 @@
         </div>
         <p id="uploadSummary" class="text-[10px] text-[#777066]">No creatives uploaded.</p>
         <p class="text-[11px] text-[#292722]">Campaign brand: <strong id="brandUploadLabel" class="text-[#89765C]">(enter brand name above)</strong></p>
-        <button id="runButton" type="button" class="w-full py-3 bg-[#292722] hover:bg-[#4A4339] disabled:opacity-40 disabled:cursor-not-allowed text-[#FAF8F4] rounded-xl text-sm font-bold flex justify-center items-center gap-2 transition-all shadow-sm" disabled><i class="fa-solid fa-wand-magic-sparkles text-[#89765C]"></i><span>Extract &amp; rank SKUs</span></button>
-        <p class="text-[10px] text-[#777066] leading-relaxed">Passes <code>brand_name</code> to <code>POST /v1/ads-lab/campaign</code>, stores under GCS brands/{brand}/…, overwrites extract brand, ranks vs PIN unique garments + segment taste.</p>
+        <button id="runButton" type="button" class="w-full py-3 bg-[#292722] hover:bg-[#4A4339] disabled:opacity-40 disabled:cursor-not-allowed text-[#FAF8F4] rounded-xl text-sm font-bold flex justify-center items-center gap-2 transition-all shadow-sm" disabled><i class="fa-solid fa-wand-magic-sparkles text-[#89765C]"></i><span>Submit ranking job</span></button>
+        <p class="text-[10px] text-[#777066] leading-relaxed">Extract &amp; rank runs in the background against every garment in the selected PINs. You will see the job size and an estimated finish time, and a popup when your campaign is ready.</p>
       </section>
     </aside>
 
     <section class="flex-1 min-w-0 relative flex flex-col holographic-grid overflow-hidden">
       <div id="loadingOverlay" class="absolute inset-0 z-50 hidden items-center justify-center bg-[#FAF8F4]/80 backdrop-blur-sm"><div class="text-center"><i class="fa-solid fa-circle-notch text-4xl text-[#89765C] animate-spin mb-4"></i><p id="loadingText" class="text-sm font-mono text-[#292722]">Loading…</p></div></div>
-      <div class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
-        <section class="glass-panel rounded-xl p-4 sm:p-5">
+      <div id="mainScroll" class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
+        <nav id="wizardSteps" class="glass-panel rounded-xl p-2 sticky top-0 z-40 flex flex-wrap items-center gap-1 bg-[#FAF8F4]" aria-label="Campaign steps">
+          <button type="button" class="wiz-step" data-step="opportunity" data-target="stepOpportunity"><span class="wiz-num">1</span><span>Opportunity</span></button>
+          <span class="wiz-sep" aria-hidden="true"></span>
+          <button type="button" class="wiz-step" data-step="job" data-target="stepJob"><span class="wiz-num">2</span><span>SKUs &amp; ranking job</span></button>
+          <span class="wiz-sep" aria-hidden="true"></span>
+          <button type="button" class="wiz-step" data-step="runmode" data-target="stepRunMode"><span class="wiz-num">3</span><span>Choose run mode</span></button>
+          <span class="ml-auto tag sim-badge" title="Campaign name, channels, budget and tracking live on the Campaigns tab."><i class="fa-solid fa-bullhorn"></i> Configure on Campaigns</span>
+        </nav>
+
+        <section id="geoContextCard" class="glass-panel rounded-xl p-4 hidden" aria-live="polite">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <p class="text-[10px] uppercase tracking-[.2em] text-[#89765C] font-bold"><i class="fa-solid fa-location-dot mr-1"></i>Opportunity from Geo</p>
+              <p id="geoContextInsight" class="text-xs text-[#292722] mt-1"></p>
+              <div id="geoContextChips" class="flex flex-wrap gap-1.5 mt-2"></div>
+            </div>
+            <button id="clearGeoContextBtn" type="button" class="text-[10px] text-[#777066] hover:text-[#89765C] flex-none">Clear</button>
+          </div>
+        </section>
+
+        <section id="stepOpportunity" class="glass-panel rounded-xl p-4 sm:p-5">
           <div class="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-4">
             <div class="min-w-0">
               <p class="text-[10px] uppercase tracking-[.2em] text-[#89765C] font-bold">Current target</p>
@@ -257,17 +296,85 @@
         </section>
 
         <section class="glass-panel rounded-xl overflow-hidden">
-          <div class="p-4 border-b border-[#E4DED3] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"><div><h3 class="text-xs font-bold uppercase tracking-wider text-[#292722]"><i class="fa-solid fa-table text-[#89765C] mr-2"></i>Segment ranking matrix</h3><p class="text-[10px] text-[#777066] mt-1">Contains the same filtered and sorted images as the cards above.</p></div><button id="downloadButton" type="button" class="px-3 py-2 bg-[#89765C] hover:bg-[#66513B] rounded-lg text-xs font-bold text-white shadow-sm"><i class="fa-solid fa-file-csv mr-2"></i>Export CSV</button></div>
+          <div class="p-4 border-b border-[#E4DED3] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <h3 class="text-xs font-bold uppercase tracking-wider text-[#292722]"><i class="fa-solid fa-table text-[#89765C] mr-2"></i>Segment ranking matrix</h3>
+              <p class="text-[10px] text-[#777066] mt-1">Ranking from the completed job. Choose 1P (SuffAI) or 3P (other platforms) below.</p>
+            </div>
+          </div>
           <div class="overflow-x-auto"><table class="w-full text-left text-xs whitespace-nowrap"><thead class="bg-[#F0ECE4] text-[#777066] font-mono text-[10px] uppercase"><tr><th class="px-4 py-3">Rank</th><th class="px-4 py-3">Creative</th><th class="px-4 py-3">Geo</th><th class="px-4 py-3">Age</th><th class="px-4 py-3">Gender</th><th class="px-4 py-3">RFM</th><th class="px-4 py-3">Extracted taste</th><th class="px-4 py-3 text-right">Segment fit</th></tr></thead><tbody id="matrixBody" class="divide-y divide-[#E4DED3]"><tr><td colspan="8" class="px-4 py-8 text-center text-[#777066]">Upload images to populate the matrix.</td></tr></tbody></table></div>
+        </section>
+
+        <section id="stepJob" class="glass-panel rounded-xl p-4 sm:p-5 space-y-4">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <h3 class="text-xs font-bold uppercase tracking-wider text-[#292722]"><i class="fa-solid fa-gears text-[#89765C] mr-2"></i>Extract &amp; rank job</h3>
+              <p id="jobNote" class="text-[10px] text-[#777066] mt-1">Select PINs, upload SKU images and press <b>Submit ranking job</b>. You can leave this page; the job keeps running.</p>
+            </div>
+            <span id="jobStatusTag" class="tag hidden"></span>
+          </div>
+          <div id="jobCard" class="hidden space-y-3">
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
+              <div class="est-tile"><p class="lbl">Customers</p><p id="jobCustomers" class="val">—</p><p class="rng">in target audience</p></div>
+              <div class="est-tile"><p class="lbl">Images</p><p id="jobImages" class="val">—</p><p id="jobImagesSub" class="rng">SKUs to rank</p></div>
+              <div class="est-tile"><p class="lbl">Garments</p><p id="jobGarments" class="val">—</p><p class="rng">in selected PINs</p></div>
+              <div class="est-tile"><p class="lbl">Comparisons</p><p id="jobComparisons" class="val">—</p><p class="rng">image × garment</p></div>
+              <div class="est-tile"><p class="lbl">Est. completion</p><p id="jobEta" class="val">—</p><p id="jobEtaSub" class="rng">—</p></div>
+            </div>
+            <div>
+              <div class="flex justify-between text-[10px] text-[#777066] mb-1"><span id="jobProgressLabel">Queued</span><span id="jobProgressPct">0%</span></div>
+              <div class="h-2 rounded-full bg-[#F0ECE4] border border-[#E4DED3] overflow-hidden"><div id="jobProgressBar" class="h-full bg-[#89765C] transition-all" style="width:0%"></div></div>
+            </div>
+            <p id="jobError" class="text-xs text-red-700 hidden"></p>
+          </div>
+        </section>
+
+        <section id="stepRunMode" class="glass-panel rounded-xl p-4 sm:p-5 space-y-4">
+          <div>
+            <h3 class="text-xs font-bold uppercase tracking-wider text-[#292722]"><i class="fa-solid fa-route text-[#89765C] mr-2"></i>Choose how to run this campaign</h3>
+            <p id="runModeNote" class="text-[10px] text-[#777066] mt-1">Available once the ranking job completes.</p>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div class="rounded-xl border border-[#E4DED3] bg-white p-4 flex flex-col gap-2">
+              <p class="text-xs font-bold"><i class="fa-solid fa-file-export text-[#89765C] mr-2"></i>Run on other platforms (3P)</p>
+              <p class="text-[11px] text-[#777066] flex-1">Download the ranked SKUs and audience as CSV and run the campaign on any ad platform. Nothing runs on SuffAI.</p>
+              <button id="run3pBtn" type="button" disabled class="self-start px-3 py-2 bg-[#89765C] hover:bg-[#66513B] disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-xs font-bold text-white"><i class="fa-solid fa-file-csv mr-2"></i>Export ranking (CSV)</button>
+            </div>
+            <div class="rounded-xl border border-[#89765C] bg-[#FBF8F2] p-4 flex flex-col gap-2">
+              <p class="text-xs font-bold"><i class="fa-solid fa-bullhorn text-[#89765C] mr-2"></i>Run on SuffAI (1P)</p>
+              <p class="text-[11px] text-[#777066] flex-1">Reach matched customers in-app, on WhatsApp or by SMS. Set the name, channels, recommended budget and track results on the <b>Campaigns</b> tab.</p>
+              <button id="run1pBtn" type="button" disabled class="self-start px-3 py-2 bg-[#292722] hover:bg-[#4A4339] disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-xs font-bold text-white"><i class="fa-solid fa-arrow-right mr-2 text-[#89765C]"></i>Configure on Campaigns</button>
+            </div>
+          </div>
         </section>
       </div>
     </section>
   </main>
 
+  <div id="createdModal" class="fixed inset-0 z-[60] hidden items-center justify-center bg-[#292722]/40 backdrop-blur-sm p-4" role="dialog" aria-modal="true" aria-labelledby="createdTitle">
+    <div class="glass-panel bg-[#FAF8F4] max-w-md w-full p-6 space-y-4">
+      <div class="flex items-start gap-3">
+        <div class="h-10 w-10 rounded-full bg-[#F7F1E7] border border-[#89765C] flex items-center justify-center flex-none"><i class="fa-solid fa-check text-[#89765C]"></i></div>
+        <div>
+          <h2 id="createdTitle" class="text-base font-bold text-[#292722]">Your campaign has been created</h2>
+          <p id="createdSummary" class="text-xs text-[#777066] mt-1"></p>
+        </div>
+      </div>
+      <div class="flex flex-col sm:flex-row gap-2 justify-end">
+        <button id="createdCloseBtn" type="button" class="px-3 py-2 border border-[#E4DED3] bg-white rounded-lg text-xs font-bold text-[#292722] hover:border-[#89765C]">View ranking</button>
+        <button id="created3pBtn" type="button" class="px-3 py-2 bg-[#89765C] hover:bg-[#66513B] rounded-lg text-xs font-bold text-white"><i class="fa-solid fa-file-csv mr-1"></i>Run on other platforms (3P)</button>
+        <button id="created1pBtn" type="button" class="px-3 py-2 bg-[#292722] hover:bg-[#4A4339] rounded-lg text-xs font-bold text-white"><i class="fa-solid fa-bullhorn mr-1 text-[#89765C]"></i>Run on SuffAI (1P)</button>
+      </div>
+    </div>
+  </div>
   <script>
     'use strict';
     const $ = (id) => document.getElementById(id);
-    const state = { metrics: null, assets: [], results: [], profile: null, loading: false, campaign: null, campaignItems: [] };
+    const state = {
+      metrics: null, assets: [], results: [], profile: null, loading: false, campaign: null, campaignItems: [],
+      sourceContext: null, pendingDraft: null, pendingCampaignId: null, job: null,
+    };
+    const CAMPAIGN_DRAFT_KEY = 'suffai_campaign_draft';
     const FILTER_KEYS = ['pin_code', 'age_group', 'gender', 'rfm_segment'];
     const GROUPS = {
       color: { keys: ['colors', 'color_counts', 'primary_colors', 'color_distribution'], weight: 25 },
@@ -401,6 +508,16 @@
         selectOptions($('filterRfm'), 'All RFM segments', f.rfm_segments || []);
         applyBrandLock();
         setApiStatus(true, `BigQuery metrics loaded · ${data.source || 'source not labelled'}`);
+        if (state.pendingDraft) {
+          const draft = state.pendingDraft;
+          state.pendingDraft = null;
+          applyCampaignDraft(draft);
+        }
+        if (state.pendingCampaignId) {
+          const pendingId = state.pendingCampaignId;
+          state.pendingCampaignId = null;
+          loadCampaignById(pendingId);
+        }
         refreshForFilters();
       } catch (e) {
         console.error('[ads_lab] unable to load metrics', e);
@@ -685,6 +802,7 @@
       
       renderCreatives();
       publishAdsContext();
+      updateWizard();
     }
 
     function publishAdsContext() {
@@ -711,10 +829,154 @@
       }
     }
 
-    window.addEventListener('message', (ev) => {
-      if (!ev.data || ev.data.type !== 'cc-context-request') return;
+    let agentAutoRunAfterFiles = false;
+
+    function applyAgentAdsFilters(filters) {
+      if (!filters || typeof filters !== 'object') return;
+      const area = $('filterArea');
+      if (area && Array.isArray(filters.pin_codes)) {
+        const wanted = new Set(filters.pin_codes.map(String));
+        Array.from(area.options || []).forEach((opt) => {
+          opt.selected = wanted.has(String(opt.value));
+        });
+      }
+      if ('age_group' in filters && $('filterAge')) {
+        $('filterAge').value = filters.age_group == null ? '' : String(filters.age_group);
+      }
+      if ('gender' in filters && $('filterGender')) {
+        $('filterGender').value = filters.gender == null ? '' : String(filters.gender);
+      }
+      if ('rfm_segment' in filters && $('filterRfm')) {
+        $('filterRfm').value = filters.rfm_segment == null ? '' : String(filters.rfm_segment);
+      }
+      applyBrandLock();
       if (state.metrics) refreshForFilters();
       else publishAdsContext();
+    }
+
+    function resetAgentAdsFilters() {
+      const area = $('filterArea');
+      if (area) Array.from(area.options || []).forEach((opt) => { opt.selected = false; });
+      if ($('filterAge')) $('filterAge').value = '';
+      if ($('filterGender')) $('filterGender').value = '';
+      if ($('filterRfm')) $('filterRfm').value = '';
+      applyBrandLock();
+      if (state.metrics) refreshForFilters();
+      else publishAdsContext();
+    }
+
+    function runAgentCampaign() {
+      applyBrandLock();
+      if (!state.assets.length) {
+        agentAutoRunAfterFiles = true;
+        $('uploadSummary').textContent = 'AURA: select SKU images to extract & rank…';
+        if ($('fileInput')) $('fileInput').click();
+        return;
+      }
+      runAnalysis();
+    }
+
+    async function loadCampaignById(campaignId) {
+      if (!campaignId) return;
+      if (!state.metrics) { state.pendingCampaignId = campaignId; return; }
+      try {
+        const res = await fetch(endpoint('/v1/ads-lab/campaigns/' + encodeURIComponent(campaignId)), {
+          headers: { Accept: 'application/json', ...SuffaiSession.authHeaders() },
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error('Campaign could not be loaded.');
+        const c = data.campaign || {};
+        const skus = Array.isArray(data.skus) ? data.skus : [];
+        state.campaign = {
+          campaign_id: c.campaign_id,
+          brand_name: c.brand_name,
+          filters: { pin_codes: c.pin_codes || [], age_group: c.age_group, gender: c.gender, rfm_segment: c.rfm_segment },
+        };
+        state.campaignItems = skus.map(s => ({
+          sku_uuid: s.sku_uuid,
+          filename: s.original_filename,
+          ok: !!s.extract_ok && s.process_status !== 'failed',
+          extract_ok: !!s.extract_ok,
+          attributes: s.attributes || {},
+          rank: s.rank,
+          rank_score: s.rank_score != null ? Number(s.rank_score) : (s.pin_fit != null ? Math.round(Number(s.pin_fit) * 100) : null),
+          error: s.process_status === 'failed' ? 'Could not be ranked' : null,
+        }));
+        if (c.source_context && typeof c.source_context === 'object') {
+          state.sourceContext = c.source_context;
+          renderGeoContext(c.source_context);
+        }
+        applyAgentAdsFilters({
+          pin_codes: c.pin_codes || [],
+          age_group: c.age_group || null,
+          gender: c.gender || null,
+          rfm_segment: c.rfm_segment || null,
+        });
+        state.campaign.status = c.status;
+        state.campaign.campaign_name = c.campaign_name;
+        renderCreatives();
+        $('uploadSummary').textContent = c.status === 'processing'
+          ? 'Ranking job is still running for this campaign.'
+          : `Loaded ${state.campaignItems.filter(r => r.ok).length} ranked SKU(s).`;
+        updateWizard();
+        scrollToStep('stepRunMode');
+      } catch (e) {
+        console.error('[ads_lab] load campaign failed', e);
+        $('uploadSummary').textContent = 'Campaign could not be loaded. Please refresh and try again.';
+      }
+    }
+
+    function handleAgentCommand(cmd) {
+      if (!cmd || typeof cmd !== 'object') return;
+      const t = String(cmd.type || '');
+      if (t === 'set_filters') {
+        applyAgentAdsFilters(cmd.filters || {});
+      } else if (t === 'reset_filters') {
+        resetAgentAdsFilters();
+      } else if (t === 'run_campaign') {
+        runAgentCampaign();
+      } else if (t === 'export_csv') {
+        run3p();
+      } else if (t === 'open_file_picker') {
+        if ($('fileInput')) $('fileInput').click();
+      } else if (t === 'prefill_campaign') {
+        applyCampaignDraft(cmd.context || {});
+      } else if (t === 'load_campaign') {
+        loadCampaignById(String(cmd.campaign_id || ''));
+      } else if (t === 'export_campaign') {
+        const id = String(cmd.campaign_id || '');
+        if (id) {
+          if (!state.campaign || state.campaign.campaign_id !== id) state.campaign = { campaign_id: id, status: 'exported' };
+          run3p();
+          loadCampaignById(id);
+        }
+      } else if (t === 'track_job') {
+        const jobId = String(cmd.job_id || '');
+        if (jobId) { rememberJob(jobId); pollJob(jobId); scrollToStep('stepJob'); }
+      } else {
+        return;
+      }
+      try {
+        window.parent.postMessage({
+          type: 'cc-agent-ack',
+          source: 'ads',
+          command: t,
+          ok: true,
+        }, '*');
+      } catch (_) { /* ignore */ }
+    }
+
+    window.addEventListener('message', (ev) => {
+      const data = ev.data;
+      if (!data || typeof data !== 'object') return;
+      if (data.type === 'cc-context-request') {
+        if (state.metrics) refreshForFilters();
+        else publishAdsContext();
+        return;
+      }
+      if (data.type === 'cc-agent-command') {
+        handleAgentCommand(data.command || data);
+      }
     });
 
     function extractionAttrs(item) {
@@ -757,7 +1019,10 @@
       (state.campaignItems || []).forEach(row => {
         if (row && row.filename) campaignByName[normal(row.filename)] = row;
       });
-      const ranked = state.assets.map((asset, index) => {
+      const assets = state.assets.length
+        ? state.assets
+        : (state.campaignItems || []).map(r => ({ file: { name: r.filename || 'SKU' }, src: '' }));
+      const ranked = assets.map((asset, index) => {
         let resultIndex = state.results.findIndex((r, i) => !usedResultIndexes.has(i) && normal(r.filename) === normal(asset.file.name));
         if (resultIndex < 0 && index < state.results.length && !usedResultIndexes.has(index)) resultIndex = index;
         const item = resultIndex >= 0 ? state.results[resultIndex] : null;
@@ -779,7 +1044,9 @@
           fit = {
             score: Math.round(Number(camp.rank_score)),
             evidence: 3,
-            reason: `Campaign rank · sim ${camp.sim_fit ?? '—'} · attr ${camp.attr_fit ?? '—'} · freq ${camp.freq_coverage ?? '—'}`
+            reason: camp.sim_fit != null
+              ? `Campaign rank · sim ${camp.sim_fit} · attr ${camp.attr_fit ?? '—'} · freq ${camp.freq_coverage ?? '—'}`
+              : 'Rank from the extract & rank job'
           };
         } else {
           fit = item?.ok ? matchScore(attrs, state.profile || createProfile(currentFilters())) : {score:null,evidence:0,reason:item?.error || camp?.error || 'Run campaign ranking to score'};
@@ -808,7 +1075,7 @@
         const tags = extractedTags(attrs);
         const reason = fit.score === null ? (fit.reason || 'No comparable segment profile') : `${fit.reason}. Relative preference score.`;
         return `<article class="creative-card holo-card rank-${Math.min(rank, 5)} ${rank === 1 && fit.score !== null ? 'rank-1' : ''}" role="listitem" tabindex="0">
-          <div class="relative h-48 flex-none bg-[#F0ECE4] border-b border-[#E4DED3]"><img src="${asset.src}" alt="${esc(asset.file.name)}" class="w-full h-full object-contain" loading="lazy"><div class="absolute top-3 left-3 tag ${rank === 1 && fit.score !== null ? 'border-[#89765C] text-[#89765C] font-bold' : ''}">#${rank} ${rank === 1 && fit.score !== null ? '· TOP FIT' : ''}</div><div class="absolute top-3 right-3 tag">${esc(status)}</div></div>
+          <div class="relative h-48 flex-none bg-[#F0ECE4] border-b border-[#E4DED3]">${asset.src ? `<img src="${asset.src}" alt="${esc(asset.file.name)}" class="w-full h-full object-contain" loading="lazy">` : '<div class="w-full h-full flex items-center justify-center"><i class="fa-solid fa-shirt text-5xl text-[#DED7CB]"></i></div>'}<div class="absolute top-3 left-3 tag ${rank === 1 && fit.score !== null ? 'border-[#89765C] text-[#89765C] font-bold' : ''}">#${rank} ${rank === 1 && fit.score !== null ? '· TOP FIT' : ''}</div><div class="absolute top-3 right-3 tag">${esc(status)}</div></div>
           <div class="card-body p-4 space-y-3"><div class="flex items-start justify-between gap-3"><h4 class="font-semibold text-sm break-all text-[#292722]">${esc(asset.file.name)}</h4><div class="text-right shrink-0"><p class="text-[9px] uppercase tracking-wider text-[#777066]">Segment fit</p><p class="font-mono text-xl ${fit.score === null ? 'text-[#777066]' : rank === 1 ? 'text-[#89765C] font-bold' : 'text-[#292722]'}">${scoreText}</p></div></div>
           <div class="flex flex-wrap gap-1.5">${tags.length ? tags.map(t => `<span class="tag">${esc(t)}</span>`).join('') : '<span class="text-xs text-[#777066]">No normalized attributes returned</span>'}</div>
           <div class="border-t border-[#E4DED3] pt-2"><p class="text-[9px] uppercase tracking-wider text-[#777066] mb-1">Ranked for</p><p class="text-[10px] text-[#89765C] leading-relaxed font-medium">${esc(filtersLabel())}</p><p class="text-[10px] text-[#777066] mt-2 leading-relaxed">${esc(reason)}</p></div></div></article>`;
@@ -838,6 +1105,10 @@
         $('uploadSummary').textContent = `${state.assets.length} file(s) selected.`;
         $('runButton').disabled = false;
         renderCreatives();
+        if (agentAutoRunAfterFiles) {
+          agentAutoRunAfterFiles = false;
+          await runAnalysis();
+        }
       } catch (e) { alert(e.message); }
     }
     const dropzone = $('dropzone'); const fileInput =$('fileInput');
@@ -852,6 +1123,29 @@
     $('runButton').addEventListener('click', runAnalysis);
     applyBrandLock();
 
+    const JOB_KEY = 'suffai_rank_job';
+    const JOB_POLL_MS = 5000;
+    let jobTimer = null;
+
+    function fmtDuration(sec) {
+      sec = Math.max(0, Math.round(Number(sec) || 0));
+      if (sec < 60) return sec + 's';
+      const m = Math.floor(sec / 60);
+      if (m < 60) return m + ' min';
+      const h = Math.floor(m / 60);
+      return h + 'h ' + String(m % 60).padStart(2, '0') + 'm';
+    }
+    function apiError(data, fallback) {
+      if (SuffaiSession.formatApiDetail) return SuffaiSession.formatApiDetail(data && data.detail, fallback);
+      return (data && typeof data.detail === 'string' && data.detail) || fallback;
+    }
+    function rememberJob(jobId) {
+      try { if (jobId) localStorage.setItem(JOB_KEY, jobId); else localStorage.removeItem(JOB_KEY); } catch (_) { /* ignore */ }
+    }
+    function rememberedJob() {
+      try { return localStorage.getItem(JOB_KEY) || ''; } catch (_) { return ''; }
+    }
+
     async function runAnalysis() {
       if (!state.assets.length || state.loading) return;
       if (lockedBrand) applyBrandLock();
@@ -859,7 +1153,7 @@
       if (lockedBrand) f.brand_name = lockedBrand;
       if (!f.brand_name) { alert('Enter a brand name.'); return; }
       if (!f.pin_codes.length) { alert('Select at least one PIN code.'); return; }
-      setLoading(true, 'Uploading SKUs · extracting · ranking for audience…');
+      setLoading(true, 'Uploading SKU images · scheduling ranking job…');
       try {
         const fd = new FormData();
         fd.append('brand_name', f.brand_name);
@@ -868,46 +1162,290 @@
         fd.append('gender', f.gender || '');
         fd.append('rfm_segment', f.rfm_segment || '');
         state.assets.forEach(({file}) => fd.append('files', file, file.name));
-        const res = await fetch(endpoint('/v1/ads-lab/campaign'), {
+        const res = await fetch(endpoint('/v1/ads-lab/campaign-jobs'), {
           method: 'POST',
           headers: { ...SuffaiSession.authHeaders() },
           body: fd,
         });
         const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.detail || data.message || `Campaign failed (HTTP ${res.status})`);
-        state.campaign = data;
-        state.campaignItems = Array.isArray(data.items) ? data.items : [];
-        state.results = state.campaignItems.map(row => ({
-          filename: row.filename,
-          ok: !!row.extract_ok,
-          error: row.extract_error || row.compare_error,
-          attributes: row.attributes || {},
-          raw_result: row.attributes || {}
-        }));
-        if (!state.campaignItems.length) throw new Error('Campaign returned no SKU items.');
-        refreshForFilters();
-        $('uploadSummary').textContent = `Campaign ${data.campaign_id} · ranked ${state.campaignItems.length} SKU(s) for ${filtersLabel(f)}.`;
-      } catch (e) {
-        console.error('[ads_lab] campaign failed', e);
+        if (!res.ok) throw new Error(apiError(data, `Job could not be submitted (HTTP ${res.status})`));
         state.campaign = null;
         state.campaignItems = [];
-        state.results = state.assets.map(({file}) => ({filename:file.name, ok:false, error:e.message, attributes:{}}));
-        refreshForFilters();
-        $('uploadSummary').textContent = `Campaign failed: ${e.message}.`;
+        state.results = [];
+        rememberJob(data.job.job_id);
+        renderJob(data.job);
+        $('uploadSummary').textContent = `Ranking job submitted for ${data.job.total_images} image(s).`;
+        scrollToStep('stepJob');
+        scheduleJobPoll(data.job.job_id);
+      } catch (e) {
+        console.error('[ads_lab] job submit failed', e);
+        $('uploadSummary').textContent = `Job not submitted: ${e.message}`;
       } finally { setLoading(false); }
     }
+
+    function renderJob(job) {
+      state.job = job;
+      $('jobCard').classList.remove('hidden');
+      const tag = $('jobStatusTag');
+      const labels = { queued: 'Queued', running: 'Running', succeeded: 'Completed', failed: 'Failed' };
+      tag.textContent = labels[job.status] || job.status;
+      tag.classList.remove('hidden');
+      tag.classList.toggle('sim-badge', job.status === 'succeeded');
+      $('jobCustomers').textContent = fmtNumber(job.total_customers);
+      $('jobImages').textContent = fmtNumber(job.total_images);
+      $('jobImagesSub').textContent = job.skipped_images ? `${job.skipped_images} skipped (upload failed)` : 'SKUs to rank';
+      $('jobGarments').textContent = fmtNumber(job.total_garments);
+      $('jobComparisons').textContent = fmtNumber(job.comparisons);
+      const done = job.status === 'succeeded' || job.status === 'failed';
+      $('jobEta').textContent = done ? 'Done' : '~' + fmtDuration(job.eta_seconds);
+      $('jobEtaSub').textContent = done
+        ? (job.finished_at ? 'finished ' + String(job.finished_at).replace('T', ' ').slice(0, 16) : '')
+        : 'initial estimate ' + fmtDuration(job.est_seconds);
+      const pct = Math.max(0, Math.min(100, Number(job.progress_pct) || 0));
+      $('jobProgressBar').style.width = pct + '%';
+      $('jobProgressPct').textContent = Math.round(pct) + '%';
+      $('jobProgressLabel').textContent = `${job.processed_images || 0} of ${job.total_images} image(s) processed`
+        + (job.failed_images ? ` · ${job.failed_images} failed` : '');
+      $('jobNote').textContent = done
+        ? 'Job finished.'
+        : 'Your job has been triggered. You can leave this page — it keeps running and resumes here.';
+      const err = $('jobError');
+      err.textContent = job.status === 'failed' ? (job.error || 'The job did not complete.') : '';
+      err.classList.toggle('hidden', job.status !== 'failed');
+      updateWizard();
+    }
+
+    function scheduleJobPoll(jobId, delay = JOB_POLL_MS) {
+      clearTimeout(jobTimer);
+      jobTimer = setTimeout(() => pollJob(jobId), delay);
+    }
+
+    async function pollJob(jobId) {
+      if (!jobId) return;
+      try {
+        const res = await fetch(endpoint('/v1/ads-lab/campaign-jobs/' + encodeURIComponent(jobId)), {
+          headers: { Accept: 'application/json', ...SuffaiSession.authHeaders() },
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 404 || res.status === 401 || res.status === 403) { rememberJob(''); return; }
+        if (!res.ok) throw new Error(apiError(data, 'HTTP ' + res.status));
+        const job = data.job;
+        renderJob(job);
+        if (job.status === 'succeeded') {
+          rememberJob('');
+          await loadCampaignById(job.campaign_id);
+          showCreatedModal(job);
+          notifyParent({ type: 'cc-campaign-created', campaign_id: job.campaign_id });
+          return;
+        }
+        if (job.status === 'failed') { rememberJob(''); return; }
+        scheduleJobPoll(jobId);
+      } catch (e) {
+        console.error('[ads_lab] job poll failed', e);
+        scheduleJobPoll(jobId, JOB_POLL_MS * 2);
+      }
+    }
+
+    async function resumeJob() {
+      let jobId = rememberedJob();
+      if (!jobId) {
+        try {
+          const res = await fetch(endpoint('/v1/ads-lab/campaign-jobs?active=true&limit=1'), {
+            headers: { Accept: 'application/json', ...SuffaiSession.authHeaders() },
+          });
+          const data = await res.json().catch(() => ({}));
+          if (res.ok && Array.isArray(data.jobs) && data.jobs.length) jobId = data.jobs[0].job_id;
+        } catch (_) { /* ignore */ }
+      }
+      if (jobId) pollJob(jobId);
+    }
+
+    function notifyParent(msg) {
+      if (!window.parent || window.parent === window) return;
+      try { window.parent.postMessage(msg, '*'); } catch (_) { /* ignore */ }
+    }
+
+    function showCreatedModal(job) {
+      const c = state.campaign || {};
+      const okCount = Math.max(0, (job.processed_images || 0) - (job.failed_images || 0));
+      $('createdSummary').textContent = `${okCount} of ${job.total_images} SKU(s) ranked for ${fmtNumber(job.total_customers)} customers`
+        + `${c.filters ? ' in ' + filtersLabel({ ...currentFilters(), ...c.filters }) : ''}. Choose how to run it.`;
+      const m = $('createdModal');
+      m.classList.remove('hidden');
+      m.classList.add('flex');
+      $('created1pBtn').focus();
+    }
+    function hideCreatedModal() {
+      const m = $('createdModal');
+      m.classList.add('hidden');
+      m.classList.remove('flex');
+    }
+
+    function audienceLabel(c) {
+      const pins = c.pin_codes || [];
+      const pinBit = !pins.length ? 'No PIN' : (pins.length <= 2 ? pins.join(', ') : pins.length + ' PINs');
+      return [pinBit, c.age_group || 'All ages', displayGender(c.gender), c.rfm_segment || 'All RFM'].join(' × ');
+    }
+
+    function scrollToStep(id) {
+      const el = $(id);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function campaignReady() {
+      const c = state.campaign;
+      return !!(c && c.campaign_id && ['ranked', 'configured', 'exported'].includes(c.status));
+    }
+
+    function stepStatus() {
+      return {
+        opportunity: selectedPinCodes().length > 0,
+        job: !!(state.job && state.job.status === 'succeeded') || campaignReady(),
+        runmode: !!(state.campaign && ['configured', 'exported', 'launched'].includes(state.campaign.status)),
+      };
+    }
+    function updateWizard() {
+      const s = stepStatus();
+      const order = ['opportunity', 'job', 'runmode'];
+      const current = order.find(k => !s[k]) || 'runmode';
+      document.querySelectorAll('.wiz-step').forEach((btn) => {
+        const k = btn.dataset.step;
+        btn.classList.toggle('done', !!s[k]);
+        btn.classList.toggle('current', k === current);
+        const num = btn.querySelector('.wiz-num');
+        if (num) num.innerHTML = s[k] ? '<i class="fa-solid fa-check text-[9px]"></i>' : String(order.indexOf(k) + 1);
+      });
+      const ready = campaignReady();
+      $('run3pBtn').disabled = !ready;
+      $('run1pBtn').disabled = !(ready || (state.campaign && state.campaign.status === 'launched'));
+      const c = state.campaign;
+      $('runModeNote').textContent = !c
+        ? 'Available once the ranking job completes.'
+        : c.status === 'launched'
+          ? 'This campaign is already running on SuffAI (simulated). Track it on the Campaigns tab.'
+          : c.status === 'exported'
+            ? 'Exported for 3P. You can still choose to run it on SuffAI.'
+            : `Campaign ready: ${state.campaignItems.filter(r => r.ok).length} ranked SKU(s).`;
+    }
+
+    function applyCampaignDraft(ctx) {
+      if (!ctx || typeof ctx !== 'object') return;
+      if (!state.metrics) { state.pendingDraft = ctx; renderGeoContext(ctx); return; }
+      state.sourceContext = ctx;
+      const filters = {};
+      if (Array.isArray(ctx.pins)) filters.pin_codes = ctx.pins.map(String);
+      filters.age_group = ctx.age_group || null;
+      filters.gender = ctx.gender || null;
+      filters.rfm_segment = ctx.rfm_segment || null;
+      applyAgentAdsFilters(filters);
+      renderGeoContext(ctx);
+      scrollToStep('stepOpportunity');
+      updateWizard();
+    }
+    function renderGeoContext(ctx) {
+      const card = $('geoContextCard');
+      if (!ctx) { card.classList.add('hidden'); return; }
+      const pins = ctx.pins || [];
+      const chips = [
+        pins.length ? (pins.length <= 3 ? 'PIN ' + pins.join(', ') : pins.length + ' PINs') : null,
+        ctx.age_group ? 'Age ' + ctx.age_group : 'All ages',
+        displayGender(ctx.gender),
+        ctx.rfm_segment || 'All RFM',
+        ctx.summary && ctx.summary.customers != null ? Number(ctx.summary.customers).toLocaleString() + ' customers' : null,
+      ].filter(Boolean);
+      $('geoContextChips').innerHTML = chips.map(c => `<span class="tag">${esc(c)}</span>`).join('');
+      $('geoContextInsight').textContent = ctx.insight || 'Geography and audience carried over from Geo.';
+      card.classList.remove('hidden');
+    }
+    function clearGeoContext() {
+      state.sourceContext = null;
+      try { sessionStorage.removeItem(CAMPAIGN_DRAFT_KEY); } catch (_) { /* ignore */ }
+      renderGeoContext(null);
+    }
+
+    function openCampaigns(campaignId) {
+      if (!campaignId) return;
+      hideCreatedModal();
+      const msg = { type: 'cc-open-campaigns', campaign_id: campaignId, source_context: state.sourceContext || null };
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage(msg, '*');
+      } else {
+        try { if (state.sourceContext) sessionStorage.setItem('suffai_campaign_source_' + campaignId, JSON.stringify(state.sourceContext)); } catch (_) { /* ignore */ }
+        location.href = './campaigns.html?campaign_id=' + encodeURIComponent(campaignId);
+      }
+    }
+    function run1p() {
+      const id = state.campaign && state.campaign.campaign_id;
+      if (id) openCampaigns(id);
+    }
+
+    function csvDownload(rows, filename) {
+      const csv = rows.map(row => row.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\r\n');
+      const url = URL.createObjectURL(new Blob([csv], {type: 'text/csv;charset=utf-8;'}));
+      const a = document.createElement('a'); a.href = url; a.download = filename; a.click(); URL.revokeObjectURL(url);
+    }
+
+    async function run3p() {
+      const id = state.campaign && state.campaign.campaign_id;
+      if (!id) { downloadCSV(); return; }
+      hideCreatedModal();
+      setLoading(true, 'Preparing 3P export…');
+      try {
+        const res = await fetch(endpoint('/v1/ads-lab/campaigns/' + encodeURIComponent(id) + '/export'), {
+          method: 'POST',
+          headers: { Accept: 'application/json', ...SuffaiSession.authHeaders() },
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(apiError(data, 'Export failed (HTTP ' + res.status + ')'));
+        const c = data.campaign || {};
+        const aud = data.audience || {};
+        const rows = [['rank', 'brand', 'geo_pins', 'age_bucket', 'gender', 'rfm_segment', 'filename', 'garment', 'color', 'pattern', 'material', 'size', 'rank_score', 'pin_fit']];
+        (data.items || []).forEach(r => rows.push([
+          r.rank, c.brand_name, (aud.pin_codes || []).join('|'), aud.age_group || 'All ages', displayGender(aud.gender),
+          aud.rfm_segment || 'All RFM', r.filename, r.name, r.color, r.pattern, r.material, r.size,
+          r.rank_score == null ? '' : Number(r.rank_score).toFixed(1), r.pin_fit == null ? '' : r.pin_fit,
+        ]));
+        csvDownload(rows, `suffai_ranking_${(c.brand_name || 'brand').replace(/\W+/g, '_').toLowerCase()}.csv`);
+        if (state.campaign) state.campaign.status = c.status || 'exported';
+        $('uploadSummary').textContent = 'Ranking exported for 3P platforms.';
+        updateWizard();
+        notifyParent({ type: 'cc-campaign-created', campaign_id: id });
+      } catch (e) {
+        alert(e.message || String(e));
+      } finally { setLoading(false); }
+    }
+
     function downloadCSV() {
       const list = makeRankedAssets(); const f = currentFilters();
       const rows = [['rank','brand','geo_pins','age_bucket','gender','rfm_segment','filename','color','pattern','commodity','material','size','sku_brand','rank_score']];
       list.forEach(r => rows.push([r.rank, f.brand_name, (f.pin_codes || []).join('|'), f.age_group || 'All ages', displayGender(f.gender), f.rfm_segment || 'All RFM', r.asset.file.name, r.attrs.color, r.attrs.pattern, r.attrs.commodity, r.attrs.material, r.attrs.size, r.attrs.brand, r.fit.score ?? '']));
-      const csv = rows.map(row => row.map(v => `"${String(v ?? '').replace(/"/g,'""')}"`).join(',')).join('\r\n');
-      const url = URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8;'})); const a = document.createElement('a'); a.href = url; a.download = 'ads_lab_segment_ranking.csv'; a.click(); URL.revokeObjectURL(url);
+      csvDownload(rows, 'ads_lab_segment_ranking.csv');
     }
-    $('downloadButton').addEventListener('click', downloadCSV);$('creativePrev').addEventListener('click', () => $('creativeGrid').scrollBy({left: -360, behavior: 'smooth'}));$('creativeNext').addEventListener('click', () => $('creativeGrid').scrollBy({left: 360, behavior: 'smooth'}));$('creativeGrid').addEventListener('keydown', (event) => {
+
+    document.querySelectorAll('.wiz-step').forEach(btn => btn.addEventListener('click', () => scrollToStep(btn.dataset.target)));
+    $('clearGeoContextBtn').addEventListener('click', clearGeoContext);
+    $('run3pBtn').addEventListener('click', run3p);
+    $('run1pBtn').addEventListener('click', run1p);
+    $('created3pBtn').addEventListener('click', run3p);
+    $('created1pBtn').addEventListener('click', run1p);
+    $('createdCloseBtn').addEventListener('click', () => { hideCreatedModal(); scrollToStep('stepRunMode'); });
+    $('createdModal').addEventListener('click', (e) => { if (e.target === $('createdModal')) hideCreatedModal(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideCreatedModal(); });
+    try {
+      const raw = sessionStorage.getItem(CAMPAIGN_DRAFT_KEY);
+      if (raw) applyCampaignDraft(JSON.parse(raw));
+    } catch (e) {
+      console.error('[ads_lab] draft restore failed', e);
+    }
+    $('creativePrev').addEventListener('click', () => $('creativeGrid').scrollBy({left: -360, behavior: 'smooth'}));
+    $('creativeNext').addEventListener('click', () => $('creativeGrid').scrollBy({left: 360, behavior: 'smooth'}));
+    $('creativeGrid').addEventListener('keydown', (event) => {
       if (event.key === 'ArrowRight') $('creativeGrid').scrollBy({left: 360, behavior: 'smooth'});
       if (event.key === 'ArrowLeft') $('creativeGrid').scrollBy({left: -360, behavior: 'smooth'});
     });
+    updateWizard();
     loadMetrics();
+    resumeJob();
   </script>
 </body>
 </html>

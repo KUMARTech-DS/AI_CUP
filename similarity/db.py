@@ -134,6 +134,52 @@ def load_global_embeddings(
     return out
 
 
+def load_pin_candidates(
+    pin_codes: Sequence[str], *, per_pin_limit: int
+) -> Tuple[List[Tuple[str, str, int, List[float], Optional[str]]], dict[str, int]]:
+    """
+    Garments observed in the PINs, most-observed first (capped per PIN), plus each PIN's
+    total observation count across all garments. Rows: (pin, garment_id, count, embedding, model).
+    """
+    pins = list(pin_codes)
+    with connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT pin_code, garment_id::text, observation_count, embedding, embedding_model
+                FROM (
+                  SELECT gpc.pin_code, ug.garment_id, gpc.observation_count, ug.embedding,
+                         ug.embedding_model,
+                         ROW_NUMBER() OVER (
+                           PARTITION BY gpc.pin_code
+                           ORDER BY gpc.observation_count DESC, ug.garment_id
+                         ) AS rn
+                  FROM garment_pin_counts gpc
+                  JOIN unique_garments ug ON ug.garment_id = gpc.garment_id
+                  WHERE gpc.pin_code = ANY(%s)
+                ) ranked
+                WHERE rn <= %s
+                """,
+                (pins, per_pin_limit),
+            )
+            rows = cur.fetchall()
+            cur.execute(
+                """
+                SELECT pin_code, COALESCE(SUM(observation_count), 0)
+                FROM garment_pin_counts
+                WHERE pin_code = ANY(%s)
+                GROUP BY pin_code
+                """,
+                (pins,),
+            )
+            totals = {str(r[0]): int(r[1] or 0) for r in cur.fetchall()}
+    out: List[Tuple[str, str, int, List[float], Optional[str]]] = []
+    for pin, gid, count, emb, model in rows:
+        vec = emb if isinstance(emb, list) else json.loads(emb)
+        out.append((str(pin), gid, int(count or 0), [float(x) for x in vec], model))
+    return out, totals
+
+
 def create_unique_garment(
     *,
     bucket: str,
@@ -397,52 +443,3 @@ def list_unique_garments(
                 for r in cur.fetchall()
             ]
     return {"items": items, "limit": limit, "offset": offset}
-
-
-def list_garments_for_pins(
-    pin_codes: Sequence[str], *, limit_per_pin: int = 400
-) -> dict[str, List[dict[str, Any]]]:
-    """
-    Read-only: unique garments observed in each PIN with embeddings + observation_count.
-    Used by brand SKU compare/rank (does not write wardrobe).
-    """
-    pins = [str(p).strip() for p in pin_codes if str(p).strip()]
-    out: dict[str, List[dict[str, Any]]] = {p: [] for p in pins}
-    if not pins:
-        return out
-
-    with connect() as conn:
-        with conn.cursor() as cur:
-            for pin in pins:
-                cur.execute(
-                    """
-                    SELECT ug.garment_id::text, ug.brand_name, ug.embedding,
-                           gpc.observation_count
-                    FROM garment_pin_counts gpc
-                    JOIN unique_garments ug ON ug.garment_id = gpc.garment_id
-                    WHERE gpc.pin_code = %s
-                    ORDER BY gpc.observation_count DESC, ug.updated_at DESC
-                    LIMIT %s
-                    """,
-                    (pin, limit_per_pin),
-                )
-                rows = []
-                for r in cur.fetchall():
-                    emb = r[2]
-                    if isinstance(emb, str):
-                        try:
-                            emb = json.loads(emb)
-                        except Exception:
-                            emb = None
-                    if not isinstance(emb, list) or not emb:
-                        continue
-                    rows.append(
-                        {
-                            "garment_id": r[0],
-                            "brand_name": r[1],
-                            "embedding": [float(x) for x in emb],
-                            "observation_count": int(r[3] or 0),
-                        }
-                    )
-                out[pin] = rows
-    return out

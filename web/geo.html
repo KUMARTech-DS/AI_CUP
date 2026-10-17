@@ -346,6 +346,24 @@
       font-weight: 600;
       color: var(--soft);
     }
+    .market-brief .brief-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-top: 0.75rem;
+      flex-wrap: wrap;
+    }
+    .btn-campaign {
+      padding: 0.5rem 0.9rem;
+      border-radius: 8px;
+      border: 1px solid var(--accent);
+      background: var(--accent);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-campaign:hover { background: var(--accent2); }
     .market-brief .brief-meta {
       font-size: 11px;
       color: var(--muted);
@@ -626,6 +644,12 @@
           </div>
           <p class="brief-body muted" id="briefBody">Loading store opportunity summary…</p>
           <div class="brief-err" id="briefErr" hidden></div>
+          <div class="brief-actions">
+            <button type="button" class="btn-campaign" id="btnCreateCampaign" title="Open Ads Lab with this geography and audience pre-filled">
+              Create campaign from this →
+            </button>
+            <span class="brief-meta" id="campaignCtxHint"></span>
+          </div>
         </section>
 
         <div class="store-strip">
@@ -1414,7 +1438,57 @@
       });
     }
 
+    let lastGeoSummary = {};
+
+    function singleOrNull(arr) {
+      return Array.isArray(arr) && arr.length === 1 ? arr[0] : null;
+    }
+
+    function buildCampaignContext() {
+      const s = lastGeoSummary || {};
+      const focus = s.store_focus_pin || null;
+      const pins = selection.pin.length ? selection.pin.slice() : (focus ? [focus] : []);
+      const bits = [];
+      if (s.store_decision && focus) bits.push(`PIN ${focus}: ${s.store_decision} (score ${s.store_score ?? '—'})`);
+      if (s.top_color || s.top_pattern) bits.push(`Audience leans ${[s.top_color, s.top_pattern].filter(Boolean).join(' · ')}`);
+      if (s.top_rfm) bits.push(`Top RFM segment: ${s.top_rfm}`);
+      return {
+        source: 'geo',
+        pins,
+        age_group: singleOrNull(selection.age),
+        gender: singleOrNull(selection.gender),
+        rfm_segment: singleOrNull(selection.rfm),
+        insight: bits.join('. '),
+        summary: {
+          customers: s.customers ?? null,
+          revenue: s.revenue ?? null,
+          top_brand: s.top_brand ?? null,
+          top_rfm: s.top_rfm ?? null,
+          top_color: s.top_color ?? null,
+          top_pattern: s.top_pattern ?? null,
+          store_focus_pin: focus,
+          store_decision: s.store_decision ?? null,
+        },
+        created_at: new Date().toISOString(),
+      };
+    }
+
+    function openCampaignFromGeo() {
+      const ctx = buildCampaignContext();
+      if (!ctx.pins.length) {
+        $('campaignCtxHint').textContent = 'Select at least one PIN (or focus a store) first.';
+        return;
+      }
+      $('campaignCtxHint').textContent = '';
+      try {
+        window.parent.postMessage({ type: 'cc-open-campaign', context: ctx }, '*');
+      } catch (e) {
+        console.error('[geo] cc-open-campaign failed', e);
+      }
+    }
+
     function publishGeoContext(summary) {
+      lastGeoSummary = summary || {};
       if (!window.parent || window.parent === window) return;
       try {
         window.parent.postMessage({
@@ -1434,9 +1508,119 @@
       }
     }
 
-    window.addEventListener('message', (ev) => {
-      if (!ev.data || ev.data.type !== 'cc-context-request') return;
+    const GEO_DROP_ALL = {
+      pin: 'All areas',
+      age: 'All ages',
+      gender: 'All genders',
+      rfm: 'All segments',
+      brand: 'All brands',
+    };
+
+    function syncGeoDropdownChecks(key) {
+      const panel = $('opts-' + key);
+      if (!panel) return;
+      const wanted = new Set((selection[key] || []).map(String));
+      panel.querySelectorAll('input[type="checkbox"]').forEach((input) => {
+        input.checked = wanted.has(String(input.value));
+      });
+      updateDropSummary(key, GEO_DROP_ALL[key] || 'All');
+    }
+
+    function applyAgentGeoFilters(filters) {
+      if (!DATA || !filters || typeof filters !== 'object') return;
+      const keys = ['pin', 'age', 'gender', 'rfm', 'brand'];
+      for (const key of keys) {
+        if (!(key in filters)) continue;
+        let vals = filters[key];
+        if (!Array.isArray(vals)) vals = vals == null || vals === '' ? [] : [vals];
+        selection[key] = vals.map(String).filter(Boolean);
+        // Brand role: only own brand + Competitors
+        if (key === 'brand') {
+          const sess = SuffaiSession.getSession();
+          if (sess && sess.role === 'brand' && sess.brand_name) {
+            const own = String(sess.brand_name).toLowerCase();
+            selection.brand = selection.brand.filter(
+              (b) => b.toLowerCase() === own || b.toLowerCase() === 'competitors'
+            );
+          }
+        }
+        syncGeoDropdownChecks(key);
+      }
+      applyFilters();
+    }
+
+    function resetAgentGeoFilters() {
+      focusPin = null;
+      lastBriefKey = '';
+      Object.keys(selection).forEach((k) => { selection[k] = []; });
+      document.querySelectorAll('.drop-panel input').forEach((i) => { i.checked = false; });
+      Object.keys(GEO_DROP_ALL).forEach((k) => updateDropSummary(k, GEO_DROP_ALL[k]));
+      applyFilters();
+    }
+
+    function focusAgentPin(pin) {
+      const p = String(pin || '').trim();
+      if (!p || !DATA) return;
+      focusPin = p;
+      if (!selection.pin.includes(p)) {
+        selection.pin = [p];
+        syncGeoDropdownChecks('pin');
+      }
+      lastBriefKey = '';
+      applyFilters();
+      try {
+        const g = DATA.pin_geo && DATA.pin_geo[p];
+        const lat = g && g.centroid_lat != null ? Number(g.centroid_lat) : null;
+        const lon = g && g.centroid_lon != null ? Number(g.centroid_lon) : null;
+        if (map && Number.isFinite(lat) && Number.isFinite(lon)) {
+          map.setView([lat, lon], Math.max(map.getZoom(), 12));
+        }
+      } catch (_) { /* ignore map pan errors */ }
+    }
+
+    function runAgentBrief() {
+      lastBriefKey = '';
       if (DATA) applyFilters();
+    }
+
+    function handleAgentCommand(cmd) {
+      if (!cmd || typeof cmd !== 'object') return;
+      const t = String(cmd.type || '');
+      if (t === 'set_filters') {
+        applyAgentGeoFilters(cmd.filters || {});
+      } else if (t === 'reset_filters') {
+        resetAgentGeoFilters();
+      } else if (t === 'focus_pin') {
+        focusAgentPin(cmd.pin);
+      } else if (t === 'run_brief') {
+        runAgentBrief();
+      } else if (t === 'create_campaign_from_geo') {
+        openCampaignFromGeo();
+      } else {
+        return;
+      }
+      try {
+        window.parent.postMessage({
+          type: 'cc-agent-ack',
+          source: 'geo',
+          command: t,
+          ok: true,
+        }, '*');
+      } catch (_) { /* ignore */ }
+    }
+
+    $('btnCreateCampaign').addEventListener('click', openCampaignFromGeo);
+
+    window.addEventListener('message', (ev) => {
+      const data = ev.data;
+      if (!data || typeof data !== 'object') return;
+      if (data.type === 'cc-context-request') {
+        if (DATA) applyFilters();
+        return;
+      }
+      if (data.type === 'cc-agent-command') {
+        handleAgentCommand(data.command || data);
+      }
     });
 
     function updateChart(chart, labels, values, color) {

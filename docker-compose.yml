@@ -1,5 +1,22 @@
-# Local GCP-parity stack (no suffai-api — command_center is the BFF)
+# Local GCP-parity stack
 services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    ports:
+      - "8080:8080"
+    environment:
+      PORT: "8080"
+      ENVIRONMENT: local
+      WEB_ORIGIN: http://localhost:8083
+      DEMO_AUTH_ENABLED: "true"
+      JWT_SECRET: local-dev-secret
+      DATA_DIR: /app/data_offline
+      DERIVED_DIR: /app/data_derived
+    volumes:
+      - ./data_derived:/app/data_derived
+
   worker:
     build:
       context: .
@@ -10,7 +27,7 @@ services:
       PORT: "8080"
       ENABLE_VERTEX: "false"
 
-  # web/ UI + /v1/metrics + /v1/ads-lab/* + /v1/chat
+  # web/ UI + /v1/metrics + /v1/ads-lab/extract
   command_center:
     build:
       context: .
@@ -24,18 +41,4 @@ services:
       BQ_DATASET: ${BQ_DATASET:-suffai_ops}
       GCS_IMAGE_BUCKET: ${GCS_IMAGE_BUCKET:-}
       EXTRACTION_URL: ${EXTRACTION_URL:-}
-      SIMILARITY_URL: ${SIMILARITY_URL:-}
       CORS_ORIGINS: "*"
-
-  similarity:
-    build:
-      context: .
-      dockerfile: Dockerfile.similarity
-    ports:
-      - "8084:8080"
-    environment:
-      PORT: "8080"
-      ENABLE_VERTEX: "false"
-      GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:-}
-      GCS_IMAGE_BUCKET: ${GCS_IMAGE_BUCKET:-}
-      DATABASE_URL: ${DATABASE_URL:-}
