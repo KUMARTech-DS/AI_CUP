@@ -18,6 +18,8 @@ from pathlib import Path
 from typing import Any, Optional
 
 from fastapi import FastAPI, File, Form, Header, HTTPException, Query, Request, UploadFile
+from fastapi.exception_handlers import request_validation_exception_handler
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -42,8 +44,12 @@ import aggregate_metrics as agg  # noqa: E402
 import auth_acl  # noqa: E402
 import brand_campaign as brand_camp  # noqa: E402
 import aura_agent  # noqa: E402
+import aura_guard  # noqa: E402
+import campaign_jobs  # noqa: E402
+import campaign_service as camp_svc  # noqa: E402
 import chatbot  # noqa: E402
 import style_assistant as style_asst  # noqa: E402
+from starlette.concurrency import run_in_threadpool  # noqa: E402
 
 app = FastAPI(title="SuffAI Command Center", version="1.0.0")
 
@@ -56,6 +62,15 @@ app.add_middleware(
 )
 
 PIN_POP = DATA_DIR / "pin_population.json"
+
+
+@app.exception_handler(RequestValidationError)
+async def _validation_error_handler(request: Request, exc: RequestValidationError):
+    if request.url.path.startswith("/v1/agent/"):
+        rid = uuid.uuid4().hex[:12]
+        log.warning("request_id=%s agent request validation failed: %s", rid, exc.errors()[:3])
+        return JSONResponse(status_code=400, content=aura_guard.error_body("invalid_input", rid))
+    return await request_validation_exception_handler(request, exc)
 
 
 def _env_bool(name: str, default: bool = False) -> bool:
@@ -135,6 +150,11 @@ def compute_metrics() -> dict[str, Any]:
 
 
 METRICS_JSON = WEB_DIR / "metrics.json"
+camp_svc.init(metrics_loader=compute_metrics, metrics_json=METRICS_JSON)
+
+
+def _svc_http(exc: camp_svc.ServiceError) -> HTTPException:
+    return HTTPException(exc.status, exc.public)
 
 
 class GeoBriefRequest(BaseModel):
@@ -186,52 +206,8 @@ def _require_session(
     return sess
 
 
-# Keys that must never be forwarded to Gemini (PII / raw identity / precise personal geo)
-_PII_KEY_DENY = frozenset(
-    {
-        "name",
-        "display_name",
-        "username",
-        "email",
-        "phone",
-        "number",
-        "address",
-        "customer_id",
-        "user_uuid",
-        "_id",
-        "id",
-        "token",
-        "password",
-        "password_hash",
-        "lat",
-        "lon",
-        "centroid_lat",
-        "centroid_lon",
-    }
-)
-
-
-def _strip_pii_keys(obj: Any, depth: int = 0) -> Any:
-    """Recursively drop denied keys; keep only aggregates safe for prompts."""
-    if depth > 6:
-        return None
-    if isinstance(obj, dict):
-        out: dict[str, Any] = {}
-        for k, v in obj.items():
-            key = str(k).strip().lower()
-            if key in _PII_KEY_DENY:
-                continue
-            if any(x in key for x in ("email", "phone", "address", "password", "token")):
-                continue
-            cleaned = _strip_pii_keys(v, depth + 1)
-            if cleaned is not None:
-                out[str(k)] = cleaned
-        return out
-    if isinstance(obj, list):
-        return [_strip_pii_keys(x, depth + 1) for x in obj[:40]]
-    if isinstance(obj, (str, int, float, bool)) or obj is None:
-        return obj
-    return str(obj)[:200]
+_PII_KEY_DENY = aura_guard.PII_KEY_DENY
+_strip_pii_keys = aura_guard.strip_pii_keys
 
 
 def _sanitize_geo_brief_payload(body: GeoBriefRequest) -> dict[str, Any]:
@@ -607,17 +583,9 @@ async def ads_lab_extract(files: list[UploadFile] = File(...)):
                 "ok": True,
                 "status": payload.get("status"),
                 "image_id": payload.get("image_id"),
-                "attributes": {
-                    "color": attrs.get("color") or attrs.get("dominant_color"),
-                    "brand": attrs.get("brand") or attrs.get("brand_name"),
-                    "size": attrs.get("size"),
-                    "material": attrs.get("material"),
-                    "pattern": attrs.get("pattern"),
-                    "sleeve_type": attrs.get("sleeve_type") or attrs.get("sleeve"),
-                    "collar_type": attrs.get("collar_type") or attrs.get("collar"),
-                    "name": attrs.get("garment_type") or attrs.get("name") or attrs.get("category"),
-                    "confidence": attrs.get("confidence") or attrs.get("confidence_score"),
-                },
+                "attributes": camp_svc.extracted_attributes(
+                    attrs, camp_svc.known_value(attrs.get("brand_name"), attrs.get("brand"))
+                ),
                 "raw_result": attrs,
             }
         )
@@ -641,68 +609,6 @@ def _parse_pin_codes(raw: str) -> list[str]:
     return [p.strip() for p in raw.replace(";", ",").split(",") if p.strip()]
 
 
-def _call_extraction(
-    *,
-    extraction_url: str,
-    bucket: str,
-    object_key: str,
-    token: Optional[str],
-) -> dict[str, Any]:
-    import urllib.request
-
-    idem = f"ads-lab-campaign-{uuid.uuid4().hex}"
-    body = json.dumps(
-        {
-            "gcs_object_key": object_key,
-            "gcs_bucket": bucket,
-            "target_type": "garment",
-            "idempotency_key": idem,
-        }
-    ).encode("utf-8")
-    req = urllib.request.Request(
-        f"{extraction_url}/v1/extract",
-        data=body,
-        method="POST",
-        headers={
-            "Content-Type": "application/json",
-            **({"Authorization": f"Bearer {token}"} if token else {}),
-        },
-    )
-    with urllib.request.urlopen(req, timeout=120) as resp:
-        return json.loads(resp.read().decode("utf-8"))
-
-
-def _call_compare_pins(
-    *,
-    similarity_url: str,
-    bucket: str,
-    object_key: str,
-    pin_codes: list[str],
-    token: Optional[str],
-) -> dict[str, Any]:
-    import urllib.request
-
-    body = json.dumps(
-        {
-            "gcs_bucket": bucket,
-            "gcs_object_key": object_key,
-            "pin_codes": pin_codes,
-            "topk": 5,
-        }
-    ).encode("utf-8")
-    req = urllib.request.Request(
-        f"{similarity_url.rstrip('/')}/v1/similarity/compare-pins",
-        data=body,
-        method="POST",
-        headers={
-            "Content-Type": "application/json",
-            **({"Authorization": f"Bearer {token}"} if token else {}),
-        },
-    )
-    with urllib.request.urlopen(req, timeout=180) as resp:
-        return json.loads(resp.read().decode("utf-8"))
-
-
 @app.post("/v1/ads-lab/campaign")
 async def ads_lab_campaign(
     request: Request,
@@ -720,270 +626,135 @@ async def ads_lab_campaign(
     compare-pins → rank with PIN + age/gender/RFM metrics profile.
     Does not modify suffai-extraction.
     """
-    brand = (brand_name or "").strip()
-    # Brand role: force own brand (cannot upload as another brand)
-    token = _token_from_request(request, authorization, x_session_token)
-    sess = auth_acl.get_session(token) if token else None
-    if sess and sess.get("role") == "brand":
-        forced = (sess.get("brand_name") or "").strip()
-        if not forced:
-            raise HTTPException(403, "Brand session missing brand_name")
-        brand = forced
-    elif sess and sess.get("role") == "customer":
-        raise HTTPException(403, "Customers cannot run Ads Lab campaigns")
-
-    pins = _parse_pin_codes(pin_codes)
-    age = (age_group or "").strip() or None
-    gen = (gender or "").strip() or None
-    rfm = (rfm_segment or "").strip() or None
-
-    if not brand:
-        raise HTTPException(400, "brand_name is required")
-    if not pins:
-        raise HTTPException(400, "pin_codes required (one or more)")
+    sess = _require_session(request, authorization, x_session_token)
     if not files:
         raise HTTPException(400, "files required")
-
-    extraction_url = (os.getenv("EXTRACTION_URL") or "").rstrip("/")
-    similarity_url = (os.getenv("SIMILARITY_URL") or "").rstrip("/")
-    bucket = os.getenv("GCS_IMAGE_BUCKET") or ""
-    if not extraction_url:
-        raise HTTPException(503, "EXTRACTION_URL not set")
-    if not similarity_url:
-        raise HTTPException(503, "SIMILARITY_URL not set")
-    if not bucket:
-        raise HTTPException(503, "GCS_IMAGE_BUCKET not set")
-    if not os.getenv("DATABASE_URL", "").strip():
-        raise HTTPException(503, "DATABASE_URL not set (brand_campaigns tables)")
-
-    try:
-        from google.cloud import storage  # type: ignore
-        import google.auth.transport.requests  # type: ignore
-        import google.oauth2.id_token  # type: ignore
-    except ImportError as exc:
-        raise HTTPException(503, f"Missing GCP libs: {exc}") from exc
-
-    try:
-        client = storage.Client()
-        bkt = client.bucket(bucket)
-    except Exception as exc:
-        raise HTTPException(503, f"GCS unavailable: {exc}") from exc
-
-    auth_req = google.auth.transport.requests.Request()
-
-    def _id_token(audience: str) -> Optional[str]:
-        try:
-            return google.oauth2.id_token.fetch_id_token(auth_req, audience)
-        except Exception:
-            log.warning("Could not fetch ID token for %s", audience)
-            return None
-
-    extract_token = _id_token(extraction_url)
-    sim_token = _id_token(similarity_url)
-
-    try:
-        metrics = compute_metrics()
-    except HTTPException:
-        # Fall back to metrics.json for attr_fit if BQ down
-        if METRICS_JSON.is_file():
-            metrics = json.loads(METRICS_JSON.read_text(encoding="utf-8"))
-        else:
-            raise
-
-    profile = brand_camp.build_segment_profile(
-        metrics,
-        pin_codes=pins,
-        age_group=age,
-        gender=gen,
-        rfm_segment=rfm,
-    )
-
-    try:
-        campaign_id = brand_camp.create_campaign(
-            brand_name=brand,
-            pin_codes=pins,
-            age_group=age,
-            gender=gen,
-            rfm_segment=rfm,
-        )
-    except Exception as exc:
-        log.exception("create_campaign failed")
-        raise HTTPException(503, f"brand_campaigns DB failed: {exc}") from exc
-
-    slug = brand_camp.brand_slug(brand)
-    ranked_items: list[dict[str, Any]] = []
-
+    images: list[camp_svc.ImageInput] = []
     for f in files:
         if not f.content_type or not f.content_type.startswith("image/"):
             continue
-        ext = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}.get(
-            f.content_type, "jpg"
-        )
-        sku_uuid = str(uuid.uuid4())
-        object_key = f"brands/{slug}/{campaign_id}/{sku_uuid}.{ext}"
-        data = await f.read()
-        if len(data) > 10 * 1024 * 1024:
-            raise HTTPException(400, f"{f.filename} too large (max 10MB)")
-
-        try:
-            blob = bkt.blob(object_key)
-            blob.upload_from_string(data, content_type=f.content_type)
-        except Exception as exc:
-            log.exception("GCS upload failed key=%s", object_key)
-            ranked_items.append(
-                {
-                    "sku_uuid": sku_uuid,
-                    "filename": f.filename,
-                    "ok": False,
-                    "error": f"GCS upload failed: {exc}",
-                    "rank_score": None,
-                }
+        images.append(
+            camp_svc.ImageInput(
+                filename=f.filename or "sku",
+                content_type=f.content_type,
+                data=await f.read(),
             )
-            continue
-
-        attrs: dict[str, Any] = {}
-        raw_result: Any = {}
-        extract_ok = False
-        extract_error = None
-        try:
-            payload = _call_extraction(
-                extraction_url=extraction_url,
-                bucket=bucket,
-                object_key=object_key,
-                token=extract_token,
-            )
-            raw_result = payload.get("result") or {}
-            attrs = {
-                "color": raw_result.get("color") or raw_result.get("dominant_color"),
-                "brand": brand,  # overwrite extraction brand
-                "size": raw_result.get("size"),
-                "material": raw_result.get("material"),
-                "pattern": raw_result.get("pattern"),
-                "sleeve_type": raw_result.get("sleeve_type") or raw_result.get("sleeve"),
-                "collar_type": raw_result.get("collar_type") or raw_result.get("collar"),
-                "name": raw_result.get("garment_type")
-                or raw_result.get("name")
-                or raw_result.get("category"),
-                "confidence": raw_result.get("confidence")
-                or raw_result.get("confidence_score"),
-            }
-            extract_ok = True
-        except Exception as exc:
-            log.exception("Extract failed sku=%s", sku_uuid)
-            extract_error = str(exc)
-            attrs = {"brand": brand}
-
-        try:
-            brand_camp.insert_sku(
-                sku_uuid=sku_uuid,
-                campaign_id=campaign_id,
-                brand_name=brand,
-                original_filename=f.filename,
-                gcs_bucket=bucket,
-                gcs_object_key=object_key,
-                attributes=attrs,
-                raw_result=raw_result,
-                extract_ok=extract_ok,
-                extract_error=extract_error,
-            )
-        except Exception as exc:
-            log.exception("insert_sku failed")
-            raise HTTPException(503, f"brand_skus insert failed: {exc}") from exc
-
-        sim_fit = 0.0
-        freq_cov = 0.0
-        per_pin: dict[str, Any] = {}
-        compare_err = None
-        try:
-            cmp = _call_compare_pins(
-                similarity_url=similarity_url,
-                bucket=bucket,
-                object_key=object_key,
-                pin_codes=pins,
-                token=sim_token,
-            )
-            sim_fit = float(cmp.get("aggregate_fit") or 0)
-            per_pin = cmp.get("per_pin") or {}
-            freq_cov = brand_camp.freq_coverage_from_compare(per_pin)
-            emb = cmp.get("embedding")
-            if isinstance(emb, list) and emb:
-                brand_camp.update_sku_embedding(
-                    sku_uuid,
-                    emb,
-                    str(cmp.get("embedding_model") or ""),
-                    int(cmp.get("embedding_dim") or len(emb)),
-                )
-            brand_camp.upsert_pin_scores(sku_uuid, per_pin)
-        except Exception as exc:
-            log.exception("compare-pins failed sku=%s", sku_uuid)
-            compare_err = str(exc)
-
-        a_fit = brand_camp.attr_fit_score(attrs, profile)
-        rank_score = brand_camp.blend_rank_score(
-            sim_fit=sim_fit, freq_coverage=freq_cov, attr_fit=a_fit
         )
-        ranked_items.append(
-            {
-                "sku_uuid": sku_uuid,
-                "filename": f.filename,
-                "ok": extract_ok and compare_err is None,
-                "gcs_object_key": object_key,
-                "attributes": attrs,
-                "extract_ok": extract_ok,
-                "extract_error": extract_error,
-                "compare_error": compare_err,
-                "sim_fit": round(sim_fit, 4),
-                "freq_coverage": round(freq_cov, 4),
-                "attr_fit": round(a_fit, 4),
-                "rank_score": rank_score,
-                "per_pin": per_pin,
-            }
-        )
-
-    ranked_items.sort(
-        key=lambda r: (
-            r.get("rank_score") is None,
-            -(r.get("rank_score") or -1),
-        )
-    )
-    for i, row in enumerate(ranked_items, start=1):
-        row["rank"] = i
-
     try:
-        brand_camp.set_campaign_status(campaign_id, "ranked")
-    except Exception:
-        log.exception("set_campaign_status failed")
+        return await run_in_threadpool(
+            camp_svc.create_campaign_from_images,
+            sess,
+            images,
+            brand_name=brand_name,
+            pin_codes=_parse_pin_codes(pin_codes),
+            age_group=age_group,
+            gender=gender,
+            rfm_segment=rfm_segment,
+        )
+    except camp_svc.ServiceError as exc:
+        raise _svc_http(exc) from exc
 
-    return {
-        "ok": True,
-        "campaign_id": campaign_id,
-        "brand_name": brand,
-        "filters": {
-            "pin_codes": pins,
-            "age_group": age,
-            "gender": gen,
-            "rfm_segment": rfm,
-        },
-        "profile_cell_count": profile.get("cell_count"),
-        "items": ranked_items,
-    }
+
+async def _read_images(files: list[UploadFile]) -> list[camp_svc.ImageInput]:
+    out: list[camp_svc.ImageInput] = []
+    for f in files or []:
+        if not f.content_type or not f.content_type.startswith("image/"):
+            continue
+        out.append(
+            camp_svc.ImageInput(filename=f.filename or "sku", content_type=f.content_type, data=await f.read())
+        )
+    return out
+
+
+@app.post("/v1/ads-lab/campaign-jobs")
+async def ads_lab_submit_campaign_job(
+    request: Request,
+    files: list[UploadFile] = File(...),
+    brand_name: str = Form(""),
+    pin_codes: str = Form(...),
+    age_group: str = Form(""),
+    gender: str = Form(""),
+    rfm_segment: str = Form(""),
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None, alias="X-Session-Token"),
+):
+    """Async extract & rank: uploads images, returns the job with counts + ETA immediately."""
+    sess = _require_session(request, authorization, x_session_token)
+    images = await _read_images(files)
+    try:
+        job = await run_in_threadpool(
+            campaign_jobs.submit_job,
+            sess,
+            images,
+            brand_name=brand_name,
+            pin_codes=_parse_pin_codes(pin_codes),
+            age_group=age_group,
+            gender=gender,
+            rfm_segment=rfm_segment,
+        )
+    except camp_svc.ServiceError as exc:
+        raise _svc_http(exc) from exc
+    return {"ok": True, "job": job}
+
+
+@app.get("/v1/ads-lab/campaign-jobs")
+def ads_lab_list_campaign_jobs(
+    request: Request,
+    active: bool = Query(False),
+    limit: int = Query(20, ge=1, le=100),
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None, alias="X-Session-Token"),
+):
+    sess = _require_session(request, authorization, x_session_token)
+    try:
+        jobs = campaign_jobs.list_jobs(sess, active=active, limit=limit)
+    except camp_svc.ServiceError as exc:
+        raise _svc_http(exc) from exc
+    return {"ok": True, "jobs": jobs, "count": len(jobs)}
+
+
+@app.get("/v1/ads-lab/campaign-jobs/{job_id}")
+def ads_lab_get_campaign_job(
+    job_id: str,
+    request: Request,
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None, alias="X-Session-Token"),
+):
+    sess = _require_session(request, authorization, x_session_token)
+    try:
+        job = campaign_jobs.get_job(sess, job_id)
+    except camp_svc.ServiceError as exc:
+        raise _svc_http(exc) from exc
+    return {"ok": True, "job": job}
+
+
+@app.post("/internal/campaign-jobs/{job_id}/run", include_in_schema=False)
+def internal_run_campaign_job(
+    job_id: str,
+    authorization: Optional[str] = Header(None),
+):
+    """Cloud Tasks worker. Accepts only an OIDC token minted for TASKS_SERVICE_ACCOUNT."""
+    if not campaign_jobs.verify_task_request(authorization):
+        raise HTTPException(403, "Forbidden")
+    try:
+        jid = str(uuid.UUID(job_id))
+    except ValueError:
+        return {"ok": True, "skipped": True}
+    try:
+        return campaign_jobs.run_chunk(jid)
+    except Exception as exc:
+        log.exception("campaign job chunk failed job=%s", jid)
+        raise HTTPException(500, "chunk failed; will retry") from exc
 
 
 def _campaign_access(
     campaign: dict[str, Any],
     sess: Optional[dict[str, Any]],
 ) -> None:
-    if not sess:
-        raise HTTPException(401, "Not authenticated — sign in again")
-    role = sess.get("role")
-    if role == "admin":
-        return
-    if role == "brand":
-        own = (sess.get("brand_name") or "").strip().lower()
-        if own and own == str(campaign.get("brand_name") or "").strip().lower():
-            return
-        raise HTTPException(403, "Not allowed for this campaign")
-    raise HTTPException(403, "Only brand or admin can manage campaigns")
+    try:
+        camp_svc.check_access(campaign, sess)
+    except camp_svc.ServiceError as exc:
+        raise _svc_http(exc) from exc
 
 
 @app.get("/v1/ads-lab/campaigns")
@@ -992,21 +763,13 @@ def ads_lab_list_campaigns(
     authorization: Optional[str] = Header(None),
     x_session_token: Optional[str] = Header(None, alias="X-Session-Token"),
     limit: int = Query(50, ge=1, le=200),
+    status: Optional[str] = Query(None),
 ):
     sess = _require_session(request, authorization, x_session_token)
-    role = sess.get("role")
-    if role == "customer":
-        raise HTTPException(403, "Customers cannot list Ads Lab campaigns")
-    brand = None
-    if role == "brand":
-        brand = (sess.get("brand_name") or "").strip() or None
-        if not brand:
-            raise HTTPException(403, "Brand session missing brand_name")
     try:
-        rows = brand_camp.list_campaigns(brand_name=brand, limit=limit)
-    except Exception as exc:
-        log.exception("list campaigns failed")
-        raise HTTPException(503, f"list campaigns failed: {exc}") from exc
+        rows = camp_svc.list_for(sess, status=status, limit=limit)
+    except camp_svc.ServiceError as exc:
+        raise _svc_http(exc) from exc
     return {"ok": True, "campaigns": rows, "count": len(rows)}
 
 
@@ -1019,15 +782,10 @@ def ads_lab_campaign_detail(
 ):
     sess = _require_session(request, authorization, x_session_token)
     try:
-        campaign = brand_camp.get_campaign(campaign_id)
-    except Exception as exc:
-        raise HTTPException(503, f"campaign lookup failed: {exc}") from exc
-    if not campaign:
-        raise HTTPException(404, "campaign not found")
-    _campaign_access(campaign, sess)
-    skus = brand_camp.list_campaign_skus(campaign_id)
-    campaign["sku_count"] = len(skus)
-    return {"ok": True, "campaign": campaign, "skus": skus}
+        data = camp_svc.get_with_skus(sess, campaign_id)
+    except camp_svc.ServiceError as exc:
+        raise _svc_http(exc) from exc
+    return {"ok": True, **data}
 
 
 @app.post("/v1/ads-lab/campaigns/{campaign_id}/start")
@@ -1038,11 +796,8 @@ def ads_lab_campaign_start(
     x_session_token: Optional[str] = Header(None, alias="X-Session-Token"),
 ):
     """Publish ranked campaign to Style Assistant for filter-matched customers (1P)."""
-    sess = _require_session(request, authorization, x_session_token)
-    campaign = brand_camp.get_campaign(campaign_id)
-    if not campaign:
-        raise HTTPException(404, "campaign not found")
-    _campaign_access(campaign, sess)
+    campaign, _ = _load_campaign_for(campaign_id, request, authorization, x_session_token)
+    campaign_id = campaign["campaign_id"]
     if campaign.get("status") not in {"ranked", "started"}:
         raise HTTPException(
             400,
@@ -1072,14 +827,177 @@ def ads_lab_campaign_ignore(
     x_session_token: Optional[str] = Header(None, alias="X-Session-Token"),
 ):
     sess = _require_session(request, authorization, x_session_token)
-    campaign = brand_camp.get_campaign(campaign_id)
-    if not campaign:
-        raise HTTPException(404, "campaign not found")
-    _campaign_access(campaign, sess)
-    if campaign.get("status") == "started":
-        raise HTTPException(400, "Cannot ignore a started campaign in v1 — contact admin")
-    brand_camp.set_campaign_status(campaign_id, "ignored")
-    return {"ok": True, "campaign": brand_camp.get_campaign(campaign_id)}
+    try:
+        campaign = camp_svc.discard(sess, campaign_id)
+    except camp_svc.ServiceError as exc:
+        raise _svc_http(exc) from exc
+    return {"ok": True, "campaign": campaign}
+
+
+class CampaignConfigRequest(BaseModel):
+    campaign_name: str = Field(..., min_length=1, max_length=120)
+    objective: str
+    budget_inr: float = Field(..., gt=0)
+    duration_days: int = Field(..., ge=1, le=365)
+    start_date: Optional[str] = None
+    selected_sku_ids: list[str] = Field(default_factory=list)
+    creative: dict[str, Any] = Field(default_factory=dict)
+    source_context: Optional[dict[str, Any]] = None
+    channels: Optional[list[str]] = None
+    message_template: Optional[dict[str, str]] = None
+
+
+class CampaignEstimateRequest(BaseModel):
+    objective: Optional[str] = None
+    budget_inr: float = Field(0, ge=0)
+    duration_days: int = Field(14, ge=1, le=365)
+    channels: Optional[list[str]] = None
+
+
+class BudgetRecommendationRequest(BaseModel):
+    objective: Optional[str] = None
+    duration_days: int = Field(14, ge=1, le=365)
+    channels: Optional[list[str]] = None
+
+
+def _load_campaign_for(
+    campaign_id: str,
+    request: Request,
+    authorization: Optional[str],
+    x_session_token: Optional[str],
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    sess = _require_session(request, authorization, x_session_token)
+    try:
+        campaign = camp_svc.load_campaign(sess, campaign_id)
+    except camp_svc.ServiceError as exc:
+        raise _svc_http(exc) from exc
+    return campaign, sess
+
+
+@app.patch("/v1/ads-lab/campaigns/{campaign_id}/config")
+def ads_lab_campaign_config(
+    campaign_id: str,
+    body: CampaignConfigRequest,
+    request: Request,
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None, alias="X-Session-Token"),
+):
+    """Save campaign name, objective, SKUs, creative, budget and schedule (status → configured)."""
+    sess = _require_session(request, authorization, x_session_token)
+    try:
+        campaign = camp_svc.configure(
+            sess,
+            campaign_id,
+            campaign_name=body.campaign_name,
+            objective=body.objective,
+            budget_inr=body.budget_inr,
+            duration_days=body.duration_days,
+            start_date=body.start_date,
+            selected_sku_ids=body.selected_sku_ids,
+            creative=body.creative,
+            source_context=body.source_context,
+            channels=body.channels,
+            message_template=body.message_template,
+        )
+    except camp_svc.ServiceError as exc:
+        raise _svc_http(exc) from exc
+    return {"ok": True, "campaign": campaign}
+
+
+@app.post("/v1/ads-lab/campaigns/{campaign_id}/budget-recommendation")
+def ads_lab_budget_recommendation(
+    campaign_id: str,
+    body: BudgetRecommendationRequest,
+    request: Request,
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None, alias="X-Session-Token"),
+):
+    """Simulated budget recommendation from audience, objective, duration and channels."""
+    sess = _require_session(request, authorization, x_session_token)
+    try:
+        rec = camp_svc.budget_recommendation(
+            sess, campaign_id, objective=body.objective,
+            duration_days=body.duration_days, channels=body.channels,
+        )
+    except camp_svc.ServiceError as exc:
+        raise _svc_http(exc) from exc
+    return {"ok": True, "recommendation": rec}
+
+
+@app.post("/v1/ads-lab/campaigns/{campaign_id}/export")
+def ads_lab_campaign_export(
+    campaign_id: str,
+    request: Request,
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None, alias="X-Session-Token"),
+):
+    """3P: mark exported and return the ranked SKUs + audience for running on another platform."""
+    sess = _require_session(request, authorization, x_session_token)
+    try:
+        data = camp_svc.export_3p(sess, campaign_id)
+    except camp_svc.ServiceError as exc:
+        raise _svc_http(exc) from exc
+    return {"ok": True, **data}
+
+
+@app.post("/v1/ads-lab/campaigns/{campaign_id}/estimate")
+def ads_lab_campaign_estimate(
+    campaign_id: str,
+    body: CampaignEstimateRequest,
+    request: Request,
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None, alias="X-Session-Token"),
+):
+    """Simulated outcome ranges from budget, duration and audience size (nothing persisted)."""
+    sess = _require_session(request, authorization, x_session_token)
+    try:
+        est = camp_svc.estimate(
+            sess,
+            campaign_id,
+            objective=body.objective,
+            budget_inr=body.budget_inr,
+            duration_days=body.duration_days,
+            channels=body.channels,
+        )
+    except camp_svc.ServiceError as exc:
+        raise _svc_http(exc) from exc
+    return {"ok": True, "estimate": est}
+
+
+@app.post("/v1/ads-lab/campaigns/{campaign_id}/launch")
+def ads_lab_campaign_launch(
+    campaign_id: str,
+    request: Request,
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None, alias="X-Session-Token"),
+):
+    """
+    Simulated launch: persist status + final synthetic KPIs + daily series.
+    No Style Assistant recommendations are created and nothing is delivered to customers.
+    """
+    sess = _require_session(request, authorization, x_session_token)
+    try:
+        result = camp_svc.launch(sess, campaign_id)
+    except camp_svc.ServiceError as exc:
+        raise _svc_http(exc) from exc
+    if result["already_launched"]:
+        return {"ok": True, "campaign": result["campaign"], "already_launched": True}
+    return {"ok": True, "campaign": result["campaign"], "impact": result["impact"]}
+
+
+@app.get("/v1/ads-lab/campaigns/{campaign_id}/monitor")
+def ads_lab_campaign_monitor(
+    campaign_id: str,
+    request: Request,
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None, alias="X-Session-Token"),
+):
+    """Campaign config + selected SKUs + simulated KPIs + daily series + insights."""
+    sess = _require_session(request, authorization, x_session_token)
+    try:
+        return camp_svc.monitor_payload(sess, campaign_id)
+    except camp_svc.ServiceError as exc:
+        raise _svc_http(exc) from exc
 
 
 @app.get("/v1/admin/campaigns")
@@ -1178,8 +1096,17 @@ def _proxy_similarity_get(path: str, params: dict[str, Any]) -> Any:
 
 
 @app.get("/v1/style-assistant/users")
-def style_assistant_users(limit: int = Query(200, ge=1, le=500)):
+def style_assistant_users(
+    request: Request,
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None, alias="X-Session-Token"),
+    limit: int = Query(200, ge=1, le=500),
+):
     """Distinct customer ids from user_wardrobe for Style Assistant dropdown."""
+    token = _token_from_request(request, authorization, x_session_token)
+    sess = auth_acl.get_session(token) if token else None
+    if sess and sess.get("role") == "brand":
+        raise HTTPException(403, "Brand accounts only get the campaign preview in Style Assistant")
     if not os.getenv("DATABASE_URL", "").strip():
         raise HTTPException(503, "DATABASE_URL not set")
     try:
@@ -1307,9 +1234,13 @@ def geo_brief(
     Gemini store decision + Market brief for Geo.
     Payload must be aggregates only (brand vs competitor share, commodities, footfall).
     """
-    request_id = uuid.uuid4().hex[:12]
     token = _token_from_request(request, authorization, x_session_token)
     sess = auth_acl.get_session(token) if token else None
+    return geo_brief_core(body, sess)
+
+
+def geo_brief_core(body: GeoBriefRequest, sess: Optional[dict[str, Any]]) -> dict[str, Any]:
+    request_id = uuid.uuid4().hex[:12]
     role = (sess or {}).get("role") or body.role or "admin"
 
     try:
@@ -1422,6 +1353,13 @@ def geo_brief(
     }
 
 
+def _aura_geo_brief(payload: dict[str, Any], sess: dict[str, Any]) -> dict[str, Any]:
+    return geo_brief_core(GeoBriefRequest(**payload), sess)
+
+
+aura_agent.configure(geo_brief=_aura_geo_brief)
+
+
 @app.post("/v1/chat")
 def chat(body: chatbot.ChatRequest):
     """Dashboard Q&A from metrics.json summary + Geo/Ads UI filters (read-only)."""
@@ -1429,15 +1367,44 @@ def chat(body: chatbot.ChatRequest):
 
 
 @app.post("/v1/agent/chat")
-def agent_chat(
+async def agent_chat(
     body: aura_agent.AgentChatRequest,
     request: Request,
     authorization: Optional[str] = Header(None),
     x_session_token: Optional[str] = Header(None, alias="X-Session-Token"),
 ):
-    """AURA brand operating agent — tool calls for Geo + Ads Lab (session required)."""
-    sess = _require_session(request, authorization, x_session_token)
-    return aura_agent.run_agent(body, sess=sess, metrics_path=METRICS_JSON)
+    """AURA brand operating agent — guarded tool calls for Geo + Ads Lab (session required)."""
+    token = _token_from_request(request, authorization, x_session_token)
+    sess = auth_acl.get_session(token) if token else None
+    return await run_in_threadpool(aura_agent.run_agent, body, sess=sess, metrics_path=METRICS_JSON)
+
+
+@app.post("/v1/agent/uploads")
+async def agent_uploads(
+    request: Request,
+    files: list[UploadFile] = File(...),
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None, alias="X-Session-Token"),
+):
+    """Stage SKU images for AURA (validated, metadata stripped, session-scoped, short TTL)."""
+    token = _token_from_request(request, authorization, x_session_token)
+    sess = auth_acl.get_session(token) if token else None
+    max_bytes = aura_guard.AURA_MAX_UPLOAD_MB * 1024 * 1024
+    raw: list[tuple[str, Optional[str], bytes]] = []
+    for f in (files or [])[: aura_guard.AURA_MAX_UPLOADS + 1]:
+        raw.append((f.filename or "", f.content_type, await f.read(max_bytes + 1)))
+    return await run_in_threadpool(aura_agent.stage_uploads, sess, raw)
+
+
+@app.delete("/v1/agent/uploads")
+def agent_uploads_clear(
+    request: Request,
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None, alias="X-Session-Token"),
+):
+    token = _token_from_request(request, authorization, x_session_token)
+    sess = auth_acl.get_session(token) if token else None
+    return aura_agent.clear_uploads(sess)
 
 
 @app.get("/")
@@ -1454,8 +1421,19 @@ def root():
             "GET /v1/ads-lab/campaigns",
             "POST /v1/ads-lab/campaigns/{id}/start",
             "POST /v1/ads-lab/campaigns/{id}/ignore",
+            "PATCH /v1/ads-lab/campaigns/{id}/config",
+            "POST /v1/ads-lab/campaigns/{id}/estimate",
+            "POST /v1/ads-lab/campaigns/{id}/launch",
+            "GET /v1/ads-lab/campaigns/{id}/monitor",
+            "POST /v1/ads-lab/campaigns/{id}/budget-recommendation",
+            "POST /v1/ads-lab/campaigns/{id}/export",
+            "POST /v1/ads-lab/campaign-jobs",
+            "GET /v1/ads-lab/campaign-jobs",
+            "GET /v1/ads-lab/campaign-jobs/{id}",
             "POST /v1/chat",
             "POST /v1/agent/chat",
+            "POST /v1/agent/uploads",
+            "DELETE /v1/agent/uploads",
             "POST /v1/geo/brief",
             "GET /v1/admin/unique-summary",
             "GET /v1/admin/unique-garments",

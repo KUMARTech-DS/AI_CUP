@@ -1,0 +1,328 @@
+import pytest
+
+import brand_campaign as bc
+import campaign_jobs as jobs
+import campaign_service as svc
+
+JOB = "33333333-3333-4333-8333-333333333333"
+CID = "44444444-4444-4444-8444-444444444444"
+
+
+# ---------------------------------------------------------------------------
+# ETA + counts
+# ---------------------------------------------------------------------------
+
+
+def test_eta_scales_with_images_garments_and_parallelism(monkeypatch):
+    for k in ("CAMPAIGN_ETA_EXTRACT_SEC", "CAMPAIGN_ETA_COMPARE_BASE_SEC",
+              "CAMPAIGN_ETA_COMPARE_PER_1K_SEC", "CAMPAIGN_JOB_PARALLELISM"):
+        monkeypatch.delenv(k, raising=False)
+    assert jobs.seconds_per_image(0) == pytest.approx(12.0)
+    assert jobs.seconds_per_image(10_000) == pytest.approx(27.0)
+    assert jobs.estimate_seconds(10, 10_000) == 270
+    assert jobs.estimate_seconds(0, 10_000) == 0
+    assert jobs.estimate_seconds(10, 0, per_image=3.0) == 30
+    monkeypatch.setenv("CAMPAIGN_JOB_PARALLELISM", "3")
+    assert jobs.estimate_seconds(10, 10_000) == 90
+
+
+def test_garments_in_pins_sums_selected_pins_only():
+    metrics = {"garment_cells": [
+        {"pin_code": "560008", "garments": 10},
+        {"pin_code": "560008", "garments": "5"},
+        {"pin_code": "110001", "garments": 99},
+        {"pin_code": "560034", "garments": "bad"},
+        "junk",
+    ]}
+    assert jobs.garments_in_pins(metrics, ["560008", "560034"]) == 15
+    assert jobs.garments_in_pins(metrics, []) == 0
+    assert jobs.garments_in_pins({}, ["560008"]) == 0
+
+
+def test_job_view_progress_and_public_error():
+    job = {
+        "job_id": JOB, "campaign_id": CID, "brand_name": "Zara", "status": "running",
+        "total_images": 4, "processed_images": 1, "failed_images": 0, "total_customers": 100,
+        "total_garments": 0, "comparisons": 0, "est_seconds": 48, "error_code": None,
+        "created_at": None, "started_at": None, "finished_at": None,
+    }
+    v = jobs.job_view(job, {"avg_seconds": 10.0})
+    assert v["progress_pct"] == 25.0
+    assert v["eta_seconds"] == 30
+    assert v["error"] is None
+    done = jobs.job_view({**job, "status": "failed", "error_code": "all_failed"})
+    assert done["eta_seconds"] == 0
+    assert "images" in done["error"]
+    assert jobs.svc_public_error("weird_internal") == "The job did not complete."
+
+
+# ---------------------------------------------------------------------------
+# Extraction worker result → SKU attributes
+# ---------------------------------------------------------------------------
+
+
+def test_extracted_attributes_reads_worker_keys():
+    raw = {
+        "commodity_type": "hoodie", "material_type": "cotton", "primary_color": "black",
+        "size_normalized": "M", "size_raw": "M/38", "brand_name": "unknown", "pattern": "solid",
+        "attribute_evidence": {
+            "commodity_type": {"confidence": 0.9}, "material_type": {"confidence": 0.6},
+            "primary_color": {"confidence": 0.8}, "size_normalized": {"confidence": 0.7},
+        },
+    }
+    a = svc.extracted_attributes(raw, "Zara")
+    assert a == {"color": "black", "brand": "Zara", "size": "M", "material": "cotton", "pattern": "solid",
+                 "sleeve_type": None, "collar_type": None, "name": "hoodie", "confidence": 0.6}
+
+
+def test_extracted_attributes_unknowns_and_legacy_keys():
+    stub = {"commodity_type": "unknown", "material_type": "unknown", "primary_color": "unknown",
+            "pattern": "unknown", "size_normalized": None}
+    a = svc.extracted_attributes(stub, "Zara")
+    assert all(a[k] is None for k in ("color", "size", "material", "pattern", "name"))
+    legacy = svc.extracted_attributes({"dominant_color": "red", "garment_type": "Shirt", "confidence": 0.5}, None)
+    assert legacy["color"] == "red" and legacy["name"] == "Shirt" and legacy["confidence"] == 0.5
+
+
+def test_extracted_attributes_feed_attr_fit():
+    profile = {"distributions": {"color": {"black": 5}, "commodity": {"hoodie": 3}, "material": {"cotton": 2}}}
+    a = svc.extracted_attributes({"primary_color": "Black", "commodity_type": "Hoodie", "material_type": "cotton"}, "Zara")
+    assert bc.attr_fit_score(a, profile) > 0.9
+
+
+# ---------------------------------------------------------------------------
+# Budget + channels
+# ---------------------------------------------------------------------------
+
+
+def test_normalize_channels():
+    assert bc.normalize_channels(["WhatsApp", "inapp", "sms", "sms", "email", None]) == ["whatsapp", "in_app", "sms"]
+    assert bc.normalize_channels(None) == []
+
+
+def test_recommend_budget_applies_floor_for_small_audience():
+    rec = bc.recommend_budget(50, 14, "conversion", ["in_app"])
+    assert rec["recommended"] >= max(bc.MIN_BUDGET_INR, bc.MIN_DAILY_INR * 14)
+    assert rec["min"] <= rec["recommended"] <= rec["max"]
+    assert rec["source"] == "synthetic"
+    assert any("minimum" in r for r in rec["reasons"])
+
+
+def test_recommend_budget_breakdown_sums_to_recommended():
+    rec = bc.recommend_budget(500_000, 14, "awareness", ["in_app", "whatsapp", "sms"])
+    assert [b["channel"] for b in rec["breakdown"]] == ["in_app", "whatsapp", "sms"]
+    assert sum(b["budget"] for b in rec["breakdown"]) == pytest.approx(rec["recommended"], rel=0.01)
+    assert sum(b["share_pct"] for b in rec["breakdown"]) == pytest.approx(100, abs=0.5)
+    assert rec["daily_budget"] == pytest.approx(rec["recommended"] / 14, abs=0.01)
+
+
+def test_recommend_budget_messaging_only_capped_at_saturation():
+    audience = 200
+    rec = bc.recommend_budget(audience, 30, "conversion", ["sms"])
+    saturation = audience * bc._CHANNEL_FREQ["sms"]["conversion"] * bc._MESSAGE_COST["sms"]
+    assert rec["recommended"] < bc.MIN_DAILY_INR * 30
+    assert rec["max"] <= max(rec["recommended"], bc._round_to(saturation))
+    assert any("unspent" in r for r in rec["reasons"])
+
+
+def test_estimate_by_channel_and_spend_accounting():
+    est = bc.estimate_outcomes(20_000, 14, 10_000, "conversion", ["in_app", "whatsapp"])
+    assert set(est["by_channel"]) == {"in_app", "whatsapp"}
+    assert sum(r["budget"] for r in est["by_channel"].values()) == pytest.approx(20_000, abs=1)
+    for name in ("low", "expected", "high"):
+        p = est[name]
+        assert p["spend"] + p["unspent"] == pytest.approx(20_000, abs=1)
+        assert p["reach"] <= 10_000
+    assert est["low"]["conversions"] <= est["high"]["conversions"]
+    wa = est["by_channel"]["whatsapp"]["expected"]
+    assert wa["messages"] <= 10_000 * bc._CHANNEL_FREQ["whatsapp"]["conversion"]
+
+
+def test_estimate_defaults_to_in_app():
+    est = bc.estimate_outcomes(10_000, 7, 1_000, "awareness")
+    assert est["channels"] == ["in_app"]
+
+
+def test_validate_message_template():
+    assert bc.validate_message_template(["in_app"], None) == {}
+    assert bc.validate_message_template(["sms"], {"sms": " Hi {link} ", "whatsapp": "ignored"}) == {"sms": "Hi {link}"}
+    with pytest.raises(ValueError):
+        bc.validate_message_template(["whatsapp"], {})
+    with pytest.raises(ValueError):
+        bc.validate_message_template(["sms"], {"sms": "x" * 161})
+    with pytest.raises(ValueError):
+        bc.validate_message_template(["sms"], {"sms": "bad\x07char"})
+    tpl = bc.default_message_template("Zara", "Summer")
+    assert len(tpl["sms"]) <= bc.MESSAGE_LIMITS["sms"]
+    assert bc.validate_message_template(["whatsapp", "sms"], tpl) == tpl
+
+
+# ---------------------------------------------------------------------------
+# Worker auth
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def task_env(monkeypatch):
+    monkeypatch.setenv("TASKS_SERVICE_ACCOUNT", "tasks@proj.iam.gserviceaccount.com")
+    monkeypatch.setenv("COMMAND_CENTER_URL", "https://cc.example.run.app/")
+
+
+def test_verify_task_request_accepts_matching_sa(task_env):
+    seen = {}
+
+    def verifier(token, audience):
+        seen.update(token=token, audience=audience)
+        return {"email": "Tasks@proj.iam.gserviceaccount.com", "email_verified": True}
+
+    assert jobs.verify_task_request("Bearer abc", verifier=verifier) is True
+    assert seen == {"token": "abc", "audience": "https://cc.example.run.app"}
+
+
+@pytest.mark.parametrize("auth,claims", [
+    (None, {"email": "tasks@proj.iam.gserviceaccount.com", "email_verified": True}),
+    ("Basic abc", {"email": "tasks@proj.iam.gserviceaccount.com", "email_verified": True}),
+    ("Bearer ", {"email": "tasks@proj.iam.gserviceaccount.com", "email_verified": True}),
+    ("Bearer abc", {"email": "attacker@evil.com", "email_verified": True}),
+    ("Bearer abc", {"email": "tasks@proj.iam.gserviceaccount.com", "email_verified": False}),
+])
+def test_verify_task_request_rejects(task_env, auth, claims):
+    assert jobs.verify_task_request(auth, verifier=lambda t, a: claims) is False
+
+
+def test_verify_task_request_rejects_bad_token_and_missing_env(task_env, monkeypatch):
+    def boom(t, a):
+        raise ValueError("bad signature")
+
+    assert jobs.verify_task_request("Bearer abc", verifier=boom) is False
+    monkeypatch.delenv("TASKS_SERVICE_ACCOUNT")
+    ok = {"email": "tasks@proj.iam.gserviceaccount.com", "email_verified": True}
+    assert jobs.verify_task_request("Bearer abc", verifier=lambda t, a: ok) is False
+
+
+def test_internal_worker_route_requires_oidc(monkeypatch):
+    from fastapi.testclient import TestClient
+
+    import main
+
+    called = []
+    monkeypatch.setattr(jobs, "run_chunk", lambda *a, **k: called.append(a) or {"ok": True})
+    client = TestClient(main.app)
+    r = client.post(f"/internal/campaign-jobs/{JOB}/run", headers={"Authorization": "Bearer forged"})
+    assert r.status_code == 403
+    assert called == []
+
+
+# ---------------------------------------------------------------------------
+# Chunked worker
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def worker(monkeypatch):
+    skus = {f"sku-{i}": "pending" for i in range(7)}
+    state = {"lease": True, "finished": None, "released": 0, "enqueued": 0, "status": [], "processed": []}
+    fail = set()
+    monkeypatch.setenv("CAMPAIGN_JOB_CHUNK", "3")
+    monkeypatch.setattr(jobs, "_lease", lambda jid: {"job_id": jid, "campaign_id": CID} if state["lease"] else None)
+    monkeypatch.setattr(bc, "get_campaign", lambda cid: {"campaign_id": cid, "brand_name": "Zara", "pin_codes": ["560008"]})
+    monkeypatch.setattr(
+        bc, "list_pending_skus",
+        lambda cid, limit: [{"sku_uuid": s, "gcs_object_key": f"k/{s}"} for s, st in skus.items() if st == "pending"][:limit],
+    )
+    monkeypatch.setattr(svc, "pipeline_context", lambda **kw: object())
+
+    def process(pctx, *, sku_uuid, object_key):
+        state["processed"].append(sku_uuid)
+        if sku_uuid in fail:
+            raise RuntimeError("model error")
+        skus[sku_uuid] = "done"
+
+    monkeypatch.setattr(svc, "process_sku", process)
+    monkeypatch.setattr(bc, "update_sku_rank", lambda sku, **kw: skus.__setitem__(sku, kw["process_status"]))
+
+    def progress(cid):
+        vals = list(skus.values())
+        return {"pending": vals.count("pending"), "done": vals.count("done"),
+                "failed": vals.count("failed"), "avg_seconds": 1.0}
+
+    monkeypatch.setattr(bc, "sku_progress", progress)
+    monkeypatch.setattr(bc, "set_campaign_status", lambda cid, st, msg=None: state["status"].append(st))
+    monkeypatch.setattr(jobs, "_release", lambda jid, p=None: state.__setitem__("released", state["released"] + 1))
+    monkeypatch.setattr(jobs, "_finish", lambda jid, st, **kw: state.__setitem__("finished", (st, kw.get("error_code"))))
+    monkeypatch.setattr(jobs, "_enqueue_override", lambda jid: state.__setitem__("enqueued", state["enqueued"] + 1))
+    return skus, state, fail
+
+
+def test_run_chunk_processes_in_chunks_then_succeeds(worker):
+    skus, state, _ = worker
+    r1 = jobs.run_chunk(JOB)
+    assert r1["continue"] is True and len(state["processed"]) == 3
+    assert state["enqueued"] == 1 and state["released"] == 1
+    jobs.run_chunk(JOB)
+    r3 = jobs.run_chunk(JOB)
+    assert r3["status"] == "succeeded"
+    assert state["finished"] == ("succeeded", None)
+    assert state["status"] == ["ranked"]
+    assert sorted(state["processed"]) == sorted(skus)
+    assert state["enqueued"] == 2
+
+
+def test_run_chunk_is_idempotent_after_completion(worker):
+    skus, state, _ = worker
+    for _ in range(3):
+        jobs.run_chunk(JOB)
+    count = len(state["processed"])
+    jobs.run_chunk(JOB)
+    assert len(state["processed"]) == count
+
+
+def test_run_chunk_skips_when_lease_held(worker):
+    _, state, _ = worker
+    state["lease"] = False
+    assert jobs.run_chunk(JOB) == {"ok": True, "skipped": True}
+    assert state["processed"] == []
+
+
+def test_run_chunk_marks_failed_skus_and_continues(worker):
+    skus, state, fail = worker
+    fail.add("sku-0")
+    for _ in range(3):
+        jobs.run_chunk(JOB)
+    assert skus["sku-0"] == "failed"
+    assert state["finished"] == ("succeeded", None)
+
+
+def test_run_chunk_all_failed(worker):
+    skus, state, fail = worker
+    fail.update(skus)
+    for _ in range(3):
+        jobs.run_chunk(JOB)
+    assert state["finished"] == ("failed", "all_failed")
+    assert state["status"] == ["error"]
+
+
+def test_local_runner_drains_without_enqueue(worker):
+    skus, state, _ = worker
+    jobs._run_locally(JOB)
+    assert all(v == "done" for v in skus.values())
+    assert state["enqueued"] == 0
+
+
+# ---------------------------------------------------------------------------
+# Ownership
+# ---------------------------------------------------------------------------
+
+
+def test_job_of_other_brand_is_not_found(monkeypatch):
+    monkeypatch.setenv("DATABASE_URL", "postgresql://fake")
+    job = {"job_id": JOB, "campaign_id": CID, "brand_name": "Nike", "status": "running"}
+    monkeypatch.setattr(jobs, "fetch_job", lambda jid: dict(job) if jid == JOB else None)
+    zara = {"token": "t", "role": "brand", "brand_name": "Zara"}
+    for jid in (JOB, "not-a-uuid", "55555555-5555-4555-8555-555555555555"):
+        with pytest.raises(svc.ServiceError) as exc:
+            jobs._load_job_for(zara, jid)
+        assert exc.value.status == 404
+    nike = {"token": "t", "role": "brand", "brand_name": "Nike"}
+    assert jobs._load_job_for(nike, JOB)["brand_name"] == "Nike"
+    assert jobs._load_job_for({"token": "t", "role": "admin"}, JOB)["job_id"] == JOB

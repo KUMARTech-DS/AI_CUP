@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-[#FAF8F4] text-[#292722]">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>THRED_SPATIAL AI - Campaigns</title>
+  <script src="./config.js"></script>
+  <script src="./session.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root { color-scheme: light; }
+    body { font-family: Inter, sans-serif; background-color: #FAF8F4; color: #292722; }
+    .font-mono { font-family: 'JetBrains Mono', monospace; }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #F0ECE4; }
+    ::-webkit-scrollbar-thumb { background: #DED7CB; border-radius: 4px; }
+    .glass-panel { background: #FAF8F4; border: 1px solid #E4DED3; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,.04); }
+    .field { width: 100%; background: #FFFFFF; border: 1px solid #E4DED3; color: #292722; border-radius: .5rem; padding: .55rem .65rem; font-size: .75rem; }
+    .field:focus { outline: 2px solid #89765C; border-color: #89765C; }
+    .field:disabled { background: #F5F2EC; color: #777066; }
+    .tag { display: inline-flex; align-items: center; gap: .3rem; border-radius: 999px; border: 1px solid #E4DED3; padding: .15rem .5rem; font-size: 10px; color: #4A4339; background: #F0ECE4; }
+    .sim-badge { border-color: #89765C; color: #66513B; background: #F7F1E7; font-weight: 600; }
+    .lbl-sm { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: #777066; font-weight: 600; }
+    .camp-item { display: block; width: 100%; text-align: left; padding: .7rem .8rem; border: 1px solid #E4DED3; border-radius: 10px; background: #FFFFFF; }
+    .camp-item:hover { border-color: #89765C; }
+    .camp-item.active { border-color: #89765C; box-shadow: 0 0 0 2px rgba(137,118,92,.18); background: #FBF8F2; }
+    .status { display: inline-flex; align-items: center; gap: .3rem; font-size: 10px; font-weight: 700; border-radius: 999px; padding: .1rem .5rem; border: 1px solid; }
+    .st-processing { color: #8A5A00; border-color: #E8C46A; background: #FFF7E0; }
+    .st-ranked { color: #3D5A80; border-color: #A9C1E0; background: #EEF4FB; }
+    .st-configured { color: #4A4339; border-color: #DED7CB; background: #F0ECE4; }
+    .st-launched { color: #1F6B45; border-color: #9ED3B5; background: #EAF7F0; }
+    .st-exported { color: #5B4B8A; border-color: #C6B8E8; background: #F3EFFB; }
+    .st-error, .st-ignored { color: #8B2E2E; border-color: #E5B4B4; background: #FBEEEE; }
+    .obj-card { position: relative; display: flex; flex-direction: column; gap: .25rem; padding: .7rem .8rem; border: 1px solid #E4DED3; border-radius: 10px; background: #FFFFFF; cursor: pointer; }
+    .obj-card input { position: absolute; opacity: 0; pointer-events: none; }
+    .obj-card:has(input:checked) { border-color: #89765C; box-shadow: 0 0 0 2px rgba(137,118,92,.18); }
+    .chan-btn { display: flex; align-items: center; gap: .6rem; padding: .7rem .8rem; border: 1px solid #E4DED3; border-radius: 10px; background: #FFFFFF; text-align: left; }
+    .chan-btn[aria-pressed="true"] { border-color: #89765C; background: #FBF8F2; box-shadow: 0 0 0 2px rgba(137,118,92,.18); }
+    .chan-btn:disabled { opacity: .55; cursor: not-allowed; }
+    .chan-check { width: 18px; height: 18px; border-radius: 5px; border: 1px solid #DED7CB; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; color: transparent; flex: none; }
+    .chan-btn[aria-pressed="true"] .chan-check { background: #89765C; border-color: #89765C; color: #FFFFFF; }
+    .sku-pick { display: flex; align-items: center; gap: .6rem; padding: .5rem .6rem; border: 1px solid #E4DED3; border-radius: 10px; background: #FFFFFF; cursor: pointer; }
+    .sku-pick:has(input:checked) { border-color: #89765C; background: #FBF8F2; }
+    .sku-pick.disabled { opacity: .5; cursor: not-allowed; }
+    .est-tile { background: #FFFFFF; border: 1px solid #E4DED3; border-radius: 10px; padding: .6rem .7rem; }
+    .est-tile .lbl { font-size: 9px; text-transform: uppercase; letter-spacing: .08em; color: #777066; font-weight: 600; }
+    .est-tile .val { font-family: 'JetBrains Mono', monospace; font-size: 15px; color: #292722; margin-top: .2rem; }
+    .est-tile .rng { font-size: 10px; color: #777066; margin-top: .1rem; }
+    .bubble-wa { background: #DCF8C6; border-radius: 10px 10px 2px 10px; padding: .6rem .75rem; font-size: 12px; color: #1F2A1F; white-space: pre-wrap; word-break: break-word; }
+    .bubble-sms { background: #E9E9EB; border-radius: 14px 14px 14px 4px; padding: .6rem .75rem; font-size: 12px; color: #1C1C1E; white-space: pre-wrap; word-break: break-word; }
+  </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+  <script>
+    if (!SuffaiSession.requireAuth('campaigns')) { /* redirected */ }
+  </script>
+
+  <header class="glass-panel z-30 border-b border-[#E4DED3] px-4 py-3 flex-none flex items-center justify-between gap-4">
+    <div class="flex items-center gap-3 min-w-0">
+      <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-[#89765C] via-[#292722] to-[#DED7CB] p-[2px] flex-none">
+        <div class="bg-[#FAF8F4] w-full h-full rounded-[10px] flex items-center justify-center"><i class="fa-solid fa-bullhorn text-[#89765C] text-lg"></i></div>
+      </div>
+      <div class="min-w-0">
+        <h1 class="font-extrabold text-lg sm:text-xl tracking-wider text-[#292722] font-mono">CAMPAIGNS <span class="text-[10px] px-2 py-0.5 rounded bg-[#F0ECE4] text-[#89765C] border border-[#E4DED3]">Run on SuffAI</span></h1>
+        <p class="text-[11px] text-[#777066]">Name, channels, budget and tracking for your 1P campaigns.</p>
+      </div>
+    </div>
+    <span class="tag sim-badge flex-none" title="SuffAI does not deliver messages or ads yet. Delivery, cost and outcome metrics are simulated."><i class="fa-solid fa-flask"></i> Simulated delivery &amp; outcomes</span>
+  </header>
+
+  <main class="flex-1 flex min-h-0 overflow-hidden">
+    <aside class="w-80 max-w-[42vw] flex-none border-r border-[#E4DED3] bg-[#F0ECE4] flex flex-col min-h-0">
+      <div class="p-4 pb-2 flex items-center justify-between gap-2">
+        <h2 class="text-xs font-bold uppercase tracking-wider">Your campaigns</h2>
+        <button id="refreshBtn" type="button" class="text-[10px] px-2 py-1 border border-[#DED7CB] rounded-lg bg-white hover:border-[#89765C]"><i class="fa-solid fa-rotate mr-1"></i>Refresh</button>
+      </div>
+      <div id="statusFilter" class="px-4 pb-2 flex flex-wrap gap-1" role="tablist" aria-label="Filter by status">
+        <button type="button" class="tag" data-filter="">All</button>
+        <button type="button" class="tag" data-filter="ready">Ready</button>
+        <button type="button" class="tag" data-filter="processing">Processing</button>
+        <button type="button" class="tag" data-filter="launched">Running</button>
+        <button type="button" class="tag" data-filter="exported">Exported</button>
+      </div>
+      <div id="campaignList" class="flex-1 overflow-y-auto px-4 pb-4 space-y-2" aria-live="polite">
+        <p class="text-xs text-[#777066]">Loading campaigns…</p>
+      </div>
+    </aside>
+
+    <section id="mainScroll" class="flex-1 min-w-0 overflow-y-auto p-4 sm:p-6 space-y-5">
+      <div id="emptyEditor" class="glass-panel rounded-xl min-h-[260px] flex flex-col items-center justify-center text-center p-8">
+        <i class="fa-solid fa-bullhorn text-5xl text-[#DED7CB] mb-4"></i>
+        <p class="text-sm font-mono text-[#89765C]">Select a campaign to configure or track it.</p>
+        <p class="text-xs text-[#777066] mt-2 max-w-md">New campaigns come from Ads Lab: submit a ranking job, then choose <b>Run on SuffAI (1P)</b>.</p>
+      </div>
+
+      <div id="editor" class="hidden space-y-5">
+        <section class="glass-panel rounded-xl p-4 sm:p-5">
+          <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3">
+            <div class="min-w-0 flex-1">
+              <label class="lbl-sm block">Campaign name (required)<input id="campaignName" type="text" maxlength="120" class="field mt-1 text-sm font-semibold" placeholder="e.g. Koramangala Champions — Festive" /></label>
+              <div id="audienceChips" class="flex flex-wrap gap-1.5 mt-2"></div>
+              <p id="sourceNote" class="text-[11px] text-[#777066] mt-2 hidden"></p>
+            </div>
+            <div class="flex items-center gap-2 flex-none">
+              <span id="statusPill" class="status st-ranked">ranked</span>
+            </div>
+          </div>
+          <div id="processingNote" class="hidden mt-3 rounded-lg border border-[#E8C46A] bg-[#FFF7E0] p-3 text-xs text-[#6B4A00]">
+            <i class="fa-solid fa-circle-notch animate-spin mr-1"></i>The extract &amp; rank job for this campaign is still running. You can configure it once it completes.
+          </div>
+          <div id="errorNote" class="hidden mt-3 rounded-lg border border-[#E5B4B4] bg-[#FBEEEE] p-3 text-xs text-[#8B2E2E]"></div>
+        </section>
+
+        <section id="trackingSection" class="glass-panel rounded-xl p-4 sm:p-5 space-y-4 hidden">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <h3 class="text-xs font-bold uppercase tracking-wider"><i class="fa-solid fa-chart-line text-[#89765C] mr-2"></i>Campaign tracking <span class="tag sim-badge ml-1">Simulated</span></h3>
+              <p id="trackingNote" class="text-[10px] text-[#777066] mt-1"></p>
+            </div>
+            <button id="openMonitorBtn" type="button" class="px-3 py-2 border border-[#89765C] text-[#66513B] rounded-lg text-xs font-bold hover:bg-[#F7F1E7]"><i class="fa-solid fa-display mr-1"></i>Open monitor</button>
+          </div>
+          <div id="impactGrid" class="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-2"></div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs whitespace-nowrap">
+              <thead class="bg-[#F0ECE4] text-[#777066] font-mono text-[10px] uppercase"><tr><th class="px-3 py-2">Channel</th><th class="px-3 py-2">Spend</th><th class="px-3 py-2">Sent</th><th class="px-3 py-2">Delivered</th><th class="px-3 py-2">Reach</th><th class="px-3 py-2">Clicks</th><th class="px-3 py-2">CTR</th><th class="px-3 py-2">Conv.</th><th class="px-3 py-2">Revenue</th><th class="px-3 py-2">ROAS</th></tr></thead>
+              <tbody id="channelTrackBody" class="divide-y divide-[#E4DED3]"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <fieldset id="configFields" class="space-y-5">
+          <section class="glass-panel rounded-xl p-4 sm:p-5 space-y-4">
+            <h3 class="text-xs font-bold uppercase tracking-wider"><i class="fa-solid fa-bullseye text-[#89765C] mr-2"></i>Objective &amp; channels</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2" role="radiogroup" aria-label="Campaign objective">
+              <label class="obj-card"><input type="radio" name="objective" value="awareness"><span class="font-bold text-xs">Awareness</span><span class="text-[10px] text-[#777066]">Reach most of the audience; lower cost per contact.</span></label>
+              <label class="obj-card"><input type="radio" name="objective" value="consideration" checked><span class="font-bold text-xs">Consideration</span><span class="text-[10px] text-[#777066]">Drive product views and clicks.</span></label>
+              <label class="obj-card"><input type="radio" name="objective" value="conversion"><span class="font-bold text-xs">Conversion</span><span class="text-[10px] text-[#777066]">Fewer, higher-intent customers; optimise for purchases.</span></label>
+            </div>
+            <div>
+              <p class="lbl-sm mb-2">Channels <span class="normal-case tracking-normal font-normal">(pick one or more)</span></p>
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <button type="button" class="chan-btn" data-channel="in_app" aria-pressed="true"><span class="chan-check"><i class="fa-solid fa-check"></i></span><span><span class="block text-xs font-bold"><i class="fa-solid fa-mobile-screen mr-1 text-[#89765C]"></i>In-app</span><span class="block text-[10px] text-[#777066]">Style Assistant feed · CPM based</span></span></button>
+                <button type="button" class="chan-btn" data-channel="whatsapp" aria-pressed="false"><span class="chan-check"><i class="fa-solid fa-check"></i></span><span><span class="block text-xs font-bold"><i class="fa-brands fa-whatsapp mr-1 text-[#25A244]"></i>WhatsApp</span><span class="block text-[10px] text-[#777066]">₹0.80 / message · simulated</span></span></button>
+                <button type="button" class="chan-btn" data-channel="sms" aria-pressed="false"><span class="chan-check"><i class="fa-solid fa-check"></i></span><span><span class="block text-xs font-bold"><i class="fa-solid fa-comment-sms mr-1 text-[#3D5A80]"></i>SMS</span><span class="block text-[10px] text-[#777066]">₹0.20 / message · simulated</span></span></button>
+              </div>
+              <p id="channelError" class="text-[11px] text-red-700 mt-1 hidden">Select at least one channel.</p>
+            </div>
+          </section>
+
+          <section id="messageSection" class="glass-panel rounded-xl p-4 sm:p-5 space-y-4 hidden">
+            <div>
+              <h3 class="text-xs font-bold uppercase tracking-wider"><i class="fa-solid fa-message text-[#89765C] mr-2"></i>Messages</h3>
+              <p class="text-[10px] text-[#777066] mt-1">Placeholders: <code>{first_name}</code>, <code>{brand}</code>, <code>{link}</code>. Messages are not sent — delivery is simulated.</p>
+            </div>
+            <div id="waBlock" class="grid grid-cols-1 lg:grid-cols-2 gap-4 hidden">
+              <label class="lbl-sm block">WhatsApp message<textarea id="waText" rows="4" maxlength="1000" class="field mt-1 normal-case tracking-normal font-normal"></textarea><span id="waCount" class="block text-right text-[10px] text-[#777066] mt-1 normal-case tracking-normal font-normal">0 / 1000</span></label>
+              <div><p class="lbl-sm mb-1">Preview</p><div class="rounded-xl bg-[#ECE5DD] p-3 flex justify-end"><div id="waPreview" class="bubble-wa max-w-[85%]"></div></div></div>
+            </div>
+            <div id="smsBlock" class="grid grid-cols-1 lg:grid-cols-2 gap-4 hidden">
+              <label class="lbl-sm block">SMS message<textarea id="smsText" rows="3" maxlength="160" class="field mt-1 normal-case tracking-normal font-normal"></textarea><span id="smsCount" class="block text-right text-[10px] text-[#777066] mt-1 normal-case tracking-normal font-normal">0 / 160</span></label>
+              <div><p class="lbl-sm mb-1">Preview</p><div class="rounded-xl bg-white border border-[#E4DED3] p-3"><div id="smsPreview" class="bubble-sms max-w-[85%]"></div></div></div>
+            </div>
+          </section>
+
+          <section class="glass-panel rounded-xl p-4 sm:p-5 space-y-4">
+            <div class="flex items-end justify-between gap-2">
+              <h3 class="text-xs font-bold uppercase tracking-wider"><i class="fa-solid fa-shirt text-[#89765C] mr-2"></i>Products &amp; creative</h3>
+              <span id="skuSelectCount" class="tag">0 selected</span>
+            </div>
+            <div id="skuSelectList" class="grid grid-cols-1 md:grid-cols-2 gap-2"></div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <label class="lbl-sm block md:col-span-2">Creative headline<input id="creativeHeadline" type="text" maxlength="90" class="field mt-1 normal-case tracking-normal font-normal" placeholder="e.g. Festive edits picked for your wardrobe" /></label>
+              <label class="lbl-sm block">Call to action<select id="creativeCta" class="field mt-1 normal-case tracking-normal font-normal"><option>Shop now</option><option>Discover the look</option><option>Explore collection</option><option>Buy now</option></select></label>
+              <label class="lbl-sm block md:col-span-3">Hero SKU<select id="creativeHero" class="field mt-1 normal-case tracking-normal font-normal"><option value="">Top selected SKU</option></select></label>
+            </div>
+          </section>
+
+          <section class="glass-panel rounded-xl p-4 sm:p-5 space-y-4">
+            <h3 class="text-xs font-bold uppercase tracking-wider"><i class="fa-solid fa-indian-rupee-sign text-[#89765C] mr-2"></i>Budget &amp; schedule</h3>
+            <div id="budgetCard" class="rounded-xl border border-[#89765C] bg-[#FBF8F2] p-4 space-y-3">
+              <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                <div>
+                  <p class="lbl-sm">Recommended budget <span class="tag sim-badge ml-1 normal-case tracking-normal">Simulated</span></p>
+                  <p class="font-mono text-2xl mt-1"><span id="recBudget">—</span> <span id="recDaily" class="text-xs text-[#777066]"></span></p>
+                  <p id="recRange" class="text-[11px] text-[#777066] mt-0.5"></p>
+                </div>
+                <button id="useRecBtn" type="button" class="self-start px-3 py-2 bg-[#292722] hover:bg-[#4A4339] disabled:opacity-40 rounded-lg text-xs font-bold text-white"><i class="fa-solid fa-wand-magic-sparkles mr-1 text-[#89765C]"></i>Use recommended</button>
+              </div>
+              <div id="recBreakdown" class="space-y-1.5"></div>
+              <ul id="recReasons" class="text-[11px] text-[#4A4339] list-disc pl-4 space-y-0.5"></ul>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+              <label class="lbl-sm block">Budget (₹)<input id="campaignBudget" type="number" min="500" step="500" class="field mt-1" /></label>
+              <label class="lbl-sm block">Duration (days)<input id="campaignDays" type="number" min="1" max="365" value="14" class="field mt-1" /></label>
+              <label class="lbl-sm block">Start date<input id="campaignStart" type="date" class="field mt-1" /></label>
+              <div class="lbl-sm">Daily budget<p id="dailyBudget" class="font-mono text-sm text-[#292722] mt-2 normal-case tracking-normal">—</p></div>
+            </div>
+            <div>
+              <div class="flex items-end justify-between gap-2 mb-2">
+                <p class="lbl-sm">Estimated outcomes <span class="tag sim-badge ml-1 normal-case tracking-normal">Simulated</span></p>
+                <span id="estimateStatus" class="text-[10px] text-[#777066]"></span>
+              </div>
+              <div id="estimateGrid" class="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 gap-2"></div>
+              <div id="estimateChannels" class="mt-2 overflow-x-auto"></div>
+            </div>
+          </section>
+        </fieldset>
+
+        <section id="actionBar" class="glass-panel rounded-xl p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+          <p id="actionMsg" class="text-xs text-[#777066] flex-1" aria-live="polite"></p>
+          <div class="flex flex-wrap gap-2 justify-end">
+            <button id="discardBtn" type="button" class="px-3 py-2 border border-[#E4DED3] bg-white hover:border-[#89765C] disabled:opacity-40 rounded-lg text-xs font-bold"><i class="fa-solid fa-trash-can mr-1"></i>Discard</button>
+            <button id="saveBtn" type="button" class="px-3 py-2 border border-[#89765C] bg-white text-[#66513B] hover:bg-[#F7F1E7] disabled:opacity-40 rounded-lg text-xs font-bold"><i class="fa-solid fa-floppy-disk mr-1"></i>Save</button>
+            <button id="launchBtn" type="button" class="px-4 py-2 bg-[#292722] hover:bg-[#4A4339] disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-xs font-bold text-white"><i class="fa-solid fa-rocket mr-1 text-[#89765C]"></i>Launch (simulated)</button>
+          </div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    'use strict';
+    const $ = (id) => document.getElementById(id);
+    const apiBase = () => (window.DASHBOARD_API || '').replace(/\/$/, '');
+    const endpoint = (path) => apiBase() + path;
+    const session = SuffaiSession.getSession() || {};
+    const CHANNEL_LABELS = { in_app: 'In-app', whatsapp: 'WhatsApp', sms: 'SMS' };
+    const EDITABLE = ['ranked', 'configured', 'exported'];
+    const state = {
+      campaigns: [], filter: '', current: null, skus: [], rec: null, estimate: null,
+      sourceContext: null, busy: false, pollTimer: null,
+    };
+
+    function esc(v) { return String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+    function inr(v) { return v == null || v === '' || !Number.isFinite(Number(v)) ? '—' : '₹' + Math.round(Number(v)).toLocaleString('en-IN'); }
+    function num(v) { return v == null || v === '' || !Number.isFinite(Number(v)) ? '—' : Math.round(Number(v)).toLocaleString('en-IN'); }
+    function pct(v, d = 2) { return v == null || v === '' ? '—' : Number(v).toFixed(d) + '%'; }
+    function roas(v) { return v == null || v === '' ? '—' : Number(v).toFixed(1) + 'x'; }
+    function headers(json) {
+      return { Accept: 'application/json', ...(json ? { 'Content-Type': 'application/json' } : {}), ...SuffaiSession.authHeaders() };
+    }
+    function apiError(data, fallback) { return SuffaiSession.formatApiDetail(data && data.detail, fallback); }
+    async function api(path, opts = {}) {
+      const res = await fetch(endpoint(path), { ...opts, headers: headers(!!opts.body) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(apiError(data, 'Request failed (HTTP ' + res.status + ')'));
+      return data;
+    }
+    function displayGender(g) { return !g ? 'All genders' : (String(g).toLowerCase().startsWith('m') ? 'Male' : String(g).toLowerCase().startsWith('f') ? 'Female' : g); }
+    function audienceText(c) {
+      const pins = c.pin_codes || [];
+      return [pins.length ? (pins.length <= 2 ? 'PIN ' + pins.join(', ') : pins.length + ' PINs') : 'No PIN',
+        c.age_group || 'All ages', displayGender(c.gender), c.rfm_segment || 'All RFM'].join(' · ');
+    }
+    function campaignTitle(c) { return c.campaign_name || ('Untitled · ' + audienceText(c)); }
+    function statusLabel(s) {
+      return { processing: 'ranking…', ranked: 'ready', configured: 'saved', launched: 'running', exported: 'exported (3P)', ignored: 'discarded', error: 'error' }[s] || s;
+    }
+
+    /* ---------- List ---------- */
+    async function loadCampaigns() {
+      try {
+        const data = await api('/v1/ads-lab/campaigns?limit=100');
+        state.campaigns = (data.campaigns || []).filter(c => c.status !== 'ignored');
+        renderList();
+        if (state.current) {
+          const fresh = state.campaigns.find(c => c.campaign_id === state.current.campaign_id);
+          if (fresh && fresh.status !== state.current.status) loadCampaign(fresh.campaign_id);
+        }
+        schedulePoll();
+      } catch (e) {
+        $('campaignList').innerHTML = `<p class="text-xs text-red-700">${esc(e.message)}</p>`;
+      }
+    }
+    function schedulePoll() {
+      clearTimeout(state.pollTimer);
+      if (state.campaigns.some(c => c.status === 'processing')) state.pollTimer = setTimeout(loadCampaigns, 10000);
+    }
+    function renderList() {
+      document.querySelectorAll('#statusFilter [data-filter]').forEach(b => b.classList.toggle('sim-badge', b.dataset.filter === state.filter));
+      const rows = state.campaigns.filter(c => {
+        if (!state.filter) return true;
+        if (state.filter === 'ready') return c.status === 'ranked' || c.status === 'configured';
+        return c.status === state.filter;
+      });
+      if (!rows.length) {
+        $('campaignList').innerHTML = '<p class="text-xs text-[#777066]">No campaigns here yet. Create one from Ads Lab.</p>';
+        return;
+      }
+      $('campaignList').innerHTML = rows.map(c => {
+        const active = state.current && state.current.campaign_id === c.campaign_id;
+        const chans = (c.channels || []).map(ch => CHANNEL_LABELS[ch] || ch).join(' · ');
+        const i = c.impact || {};
+        return `<button type="button" class="camp-item ${active ? 'active' : ''}" data-id="${esc(c.campaign_id)}">
+          <div class="flex items-start justify-between gap-2"><span class="text-xs font-semibold leading-snug">${esc(campaignTitle(c))}</span><span class="status st-${esc(c.status)} flex-none">${esc(statusLabel(c.status))}</span></div>
+          <div class="text-[10px] text-[#777066] mt-1">${esc((c.created_at || '').slice(0, 10))} · ${esc(c.sku_count ?? 0)} SKU(s)${c.budget_inr ? ' · ' + esc(inr(c.budget_inr)) : ''}</div>
+          ${chans ? `<div class="text-[10px] text-[#4A4339] mt-0.5">${esc(chans)}</div>` : ''}
+          ${c.status === 'launched' && i.roas != null ? `<div class="text-[10px] text-[#1F6B45] mt-0.5" title="Simulated">Reach ${esc(num(i.reach))} · ROAS ${esc(roas(i.roas))} (sim)</div>` : ''}
+        </button>`;
+      }).join('');
+      $('campaignList').querySelectorAll('.camp-item').forEach(b => b.addEventListener('click', () => loadCampaign(b.dataset.id)));
+    }
+
+    /* ---------- Editor ---------- */
+    function selectedChannels() {
+      return Array.from(document.querySelectorAll('.chan-btn')).filter(b => b.getAttribute('aria-pressed') === 'true').map(b => b.dataset.channel);
+    }
+    function setChannels(list) {
+      const want = new Set(list && list.length ? list : ['in_app']);
+      document.querySelectorAll('.chan-btn').forEach(b => b.setAttribute('aria-pressed', want.has(b.dataset.channel) ? 'true' : 'false'));
+      onChannelsChange();
+    }
+    function selectedObjective() {
+      const el = document.querySelector('input[name="objective"]:checked');
+      return el ? el.value : 'consideration';
+    }
+    function selectedSkuIds() {
+      return Array.from(document.querySelectorAll('#skuSelectList input[type="checkbox"]:checked')).map(i => i.value);
+    }
+    function defaultTemplates(brand, name) {
+      const n = (name || 'our new collection').trim();
+      return {
+        whatsapp: `Hi {first_name}! ${brand} picked styles from ${n} that match your wardrobe. Tap to see your picks: {link}`,
+        sms: `${brand}: styles picked for you from ${n}. See them: {link}`,
+      };
+    }
+    function renderPreview(text, brand) {
+      return String(text || '')
+        .replace(/\{first_name\}/g, 'Priya')
+        .replace(/\{brand\}/g, brand || 'Brand')
+        .replace(/\{link\}/g, 'suffai.in/s/x7k2');
+    }
+    function editable() { return !!(state.current && EDITABLE.includes(state.current.status)); }
+
+    async function loadCampaign(id, sourceContext) {
+      if (!id) return;
+      if (sourceContext && typeof sourceContext === 'object') state.sourceContext = sourceContext;
+      try {
+        const data = await api('/v1/ads-lab/campaigns/' + encodeURIComponent(id));
+        const c = data.campaign || {};
+        if (!state.current || state.current.campaign_id !== c.campaign_id) {
+          if (!sourceContext) state.sourceContext = c.source_context || readStoredSource(c.campaign_id);
+          state.rec = null;
+          state.estimate = null;
+        }
+        state.current = c;
+        state.skus = Array.isArray(data.skus) ? data.skus : [];
+        fillEditor(c);
+        renderList();
+        publishContext();
+      } catch (e) {
+        showAction(e.message, true);
+      }
+    }
+    function readStoredSource(id) {
+      try { const raw = sessionStorage.getItem('suffai_campaign_source_' + id); return raw ? JSON.parse(raw) : null; } catch (_) { return null; }
+    }
+
+    function fillEditor(c) {
+      $('emptyEditor').classList.add('hidden');
+      $('editor').classList.remove('hidden');
+      const brand = c.brand_name || session.brand_name || 'Brand';
+      $('campaignName').value = c.campaign_name || defaultName(c);
+      const pill = $('statusPill');
+      pill.className = 'status st-' + c.status;
+      pill.textContent = statusLabel(c.status);
+      $('audienceChips').innerHTML = [
+        ...audienceText(c).split(' · '),
+        c.est_audience != null ? num(c.est_audience) + ' customers' : null,
+        (c.sku_count ?? state.skus.length) + ' SKU(s)',
+        c.run_mode ? (c.run_mode === '3p' ? 'Exported (3P)' : 'SuffAI (1P)') : null,
+      ].filter(Boolean).map(t => `<span class="tag">${esc(t)}</span>`).join('');
+      const src = state.sourceContext;
+      $('sourceNote').classList.toggle('hidden', !src);
+      $('sourceNote').textContent = src ? 'From Geo: ' + (src.insight || 'opportunity carried over from the Geo tab.') : '';
+      $('processingNote').classList.toggle('hidden', c.status !== 'processing');
+      const err = $('errorNote');
+      err.classList.toggle('hidden', c.status !== 'error');
+      err.textContent = c.status === 'error' ? 'This campaign could not be ranked. Submit a new ranking job from Ads Lab.' : '';
+
+      const radio = document.querySelector(`input[name="objective"][value="${c.objective || 'consideration'}"]`);
+      if (radio) radio.checked = true;
+      setChannels(c.channels || ['in_app']);
+      const tpl = { ...defaultTemplates(brand, c.campaign_name), ...(c.message_template || {}) };
+      $('waText').value = tpl.whatsapp || '';
+      $('smsText').value = tpl.sms || '';
+      $('campaignDays').value = c.duration_days || 14;
+      $('campaignStart').value = c.start_date ? String(c.start_date).slice(0, 10) : todayIso();
+      $('campaignBudget').value = c.budget_inr != null ? Math.round(Number(c.budget_inr)) : '';
+      const creative = c.creative && typeof c.creative === 'object' ? c.creative : {};
+      $('creativeHeadline').value = creative.headline || '';
+      if (creative.cta) $('creativeCta').value = creative.cta;
+      renderSkus(new Set(c.selected_sku_ids || []), creative.hero_sku_id);
+      updateMessages();
+
+      const isEditable = editable();
+      $('configFields').disabled = !isEditable;
+      $('campaignName').disabled = !isEditable;
+      $('saveBtn').disabled = !isEditable;
+      $('launchBtn').disabled = !isEditable;
+      $('discardBtn').disabled = !(isEditable);
+      $('actionBar').classList.toggle('hidden', !isEditable);
+      renderTracking(c);
+      if (isEditable) fetchRecommendation(c.budget_inr == null);
+      else { renderRecommendation(null); $('estimateGrid').innerHTML = ''; $('estimateChannels').innerHTML = ''; }
+      showAction(isEditable ? (c.status === 'exported' ? 'Exported for 3P. You can still run it on SuffAI.' : '') : '');
+    }
+    function defaultName(c) {
+      const pins = c.pin_codes || [];
+      return `${c.brand_name || 'Brand'} · ${pins.length <= 2 ? pins.join(', ') : pins.length + ' PINs'}${c.rfm_segment ? ' · ' + c.rfm_segment : ''}`;
+    }
+    function todayIso() {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+
+    function renderSkus(selected, heroId) {
+      const items = state.skus.slice().sort((a, b) => (a.rank || 999) - (b.rank || 999));
+      const usableItems = items.filter(s => s.extract_ok && s.process_status !== 'failed' && s.process_status !== 'pending');
+      const defaults = selected.size ? selected : new Set(usableItems.slice(0, 3).map(s => s.sku_uuid));
+      if (!items.length) { $('skuSelectList').innerHTML = '<p class="text-xs text-[#777066]">No SKUs.</p>'; }
+      else {
+        $('skuSelectList').innerHTML = items.map(s => {
+          const usable = usableItems.includes(s);
+          const a = s.attributes || {};
+          const label = [a.color, a.pattern, a.name || a.commodity].filter(Boolean).join(' · ') || 'No attributes';
+          const score = s.rank_score != null ? Math.round(Number(s.rank_score)) + '/100' : (s.pin_fit != null ? Math.round(Number(s.pin_fit) * 100) + '/100' : 'N/A');
+          return `<label class="sku-pick ${usable ? '' : 'disabled'}">
+            <input type="checkbox" value="${esc(s.sku_uuid)}" ${usable && defaults.has(s.sku_uuid) ? 'checked' : ''} ${usable ? '' : 'disabled'} class="accent-[#89765C]">
+            <span class="font-mono text-[10px] text-[#89765C] w-7">#${esc(s.rank ?? '—')}</span>
+            <span class="min-w-0 flex-1"><span class="block text-xs font-semibold truncate">${esc(s.original_filename || 'SKU')}</span><span class="block text-[10px] text-[#777066] truncate">${esc(label)}</span></span>
+            <span class="font-mono text-xs">${esc(usable ? score : (s.process_status === 'pending' ? 'pending' : 'failed'))}</span>
+          </label>`;
+        }).join('');
+        $('skuSelectList').querySelectorAll('input[type="checkbox"]').forEach(cb => cb.addEventListener('change', () => onSkuChange()));
+      }
+      onSkuChange(heroId);
+    }
+    function onSkuChange(heroId) {
+      const ids = selectedSkuIds();
+      $('skuSelectCount').textContent = ids.length + ' selected';
+      const prev = heroId || $('creativeHero').value;
+      const byId = {};
+      state.skus.forEach(s => { byId[s.sku_uuid] = s; });
+      $('creativeHero').innerHTML = '<option value="">Top selected SKU</option>' + ids.map(id =>
+        `<option value="${esc(id)}" ${id === prev ? 'selected' : ''}>#${esc(byId[id]?.rank ?? '')} ${esc(byId[id]?.original_filename || 'SKU')}</option>`).join('');
+    }
+
+    function onChannelsChange() {
+      const chans = selectedChannels();
+      $('channelError').classList.toggle('hidden', chans.length > 0);
+      updateMessages();
+    }
+    function updateMessages() {
+      const chans = selectedChannels();
+      const brand = (state.current && state.current.brand_name) || session.brand_name || 'Brand';
+      const wa = chans.includes('whatsapp'), sms = chans.includes('sms');
+      $('messageSection').classList.toggle('hidden', !wa && !sms);
+      $('waBlock').classList.toggle('hidden', !wa);
+      $('smsBlock').classList.toggle('hidden', !sms);
+      $('waCount').textContent = $('waText').value.length + ' / 1000';
+      $('smsCount').textContent = $('smsText').value.length + ' / 160';
+      $('waPreview').textContent = renderPreview($('waText').value, brand) || '(empty message)';
+      $('smsPreview').textContent = renderPreview($('smsText').value, brand) || '(empty message)';
+    }
+
+    /* ---------- Budget recommendation + estimate ---------- */
+    let recTimer = null, recSeq = 0, estTimer = null, estSeq = 0;
+    function scheduleRecommendation() { clearTimeout(recTimer); recTimer = setTimeout(() => fetchRecommendation(false), 350); }
+    async function fetchRecommendation(applyIfEmpty) {
+      if (!editable()) return;
+      const chans = selectedChannels();
+      if (!chans.length) { renderRecommendation(null); return; }
+      const seq = ++recSeq;
+      try {
+        const data = await api('/v1/ads-lab/campaigns/' + encodeURIComponent(state.current.campaign_id) + '/budget-recommendation', {
+          method: 'POST',
+          body: JSON.stringify({ objective: selectedObjective(), duration_days: daysValue(), channels: chans }),
+        });
+        if (seq !== recSeq) return;
+        state.rec = data.recommendation;
+        renderRecommendation(state.rec);
+        if (applyIfEmpty && !Number($('campaignBudget').value)) $('campaignBudget').value = Math.round(state.rec.recommended);
+      } catch (e) {
+        if (seq !== recSeq) return;
+        renderRecommendation(null, e.message);
+      }
+      scheduleEstimate();
+    }
+    function renderRecommendation(rec, error) {
+      $('useRecBtn').disabled = !rec || !editable();
+      if (!rec) {
+        $('recBudget').textContent = '—';
+        $('recDaily').textContent = '';
+        $('recRange').textContent = error || (selectedChannels().length ? '' : 'Select a channel to get a recommendation.');
+        $('recBreakdown').innerHTML = '';
+        $('recReasons').innerHTML = '';
+        return;
+      }
+      $('recBudget').textContent = inr(rec.recommended);
+      $('recDaily').textContent = '(' + inr(rec.daily_budget) + ' / day)';
+      $('recRange').textContent = `Range ${inr(rec.min)} – ${inr(rec.max)} · expected ROAS ${roas(rec.expected_roas)} · target reach ${num(rec.target_reach)} of ${num(rec.audience)} customers`;
+      $('recBreakdown').innerHTML = (rec.breakdown || []).map(b => `<div>
+        <div class="flex justify-between text-[11px]"><span class="font-semibold">${esc(b.label)}</span><span class="font-mono">${esc(inr(b.budget))} · ${esc(b.share_pct)}% · ${esc(num(b.units))} ${esc(b.unit)}</span></div>
+        <div class="h-1.5 rounded-full bg-[#E4DED3] overflow-hidden mt-0.5"><div class="h-full bg-[#89765C]" style="width:${Math.max(2, Math.min(100, Number(b.share_pct) || 0))}%"></div></div>
+      </div>`).join('');
+      $('recReasons').innerHTML = (rec.reasons || []).map(r => `<li>${esc(r)}</li>`).join('');
+    }
+    function daysValue() { return Math.max(1, Math.min(365, Math.round(Number($('campaignDays').value) || 14))); }
+    function scheduleEstimate() { clearTimeout(estTimer); estTimer = setTimeout(fetchEstimate, 350); }
+    async function fetchEstimate() {
+      const budget = Number($('campaignBudget').value || 0);
+      const days = daysValue();
+      $('dailyBudget').textContent = budget > 0 ? inr(budget / days) + ' / day' : '—';
+      if (!editable()) return;
+      const chans = selectedChannels();
+      if (!(budget > 0) || !chans.length) {
+        $('estimateStatus').textContent = !chans.length ? 'Select a channel.' : 'Enter a budget.';
+        $('estimateGrid').innerHTML = ''; $('estimateChannels').innerHTML = '';
+        state.estimate = null;
+        return;
+      }
+      const seq = ++estSeq;
+      $('estimateStatus').textContent = 'Estimating…';
+      try {
+        const data = await api('/v1/ads-lab/campaigns/' + encodeURIComponent(state.current.campaign_id) + '/estimate', {
+          method: 'POST',
+          body: JSON.stringify({ objective: selectedObjective(), budget_inr: budget, duration_days: days, channels: chans }),
+        });
+        if (seq !== estSeq) return;
+        state.estimate = data.estimate;
+        renderEstimate(data.estimate);
+      } catch (e) {
+        if (seq !== estSeq) return;
+        $('estimateStatus').textContent = e.message;
+      }
+    }
+    function renderEstimate(est) {
+      const tiles = [['Reach', 'reach', num], ['Impressions / reads', 'impressions', num], ['CTR', 'ctr', v => pct(v)],
+        ['Conversions', 'conversions', num], ['Revenue', 'revenue', inr], ['Lift', 'lift', v => pct(v, 1)], ['ROAS', 'roas', roas]];
+      $('estimateGrid').innerHTML = tiles.map(([label, key, fmt]) => `<div class="est-tile"><p class="lbl">${esc(label)}</p><p class="val">${esc(fmt(est.expected[key]))}</p><p class="rng">${esc(fmt(est.low[key]))} – ${esc(fmt(est.high[key]))}</p></div>`).join('');
+      const unspent = Number(est.expected.unspent || 0);
+      $('estimateStatus').textContent = `Audience ${num(est.audience)} · ${est.objective}` + (unspent > 0 ? ` · ${inr(unspent)} of budget would go unspent` : '');
+      const rows = Object.entries(est.by_channel || {});
+      $('estimateChannels').innerHTML = rows.length > 1 || (rows.length === 1 && rows[0][0] !== 'in_app') ? `<table class="w-full text-left text-[11px] whitespace-nowrap">
+        <thead class="text-[#777066] text-[10px] uppercase"><tr><th class="py-1 pr-3">Channel</th><th class="py-1 pr-3">Budget</th><th class="py-1 pr-3">Sent</th><th class="py-1 pr-3">Reach</th><th class="py-1 pr-3">Clicks</th><th class="py-1 pr-3">Conv.</th><th class="py-1 pr-3">ROAS</th></tr></thead>
+        <tbody>${rows.map(([ch, r]) => `<tr class="border-t border-[#E4DED3]"><td class="py-1 pr-3 font-semibold">${esc(r.label)}</td><td class="py-1 pr-3 font-mono">${esc(inr(r.budget))}</td><td class="py-1 pr-3 font-mono">${esc(r.expected.messages != null ? num(r.expected.messages) : num(r.expected.impressions) + ' impr.')}</td><td class="py-1 pr-3 font-mono">${esc(num(r.expected.reach))}</td><td class="py-1 pr-3 font-mono">${esc(num(r.expected.clicks))}</td><td class="py-1 pr-3 font-mono">${esc(num(r.expected.conversions))}</td><td class="py-1 pr-3 font-mono">${esc(roas(r.expected.roas))}</td></tr>`).join('')}</tbody></table>` : '';
+    }
+
+    /* ---------- Tracking (launched) ---------- */
+    function renderTracking(c) {
+      const show = c.status === 'launched';
+      $('trackingSection').classList.toggle('hidden', !show);
+      if (!show) return;
+      const i = c.impact || {};
+      $('trackingNote').textContent = `Launched ${String(c.launched_at || '').slice(0, 10)} · ${c.duration_days || '—'} days from ${c.start_date || '—'} · ${inr(c.budget_inr)} budget`
+        + (c.budget_recommended ? ` (recommended ${inr(c.budget_recommended)})` : '') + '. Nothing is delivered to customers; all figures are simulated.';
+      const tiles = [['Spend', inr(i.spend)], ['Reach', num(i.reach)], ['Impressions', num(i.impressions)], ['Clicks', num(i.clicks)],
+        ['CTR', pct(i.ctr)], ['Conversions', num(i.conversions)], ['Revenue', inr(i.revenue)], ['ROAS', roas(i.roas)]];
+      $('impactGrid').innerHTML = tiles.map(([l, v]) => `<div class="est-tile"><p class="lbl">${esc(l)}</p><p class="val">${esc(v)}</p></div>`).join('');
+      const br = i.channel_breakdown || {};
+      const entries = Object.keys(br).length ? Object.entries(br) : [['in_app', { label: 'In-app', ...i }]];
+      $('channelTrackBody').innerHTML = entries.map(([ch, r]) => `<tr>
+        <td class="px-3 py-2 font-semibold">${esc(r.label || CHANNEL_LABELS[ch] || ch)}</td><td class="px-3 py-2 font-mono">${esc(inr(r.spend))}</td>
+        <td class="px-3 py-2 font-mono">${esc(r.messages != null ? num(r.messages) : '—')}</td><td class="px-3 py-2 font-mono">${esc(r.delivered != null ? num(r.delivered) : '—')}</td>
+        <td class="px-3 py-2 font-mono">${esc(num(r.reach))}</td><td class="px-3 py-2 font-mono">${esc(num(r.clicks))}</td><td class="px-3 py-2 font-mono">${esc(pct(r.ctr))}</td>
+        <td class="px-3 py-2 font-mono">${esc(num(r.conversions))}</td><td class="px-3 py-2 font-mono">${esc(inr(r.revenue))}</td><td class="px-3 py-2 font-mono">${esc(roas(r.roas))}</td></tr>`).join('');
+    }
+
+    /* ---------- Actions ---------- */
+    function showAction(msg, isError) {
+      const el = $('actionMsg');
+      el.textContent = msg || '';
+      el.className = 'text-xs flex-1 ' + (isError ? 'text-red-700' : 'text-[#777066]');
+    }
+    function configBody() {
+      const ids = selectedSkuIds();
+      const chans = selectedChannels();
+      const tpl = {};
+      if (chans.includes('whatsapp')) tpl.whatsapp = $('waText').value.trim();
+      if (chans.includes('sms')) tpl.sms = $('smsText').value.trim();
+      return {
+        campaign_name: $('campaignName').value.trim(),
+        objective: selectedObjective(),
+        budget_inr: Number($('campaignBudget').value || 0),
+        duration_days: daysValue(),
+        start_date: $('campaignStart').value || null,
+        selected_sku_ids: ids,
+        creative: { headline: $('creativeHeadline').value.trim(), cta: $('creativeCta').value, hero_sku_id: $('creativeHero').value || ids[0] },
+        source_context: state.sourceContext || null,
+        channels: chans,
+        message_template: tpl,
+      };
+    }
+    function validate(body) {
+      if (!body.campaign_name) return 'Campaign name is required.';
+      if (!body.channels.length) return 'Select at least one channel.';
+      if (body.channels.includes('whatsapp') && !body.message_template.whatsapp) return 'Write the WhatsApp message.';
+      if (body.channels.includes('sms') && !body.message_template.sms) return 'Write the SMS message.';
+      if (!body.selected_sku_ids.length) return 'Select at least one SKU.';
+      if (!(body.budget_inr > 0)) return 'Enter a budget (or use the recommended budget).';
+      return '';
+    }
+    async function saveConfig() {
+      const body = configBody();
+      const problem = validate(body);
+      if (problem) { showAction(problem, true); return null; }
+      const data = await api('/v1/ads-lab/campaigns/' + encodeURIComponent(state.current.campaign_id) + '/config', { method: 'PATCH', body: JSON.stringify(body) });
+      return data.campaign;
+    }
+    async function onSave() {
+      if (state.busy || !editable()) return;
+      state.busy = true;
+      try {
+        const c = await saveConfig();
+        if (c) { showAction('Saved.'); await loadCampaign(c.campaign_id); loadCampaigns(); }
+      } catch (e) { showAction(e.message, true); }
+      finally { state.busy = false; }
+    }
+    async function onLaunch() {
+      if (state.busy || !editable()) return;
+      const body = configBody();
+      const problem = validate(body);
+      if (problem) { showAction(problem, true); return; }
+      const chans = body.channels.map(c => CHANNEL_LABELS[c]).join(', ');
+      if (!confirm(`Launch "${body.campaign_name}" on ${chans} with ${inr(body.budget_inr)}?\n\nThis is a simulated launch: no messages or ads are sent. Simulated performance is generated for tracking.`)) return;
+      state.busy = true;
+      showAction('Launching…');
+      try {
+        const c = await saveConfig();
+        if (!c) return;
+        await api('/v1/ads-lab/campaigns/' + encodeURIComponent(c.campaign_id) + '/launch', { method: 'POST' });
+        await loadCampaign(c.campaign_id);
+        loadCampaigns();
+        showAction('');
+      } catch (e) { showAction(e.message, true); }
+      finally { state.busy = false; }
+    }
+    async function onDiscard() {
+      if (state.busy || !editable()) return;
+      if (!confirm('Discard this campaign? It will be hidden and cannot be launched.')) return;
+      state.busy = true;
+      try {
+        await api('/v1/ads-lab/campaigns/' + encodeURIComponent(state.current.campaign_id) + '/ignore', { method: 'POST' });
+        state.current = null;
+        $('editor').classList.add('hidden');
+        $('emptyEditor').classList.remove('hidden');
+        loadCampaigns();
+        publishContext();
+      } catch (e) { showAction(e.message, true); }
+      finally { state.busy = false; }
+    }
+    function openMonitor() {
+      const id = state.current && state.current.campaign_id;
+      if (!id) return;
+      if (window.parent && window.parent !== window) window.parent.postMessage({ type: 'cc-open-monitor', campaign_id: id }, '*');
+      else location.href = './style_assistant.html?mode=campaign_preview&campaign_id=' + encodeURIComponent(id);
+    }
+
+    /* ---------- Shell messaging ---------- */
+    function publishContext() {
+      if (!window.parent || window.parent === window) return;
+      try {
+        window.parent.postMessage({
+          type: 'cc-context', source: 'campaigns',
+          campaign_name: state.current ? (state.current.campaign_name || null) : null,
+          status: state.current ? state.current.status : null,
+        }, '*');
+      } catch (_) { /* ignore */ }
+    }
+    window.addEventListener('message', (ev) => {
+      const data = ev.data;
+      if (!data || typeof data !== 'object') return;
+      if (data.type === 'cc-context-request') { publishContext(); return; }
+      if (data.type !== 'cc-agent-command') return;
+      const cmd = data.command || {};
+      const t = String(cmd.type || '');
+      if (t === 'load_campaign') { loadCampaign(String(cmd.campaign_id || ''), cmd.source_context); loadCampaigns(); }
+      else if (t === 'refresh_campaigns') { loadCampaigns(); if (state.current) loadCampaign(state.current.campaign_id); }
+      else return;
+      try { window.parent.postMessage({ type: 'cc-agent-ack', source: 'campaigns', command: t, ok: true }, '*'); } catch (_) { /* ignore */ }
+    });
+
+    /* ---------- Wiring ---------- */
+    document.querySelectorAll('.chan-btn').forEach(b => b.addEventListener('click', () => {
+      b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') === 'true' ? 'false' : 'true');
+      onChannelsChange();
+      scheduleRecommendation();
+    }));
+    document.querySelectorAll('input[name="objective"]').forEach(el => el.addEventListener('change', scheduleRecommendation));
+    $('campaignDays').addEventListener('input', scheduleRecommendation);
+    $('campaignBudget').addEventListener('input', scheduleEstimate);
+    ['waText', 'smsText'].forEach(id => $(id).addEventListener('input', updateMessages));
+    $('useRecBtn').addEventListener('click', () => { if (state.rec) { $('campaignBudget').value = Math.round(state.rec.recommended); scheduleEstimate(); } });
+    $('saveBtn').addEventListener('click', onSave);
+    $('launchBtn').addEventListener('click', onLaunch);
+    $('discardBtn').addEventListener('click', onDiscard);
+    $('openMonitorBtn').addEventListener('click', openMonitor);
+    $('refreshBtn').addEventListener('click', loadCampaigns);
+    document.querySelectorAll('#statusFilter [data-filter]').forEach(b => b.addEventListener('click', () => { state.filter = b.dataset.filter; renderList(); }));
+
+    loadCampaigns();
+    const initialId = new URLSearchParams(location.search).get('campaign_id');
+    if (initialId) loadCampaign(initialId);
+  </script>
+</body>
+</html>

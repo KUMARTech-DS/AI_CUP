@@ -269,6 +269,50 @@
       cursor: pointer;
     }
     .chat-form button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .chat-form .chat-attach {
+      background: transparent;
+      padding: 0.55rem 0.65rem;
+      font-size: 14px;
+      line-height: 1;
+    }
+    .chat-confirm-box {
+      border: 1px solid rgba(196, 165, 116, 0.45);
+      border-radius: 10px;
+      padding: 0.6rem 0.7rem;
+      font-size: 12px;
+      color: var(--soft);
+    }
+    .chat-confirm-box .label {
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      font-size: 10px;
+      color: rgba(196, 165, 116, 0.95);
+      margin-bottom: 0.25rem;
+    }
+    .chat-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      padding: 0 0.75rem;
+    }
+    .chat-chips:empty { display: none; }
+    .chat-chips .chip {
+      font-size: 11px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 0.15rem 0.55rem;
+      color: var(--soft);
+      max-width: 160px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .chat-chips .chip.clear {
+      cursor: pointer;
+      color: var(--muted);
+      background: transparent;
+    }
   </style>
 </head>
 <body>
@@ -284,6 +328,7 @@
     <nav class="tabs" aria-label="Sections">
       <button type="button" class="tab" data-tab="geo" hidden>Geo</button>
       <button type="button" class="tab" data-tab="ads" hidden>Ads Lab</button>
+      <button type="button" class="tab" data-tab="campaigns" hidden>Campaigns</button>
       <button type="button" class="tab" data-tab="style" hidden>Style Assistant</button>
       <button type="button" class="tab" data-tab="admin" hidden>Admin</button>
     </nav>
@@ -297,6 +342,7 @@
   <div class="frame-wrap">
     <iframe id="frame-geo" class="hidden" title="Geo" src="about:blank" data-src="./geo.html"></iframe>
     <iframe id="frame-ads" class="hidden" title="Ads Lab" src="about:blank" data-src="./ads_lab.html"></iframe>
+    <iframe id="frame-campaigns" class="hidden" title="Campaigns" src="about:blank" data-src="./campaigns.html"></iframe>
     <iframe id="frame-style" class="hidden" title="Style Assistant" src="about:blank" data-src="./style_assistant.html"></iframe>
     <iframe id="frame-admin" class="hidden" title="Admin" src="about:blank" data-src="./admin.html"></iframe>
   </div>
@@ -311,8 +357,11 @@
       <span id="chatCtxHint">Brand operating agent · Geo + Ads Lab</span>
     </div>
     <div class="chat-log" id="chatLog"></div>
+    <div class="chat-chips" id="chatChips" aria-live="polite"></div>
     <form class="chat-form" id="chatForm">
-      <input id="chatInput" type="text" placeholder="e.g. Set PIN 560103 Champions and run store brief…" autocomplete="off" />
+      <button type="button" class="chat-attach" id="chatAttach" title="Attach SKU images" aria-label="Attach SKU images">&#128206;</button>
+      <input id="chatFile" type="file" accept="image/jpeg,image/png,image/webp" multiple hidden />
+      <input id="chatInput" type="text" maxlength="2000" placeholder="e.g. Find the best PIN for Champions and start a campaign…" autocomplete="off" />
       <button type="submit" id="chatSend">Send</button>
     </form>
   </aside>
@@ -321,6 +370,7 @@
     const tabs = {
       geo: document.getElementById('frame-geo'),
       ads: document.getElementById('frame-ads'),
+      campaigns: document.getElementById('frame-campaigns'),
       style: document.getElementById('frame-style'),
       admin: document.getElementById('frame-admin')
     };
@@ -332,7 +382,8 @@
     window.__CC_CONTEXT__ = {
       active_tab: null,
       geo: null,
-      ads: null
+      ads: null,
+      campaigns: null
     };
 
     function ensureFrameSrc(frame) {
@@ -362,7 +413,8 @@
       document.getElementById('chatCtxHint').textContent =
         'AURA · tab=' + window.__CC_CONTEXT__.active_tab +
         (window.__CC_CONTEXT__.geo ? ' · geo ready' : '') +
-        (window.__CC_CONTEXT__.ads ? ' · ads ready' : '');
+        (window.__CC_CONTEXT__.ads ? ' · ads ready' : '') +
+        (window.__CC_CONTEXT__.campaigns ? ' · campaigns ready' : '');
     }
 
     function requestContext(frame) {
@@ -379,6 +431,7 @@
     function refreshAllContext() {
       requestContext(tabs.geo);
       requestContext(tabs.ads);
+      requestContext(tabs.campaigns);
       updateHint();
     }
 
@@ -407,6 +460,37 @@
         const t = String(cmd.type || '');
         if (t === 'switch_tab') {
           activateTab(cmd.tab);
+          return;
+        }
+        if (t === 'prefill_campaign') {
+          if (cmd.context) {
+            openCampaignWizard(cmd.context);
+          } else {
+            if (window.__CC_CONTEXT__.active_tab !== 'geo') activateTab('geo');
+            sendAgentCommand('geo', { type: 'create_campaign_from_geo' });
+          }
+          return;
+        }
+        if (t === 'open_monitor') {
+          openCampaignMonitor(cmd.campaign_id);
+          return;
+        }
+        if (t === 'load_campaign') {
+          openCampaignsTab(cmd.campaign_id, null, window.__CC_CONTEXT__.active_tab === 'style');
+          return;
+        }
+        if (t === 'refresh_campaigns') {
+          if (allowed.indexOf('campaigns') >= 0) sendAgentCommand('campaigns', { type: 'refresh_campaigns' });
+          return;
+        }
+        if (t === 'track_job' || t === 'export_campaign') {
+          if (allowed.indexOf('ads') < 0) return;
+          if (window.__CC_CONTEXT__.active_tab !== 'ads') activateTab('ads');
+          sendAgentCommand('ads', cmd);
+          return;
+        }
+        if (t === 'request_upload') {
+          appendBubble('assistant', 'Attach SKU images with the paperclip button below (JPEG, PNG or WebP).');
           return;
         }
         const tab = cmd.tab || (t === 'focus_pin' || t === 'run_brief' ? 'geo'
@@ -454,8 +538,23 @@
       };
     }
 
+    const AURA_GENERIC_ERROR = 'Something went wrong. Please try again.';
+
+    function maskedErrorText(data) {
+      const msg = data && data.error && typeof data.error.message === 'string' ? data.error.message : '';
+      return msg || AURA_GENERIC_ERROR;
+    }
+
     function appendConfirmBar(action) {
+      if (!action || !action.token) return;
       const log = document.getElementById('chatLog');
+      const box = document.createElement('div');
+      box.className = 'chat-confirm-box';
+      const label = document.createElement('div');
+      label.className = 'label';
+      label.textContent = action.label || 'Confirm action';
+      const summary = document.createElement('div');
+      summary.textContent = action.summary || '';
       const wrap = document.createElement('div');
       wrap.className = 'chat-confirm';
       const yes = document.createElement('button');
@@ -466,25 +565,29 @@
       no.className = 'secondary';
       no.textContent = 'Cancel';
       yes.addEventListener('click', () => {
-        wrap.remove();
-        sendAuraMessage('Confirmed — proceed.', action);
+        box.remove();
+        pendingAction = null;
+        sendAuraRequest({ message: '', confirm_token: action.token }, 'Confirmed: ' + (action.label || 'action'));
       });
       no.addEventListener('click', () => {
         pendingAction = null;
-        wrap.remove();
-        appendBubble('assistant', 'Cancelled.');
+        box.remove();
+        appendBubble('assistant', 'Cancelled. Nothing was changed.');
       });
       wrap.appendChild(yes);
       wrap.appendChild(no);
-      log.appendChild(wrap);
+      box.appendChild(label);
+      box.appendChild(summary);
+      box.appendChild(wrap);
+      log.appendChild(box);
       log.scrollTop = log.scrollHeight;
     }
 
-    async function sendAuraMessage(message, confirmAction) {
+    async function sendAuraRequest(payload, userEcho) {
       const input = document.getElementById('chatInput');
       const sendBtn = document.getElementById('chatSend');
       refreshAllContext();
-      appendBubble('user', message);
+      if (userEcho) appendBubble('user', userEcho);
       sendBtn.disabled = true;
       try {
         const res = await fetch('/v1/agent/chat', {
@@ -495,33 +598,107 @@
             ...(window.SuffaiSession ? SuffaiSession.authHeaders() : {}),
           },
           body: JSON.stringify({
-            message,
             context: window.__CC_CONTEXT__,
             filter_context: buildFilterContext(),
-            confirm_action: confirmAction || null,
+            ...payload,
           }),
         });
         const data = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          const detail = data.detail || data.message || ('HTTP ' + res.status);
-          const rid = data.request_id ? (' [request_id=' + data.request_id + ']') : '';
-          console.error('[aura] failed', res.status, data);
-          appendBubble('assistant', 'Error: ' + detail + rid, true);
+        if (!res.ok || data.ok === false) {
+          if (data.request_id) console.info('[aura] failed request_id=', data.request_id);
+          appendBubble('assistant', maskedErrorText(data), true);
+          if (res.status === 401) setTimeout(() => SuffaiSession.logout(), 1500);
           return;
         }
         applyUiCommands(data.ui_commands || []);
-        appendBubble('assistant', data.answer || '(empty reply)');
+        appendBubble('assistant', data.answer || 'Done.');
         pendingAction = data.pending_action || null;
         if (pendingAction) appendConfirmBar(pendingAction);
-        if (data.request_id) console.info('[aura] ok request_id=', data.request_id);
-      } catch (err) {
-        console.error('[aura] network error', err);
-        appendBubble('assistant', 'Network error: ' + (err.message || String(err)), true);
+        if (data.attached_images === 0 && stagedFiles.length) {
+          stagedFiles = [];
+          renderStagedChips();
+        }
+      } catch (_) {
+        appendBubble('assistant', 'Connection problem. Please check your network and try again.', true);
       } finally {
         sendBtn.disabled = false;
         input.focus();
       }
     }
+
+    function sendAuraMessage(message) {
+      return sendAuraRequest({ message }, message);
+    }
+
+    let stagedFiles = [];
+
+    function renderStagedChips() {
+      const box = document.getElementById('chatChips');
+      box.innerHTML = '';
+      if (!stagedFiles.length) return;
+      stagedFiles.forEach((name) => {
+        const chip = document.createElement('span');
+        chip.className = 'chip';
+        chip.title = name;
+        chip.textContent = name;
+        box.appendChild(chip);
+      });
+      const clear = document.createElement('button');
+      clear.type = 'button';
+      clear.className = 'chip clear';
+      clear.textContent = 'Clear';
+      clear.addEventListener('click', clearStagedImages);
+      box.appendChild(clear);
+    }
+
+    async function clearStagedImages() {
+      try {
+        await fetch('/v1/agent/uploads', {
+          method: 'DELETE',
+          headers: { Accept: 'application/json', ...(window.SuffaiSession ? SuffaiSession.authHeaders() : {}) },
+        });
+      } catch (_) { /* ignore */ }
+      stagedFiles = [];
+      renderStagedChips();
+    }
+
+    async function uploadChatImages(fileList) {
+      const files = Array.from(fileList || []).filter(f => /^image\/(jpeg|png|webp)$/.test(f.type));
+      if (!files.length) {
+        appendBubble('assistant', 'Please attach JPEG, PNG or WebP images.', true);
+        return;
+      }
+      const fd = new FormData();
+      files.slice(0, 10).forEach(f => fd.append('files', f, f.name));
+      const attach = document.getElementById('chatAttach');
+      attach.disabled = true;
+      appendBubble('user', 'Attached ' + files.length + ' image(s)');
+      try {
+        const res = await fetch('/v1/agent/uploads', {
+          method: 'POST',
+          headers: { Accept: 'application/json', ...(window.SuffaiSession ? SuffaiSession.authHeaders() : {}) },
+          body: fd,
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data.ok === false) {
+          appendBubble('assistant', maskedErrorText(data), true);
+          return;
+        }
+        stagedFiles = Array.isArray(data.files) ? data.files : [];
+        renderStagedChips();
+        appendBubble('assistant', stagedFiles.length + ' image(s) ready. Ask me to rank them for your audience.');
+      } catch (_) {
+        appendBubble('assistant', 'Connection problem. Please check your network and try again.', true);
+      } finally {
+        attach.disabled = false;
+      }
+    }
+
+    document.getElementById('chatAttach').addEventListener('click', () => document.getElementById('chatFile').click());
+    document.getElementById('chatFile').addEventListener('change', (e) => {
+      uploadChatImages(e.target.files);
+      e.target.value = '';
+    });
 
     function activateTab(id) {
       if (allowed.indexOf(id) < 0) return;
@@ -534,13 +711,63 @@
         frame.classList.toggle('hidden', !show);
         if (show) ensureFrameSrc(frame);
       });
-      setChatVisible(id === 'geo' || id === 'ads');
-      if (id === 'geo' || id === 'ads') refreshAllContext();
+      const chatTab = id === 'geo' || id === 'ads' || id === 'campaigns';
+      setChatVisible(chatTab);
+      if (chatTab) refreshAllContext();
+    }
+
+    const CAMPAIGN_DRAFT_KEY = 'suffai_campaign_draft';
+
+    function openCampaignWizard(context) {
+      if (allowed.indexOf('ads') < 0) return;
+      const ctx = context && typeof context === 'object' ? context : {};
+      try {
+        sessionStorage.setItem(CAMPAIGN_DRAFT_KEY, JSON.stringify(ctx));
+      } catch (e) {
+        console.error('[shell] draft save failed', e);
+      }
+      activateTab('ads');
+      sendAgentCommand('ads', { type: 'prefill_campaign', context: ctx });
+    }
+
+    function openCampaignsTab(campaignId, sourceContext, background) {
+      if (allowed.indexOf('campaigns') < 0) return;
+      if (!background) activateTab('campaigns');
+      if (campaignId) {
+        sendAgentCommand('campaigns', { type: 'load_campaign', campaign_id: campaignId, source_context: sourceContext || null });
+      }
+    }
+
+    function openCampaignMonitor(campaignId) {
+      if (allowed.indexOf('style') < 0 || !campaignId) return;
+      const frame = tabs.style;
+      const url = './style_assistant.html?mode=campaign_preview&campaign_id=' + encodeURIComponent(campaignId);
+      frame.src = url;
+      activateTab('style');
     }
 
     window.addEventListener('message', (ev) => {
       const data = ev.data;
-      if (!data || data.type !== 'cc-context') return;
+      if (!data || typeof data !== 'object') return;
+      if (data.type === 'cc-open-campaign') {
+        openCampaignWizard(data.context);
+        return;
+      }
+      if (data.type === 'cc-open-monitor') {
+        openCampaignMonitor(data.campaign_id);
+        return;
+      }
+      if (data.type === 'cc-open-campaigns') {
+        openCampaignsTab(data.campaign_id, data.source_context);
+        return;
+      }
+      if (data.type === 'cc-campaign-created') {
+        if (allowed.indexOf('campaigns') >= 0 && tabs.campaigns.src && !tabs.campaigns.src.endsWith('about:blank')) {
+          sendAgentCommand('campaigns', { type: 'refresh_campaigns' });
+        }
+        return;
+      }
+      if (data.type !== 'cc-context') return;
       if (data.source === 'geo') {
         window.__CC_CONTEXT__.geo = {
           filters: data.filters || {},
@@ -551,6 +778,11 @@
           filters: data.filters || {},
           filters_label: data.filters_label || '',
           ranked: data.ranked || []
+        };
+      } else if (data.source === 'campaigns') {
+        window.__CC_CONTEXT__.campaigns = {
+          campaign_name: data.campaign_name || null,
+          status: data.status || null
         };
       }
       updateHint();
@@ -586,7 +818,7 @@
       const roleBit = session.role ? (' · ' + session.role) : '';
       document.getElementById('userLabel').textContent = label + roleBit;
       document.getElementById('shellSubtitle').textContent = allowed
-        .map(t => ({ geo: 'Geo', ads: 'Ads Lab', style: 'Style', admin: 'Admin' }[t] || t))
+        .map(t => ({ geo: 'Geo', ads: 'Ads Lab', campaigns: 'Campaigns', style: 'Style', admin: 'Admin' }[t] || t))
         .join(' · ');
 
       document.querySelectorAll('.tab').forEach(btn => {
@@ -600,7 +832,13 @@
       const want = params.get('tab') || hashTab || allowed[0];
       const start = allowed.indexOf(want) >= 0 ? want : allowed[0];
       document.getElementById('shellTop').style.visibility = 'visible';
-      activateTab(start);
+      if (start === 'style' && params.get('campaign_id')) {
+        openCampaignMonitor(params.get('campaign_id'));
+      } else if (start === 'campaigns' && params.get('campaign_id')) {
+        openCampaignsTab(params.get('campaign_id'));
+      } else {
+        activateTab(start);
+      }
     })();
 
     chatFab.addEventListener('click', () => {
@@ -631,7 +869,7 @@
       const message = (input.value || '').trim();
       if (!message) return;
       input.value = '';
-      await sendAuraMessage(message, null);
+      await sendAuraMessage(message);
     });
 
     setTimeout(refreshAllContext, 1200);

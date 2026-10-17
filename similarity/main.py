@@ -19,6 +19,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from similarity import db
+from similarity.compare import compare_pins
 from similarity.process import process_upload
 from similarity.settings import settings
 
@@ -122,6 +123,36 @@ def process_http(body: ProcessRequest):
         raise HTTPException(503, str(exc)) from exc
     except Exception as exc:
         log.exception("process_http failed")
+        raise HTTPException(500, str(exc)) from exc
+
+
+class ComparePinsRequest(BaseModel):
+    gcs_object_key: str
+    gcs_bucket: Optional[str] = None
+    pin_codes: list[str]
+    topk: int = 5
+    include_embedding: bool = True
+
+
+@app.post("/v1/similarity/compare-pins")
+def compare_pins_http(body: ComparePinsRequest):
+    """Read-only: score a brand SKU image against garments observed in the given PINs."""
+    try:
+        return compare_pins(
+            gcs_object_key=body.gcs_object_key,
+            gcs_bucket=body.gcs_bucket,
+            pin_codes=body.pin_codes,
+            topk=body.topk,
+            include_embedding=body.include_embedding,
+        )
+    except FileNotFoundError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(503, str(exc)) from exc
+    except Exception as exc:
+        log.exception("compare_pins failed")
         raise HTTPException(500, str(exc)) from exc
 
 
