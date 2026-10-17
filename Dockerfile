@@ -1,23 +1,23 @@
-# Default image for `gcloud run deploy --source .` → Command Center (replaces retired suffai-api).
-# Prefer explicit Dockerfiles:
-#   Dockerfile.command_center | Dockerfile.worker | Dockerfile.similarity
+# Default image for `gcloud run deploy --source .` → API service.
+# Prefer explicit Dockerfiles: Dockerfile.api | Dockerfile.web | Dockerfile.worker
 FROM python:3.11-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PORT=8080 \
-    USE_BQ=true
+    ENVIRONMENT=prod \
+    DATA_DIR=/app/data_offline \
+    DERIVED_DIR=/app/data_derived
 
 WORKDIR /app
-
-COPY command_center/requirements.txt ./requirements.txt
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-
-COPY command_center ./command_center
-COPY command_center_data ./command_center_data
-COPY web ./web
-
-ENV PYTHONPATH=/app
+COPY config ./config
+COPY services ./services
+COPY suffai ./suffai
+COPY api ./api
+COPY data_offline ./data_offline
+COPY data_derived ./data_derived
 
 EXPOSE 8080
-CMD exec uvicorn command_center.main:app --host 0.0.0.0 --port ${PORT}
+CMD exec uvicorn api.main:app --host 0.0.0.0 --port ${PORT}

@@ -19,8 +19,7 @@ else
     echo "Applying Cloud SQL migrations…"
     psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$ROOT/db/migrations/003_garment_similarity.sql"
     psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$ROOT/db/migrations/004_rename_user_wardrobe.sql"
-    psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$ROOT/db/migrations/005_brand_sku_campaigns.sql"
-    echo "Cloud SQL OK (unique_garments, user_wardrobe, brand_campaigns, brand_skus, …)"
+    echo "Cloud SQL OK (unique_garments, user_wardrobe, garment_pin_counts, …)"
   else
     echo "ERROR: psql not found. Install Cloud SQL Auth Proxy + psql, or run SQL in Console."
     exit 1

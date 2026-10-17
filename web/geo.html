@@ -1434,9 +1434,115 @@
       }
     }
 
-    window.addEventListener('message', (ev) => {
-      if (!ev.data || ev.data.type !== 'cc-context-request') return;
+    const GEO_DROP_ALL = {
+      pin: 'All areas',
+      age: 'All ages',
+      gender: 'All genders',
+      rfm: 'All segments',
+      brand: 'All brands',
+    };
+
+    function syncGeoDropdownChecks(key) {
+      const panel = $('opts-' + key);
+      if (!panel) return;
+      const wanted = new Set((selection[key] || []).map(String));
+      panel.querySelectorAll('input[type="checkbox"]').forEach((input) => {
+        input.checked = wanted.has(String(input.value));
+      });
+      updateDropSummary(key, GEO_DROP_ALL[key] || 'All');
+    }
+
+    function applyAgentGeoFilters(filters) {
+      if (!DATA || !filters || typeof filters !== 'object') return;
+      const keys = ['pin', 'age', 'gender', 'rfm', 'brand'];
+      for (const key of keys) {
+        if (!(key in filters)) continue;
+        let vals = filters[key];
+        if (!Array.isArray(vals)) vals = vals == null || vals === '' ? [] : [vals];
+        selection[key] = vals.map(String).filter(Boolean);
+        // Brand role: only own brand + Competitors
+        if (key === 'brand') {
+          const sess = SuffaiSession.getSession();
+          if (sess && sess.role === 'brand' && sess.brand_name) {
+            const own = String(sess.brand_name).toLowerCase();
+            selection.brand = selection.brand.filter(
+              (b) => b.toLowerCase() === own || b.toLowerCase() === 'competitors'
+            );
+          }
+        }
+        syncGeoDropdownChecks(key);
+      }
+      applyFilters();
+    }
+
+    function resetAgentGeoFilters() {
+      focusPin = null;
+      lastBriefKey = '';
+      Object.keys(selection).forEach((k) => { selection[k] = []; });
+      document.querySelectorAll('.drop-panel input').forEach((i) => { i.checked = false; });
+      Object.keys(GEO_DROP_ALL).forEach((k) => updateDropSummary(k, GEO_DROP_ALL[k]));
+      applyFilters();
+    }
+
+    function focusAgentPin(pin) {
+      const p = String(pin || '').trim();
+      if (!p || !DATA) return;
+      focusPin = p;
+      if (!selection.pin.includes(p)) {
+        selection.pin = [p];
+        syncGeoDropdownChecks('pin');
+      }
+      lastBriefKey = '';
+      applyFilters();
+      try {
+        const g = DATA.pin_geo && DATA.pin_geo[p];
+        const lat = g && g.centroid_lat != null ? Number(g.centroid_lat) : null;
+        const lon = g && g.centroid_lon != null ? Number(g.centroid_lon) : null;
+        if (map && Number.isFinite(lat) && Number.isFinite(lon)) {
+          map.setView([lat, lon], Math.max(map.getZoom(), 12));
+        }
+      } catch (_) { /* ignore map pan errors */ }
+    }
+
+    function runAgentBrief() {
+      lastBriefKey = '';
       if (DATA) applyFilters();
+    }
+
+    function handleAgentCommand(cmd) {
+      if (!cmd || typeof cmd !== 'object') return;
+      const t = String(cmd.type || '');
+      if (t === 'set_filters') {
+        applyAgentGeoFilters(cmd.filters || {});
+      } else if (t === 'reset_filters') {
+        resetAgentGeoFilters();
+      } else if (t === 'focus_pin') {
+        focusAgentPin(cmd.pin);
+      } else if (t === 'run_brief') {
+        runAgentBrief();
+      } else {
+        return;
+      }
+      try {
+        window.parent.postMessage({
+          type: 'cc-agent-ack',
+          source: 'geo',
+          command: t,
+          ok: true,
+        }, '*');
+      } catch (_) { /* ignore */ }
+    }
+
+    window.addEventListener('message', (ev) => {
+      const data = ev.data;
+      if (!data || typeof data !== 'object') return;
+      if (data.type === 'cc-context-request') {
+        if (DATA) applyFilters();
+        return;
+      }
+      if (data.type === 'cc-agent-command') {
+        handleAgentCommand(data.command || data);
+      }
     });
 
     function updateChart(chart, labels, values, color) {

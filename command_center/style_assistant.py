@@ -346,6 +346,36 @@ def load_user_wardrobe_rich(user_uuid: str, *, limit: int = 80) -> list[dict[str
                 return _wardrobe_rows_from_cursor(cur.fetchall())
 
 
+def _sku_rows_to_items(rows: list[Any]) -> list[dict[str, Any]]:
+    out = []
+    for r in rows:
+        attrs = {
+            "color": r[4],
+            "pattern": r[5],
+            "material": r[6],
+            "size": r[7],
+            "name": r[8],
+            "commodity": r[8],
+            "sleeve_type": r[9],
+            "collar_type": r[10],
+            "brand": r[1],
+        }
+        item = {
+            "sku_uuid": r[0],
+            "brand_name": r[1],
+            "gcs_bucket": r[2],
+            "gcs_object_key": r[3],
+            "attributes": attrs,
+            "embedding": _parse_embedding(r[11]),
+            "original_filename": r[12],
+            "extract_ok": bool(r[13]),
+            "label": r[8] or r[12] or r[1] or "SKU",
+        }
+        annotate_item_category(item)
+        out.append(item)
+    return out
+
+
 def list_brand_skus(brand_name: str, *, limit: int = 80) -> list[dict[str, Any]]:
     with brand_camp.connect() as conn:
         with conn.cursor() as cur:
@@ -365,33 +395,29 @@ def list_brand_skus(brand_name: str, *, limit: int = 80) -> list[dict[str, Any]]
                 """,
                 (brand_name, limit),
             )
-            out = []
-            for r in cur.fetchall():
-                attrs = {
-                    "color": r[4],
-                    "pattern": r[5],
-                    "material": r[6],
-                    "size": r[7],
-                    "name": r[8],
-                    "commodity": r[8],
-                    "sleeve_type": r[9],
-                    "collar_type": r[10],
-                    "brand": r[1],
-                }
-                item = {
-                    "sku_uuid": r[0],
-                    "brand_name": r[1],
-                    "gcs_bucket": r[2],
-                    "gcs_object_key": r[3],
-                    "attributes": attrs,
-                    "embedding": _parse_embedding(r[11]),
-                    "original_filename": r[12],
-                    "extract_ok": bool(r[13]),
-                    "label": r[8] or r[12] or r[1] or "SKU",
-                }
-                annotate_item_category(item)
-                out.append(item)
-            return out
+            return _sku_rows_to_items(cur.fetchall())
+
+
+def list_campaign_skus_rich(campaign_id: str, *, limit: int = 80) -> list[dict[str, Any]]:
+    with brand_camp.connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT sku_uuid::text, brand_name, gcs_bucket, gcs_object_key,
+                       color, pattern, material, size, commodity,
+                       sleeve_type, collar_type, embedding, original_filename,
+                       extract_ok
+                FROM brand_skus
+                WHERE campaign_id = %s
+                ORDER BY
+                  CASE WHEN embedding IS NOT NULL THEN 0 ELSE 1 END,
+                  CASE WHEN extract_ok THEN 0 ELSE 1 END,
+                  created_at ASC
+                LIMIT %s
+                """,
+                (campaign_id, limit),
+            )
+            return _sku_rows_to_items(cur.fetchall())
 
 
 def build_wardrobe_taste_profile(wardrobe: list[dict[str, Any]]) -> dict[str, Any]:
@@ -944,14 +970,22 @@ def recommend_looks(
     user_uuid: str,
     brand_name: str,
     limit: int = 6,
+    campaign_id: Optional[str] = None,
+    use_vertex: bool = True,
 ) -> dict[str, Any]:
     wardrobe = load_user_wardrobe_rich(user_uuid)
     if not wardrobe:
         raise LookupError(f"No wardrobe items for user_uuid={user_uuid}")
 
-    skus = list_brand_skus(brand_name)
+    if campaign_id:
+        skus = list_campaign_skus_rich(campaign_id)
+    else:
+        skus = list_brand_skus(brand_name)
     if not skus:
-        raise LookupError(f"No brand SKUs for brand_name={brand_name}")
+        raise LookupError(
+            f"No brand SKUs for brand_name={brand_name}"
+            + (f" campaign={campaign_id}" if campaign_id else "")
+        )
 
     attach_image_urls(wardrobe)
     attach_image_urls(skus)
@@ -972,12 +1006,21 @@ def recommend_looks(
         )
 
     complete_outfit = (
-        build_llm_outfits(
-            wardrobe=wardrobe,
-            ranked=ranked_complete,
-            brand_name=brand_name,
-            user_uuid=user_uuid,
-            limit=limit,
+        (
+            build_llm_outfits(
+                wardrobe=wardrobe,
+                ranked=ranked_complete,
+                brand_name=brand_name,
+                user_uuid=user_uuid,
+                limit=limit,
+            )
+            if use_vertex
+            else _heuristic_complete_outfits(
+                wardrobe=wardrobe,
+                ranked=ranked_complete,
+                brand_name=brand_name,
+                limit=limit,
+            )
         )
         if ranked_complete
         else []
@@ -989,12 +1032,19 @@ def recommend_looks(
         limit=limit,
     )
 
+    top_score = None
+    if ranked_complete:
+        top_score = float(ranked_complete[0].get("score") or 0)
+    elif ranked_similar:
+        top_score = float(ranked_similar[0].get("score") or 0)
+
     return {
         "ok": True,
         "user_uuid": user_uuid,
         "brand_name": brand_name,
         "wardrobe_count": len(wardrobe),
         "sku_count": len(skus),
+        "fit_score": top_score,
         # Primary sections for the Style Assistant UI
         "complete_outfit": complete_outfit,
         "similar_likes": similar_likes,
@@ -1011,4 +1061,156 @@ def recommend_looks(
             }
             for w in wardrobe
         ],
+    }
+
+
+def _heuristic_complete_outfits(
+    *,
+    wardrobe: list[dict[str, Any]],
+    ranked: list[dict[str, Any]],
+    brand_name: str,
+    limit: int,
+) -> list[dict[str, Any]]:
+    """Offline-friendly looks when Vertex is disabled during campaign materialize."""
+    looks: list[dict[str, Any]] = []
+    for i, r in enumerate(ranked[:limit], start=1):
+        sku = r.get("sku") or {}
+        own_ids = r.get("own_garment_ids") or []
+        own_items = [w for w in wardrobe if w.get("garment_id") in own_ids][:2]
+        looks.append(
+            {
+                "rank": i,
+                "title": f"Look with {sku.get('label') or brand_name}",
+                "description": (
+                    f"Pairs your wardrobe with {brand_name} "
+                    f"({sku.get('label') or 'SKU'}). Score {r.get('score')}."
+                ),
+                "why": "Matched from your wardrobe style preferences.",
+                "score": r.get("score"),
+                "sku": sku_buy_fields(sku),
+                "own_pieces": [
+                    {
+                        "garment_id": w.get("garment_id"),
+                        "label": w.get("label"),
+                        "image_url": w.get("image_url"),
+                        "category_bucket": w.get("category_bucket"),
+                    }
+                    for w in own_items
+                ],
+            }
+        )
+    return looks
+
+
+def materialize_campaign_recommendations(campaign_id: str) -> dict[str, Any]:
+    """On Start: eligible users × campaign SKUs → campaign_user_recommendations."""
+    campaign = brand_camp.get_campaign(campaign_id)
+    if not campaign:
+        raise LookupError(f"campaign not found: {campaign_id}")
+    brand_name = campaign["brand_name"]
+    brand_camp.ensure_campaign_title(campaign_id, brand_name)
+
+    users = brand_camp.eligible_user_uuids_for_campaign(campaign)
+    brand_camp.set_campaign_impact(campaign_id, eligible_users=len(users))
+
+    use_vertex = os.getenv("ENABLE_VERTEX", "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+    computed = 0
+    errors = 0
+    for user_uuid in users:
+        try:
+            payload = recommend_looks(
+                user_uuid=user_uuid,
+                brand_name=brand_name,
+                limit=6,
+                campaign_id=campaign_id,
+                use_vertex=use_vertex,
+            )
+            # Strip internal campaign identity from stored client payload
+            client_payload = {
+                "ok": True,
+                "brand_name": brand_name,
+                "wardrobe_count": payload.get("wardrobe_count"),
+                "sku_count": payload.get("sku_count"),
+                "complete_outfit": payload.get("complete_outfit") or [],
+                "similar_likes": payload.get("similar_likes") or [],
+                "looks": payload.get("looks") or [],
+                "wardrobe": payload.get("wardrobe") or [],
+            }
+            brand_camp.upsert_user_recommendation(
+                campaign_id=campaign_id,
+                user_uuid=user_uuid,
+                brand_name=brand_name,
+                fit_score=payload.get("fit_score"),
+                payload=client_payload,
+            )
+            computed += 1
+        except Exception as exc:
+            errors += 1
+            log.warning(
+                "campaign materialize skip user=%s campaign=%s err=%s",
+                user_uuid,
+                campaign_id,
+                exc,
+            )
+
+    brand_camp.set_campaign_impact(campaign_id, recommendations_computed=computed)
+    return {
+        "campaign_id": campaign_id,
+        "eligible_users": len(users),
+        "recommendations_computed": computed,
+        "errors": errors,
+    }
+
+
+def customer_style_feed(user_uuid: str, *, limit: int = 12) -> dict[str, Any]:
+    """
+    Style feed for a customer from started 1P campaigns.
+    Response deliberately omits campaign_id for client-facing cards.
+    """
+    rows = brand_camp.list_started_recs_for_user(user_uuid, limit=limit)
+    served_campaigns: set[str] = set()
+    sections: list[dict[str, Any]] = []
+    wardrobe: list[dict[str, Any]] = []
+
+    for row in rows:
+        served_campaigns.add(row["campaign_id"])
+        payload = row.get("payload") or {}
+        if not wardrobe and payload.get("wardrobe"):
+            wardrobe = list(payload.get("wardrobe") or [])
+        sections.append(
+            {
+                "brand_name": row["brand_name"],
+                "fit_score": row.get("fit_score"),
+                "complete_outfit": payload.get("complete_outfit") or payload.get("looks") or [],
+                "similar_likes": payload.get("similar_likes") or [],
+            }
+        )
+
+    for cid in served_campaigns:
+        brand_camp.set_campaign_impact(cid, bump_style_feed_serves=1)
+
+    # Flatten for UI that expects a single recommend-shaped payload
+    complete: list[dict[str, Any]] = []
+    similar: list[dict[str, Any]] = []
+    for sec in sections:
+        for look in sec.get("complete_outfit") or []:
+            complete.append(look)
+        for look in sec.get("similar_likes") or []:
+            similar.append(look)
+
+    return {
+        "ok": True,
+        "user_uuid": user_uuid,
+        "source": "style_feed",
+        "section_count": len(sections),
+        "complete_outfit": complete,
+        "similar_likes": similar,
+        "looks": complete,
+        "wardrobe": wardrobe,
+        "brands": [s["brand_name"] for s in sections],
     }

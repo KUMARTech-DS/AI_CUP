@@ -48,16 +48,6 @@ class ProcessRequest(BaseModel):
     idempotency_key: Optional[str] = None
 
 
-class ComparePinsRequest(BaseModel):
-    """Brand SKU visual fit vs unique garments in selected PINs (no wardrobe writes)."""
-
-    pin_codes: list[str]
-    gcs_object_key: Optional[str] = None
-    gcs_bucket: Optional[str] = None
-    embedding: Optional[list[float]] = None
-    topk: int = 5
-
-
 def parse_key_object_metadata(envelope: Dict[str, Any]) -> Dict[str, Any]:
     """Normalize Pub/Sub GCS notifications — same shape as worker/main.py."""
     message = envelope.get("message") or {}
@@ -132,36 +122,6 @@ def process_http(body: ProcessRequest):
         raise HTTPException(503, str(exc)) from exc
     except Exception as exc:
         log.exception("process_http failed")
-        raise HTTPException(500, str(exc)) from exc
-
-
-@app.post("/v1/similarity/compare-pins")
-def compare_pins_http(body: ComparePinsRequest):
-    """Embed a brand SKU image and score against PIN unique garments (read-only)."""
-    if not settings.DATABASE_URL:
-        raise HTTPException(503, "DATABASE_URL not set")
-    if not body.pin_codes:
-        raise HTTPException(400, "pin_codes required")
-    if not body.gcs_object_key and not body.embedding:
-        raise HTTPException(400, "gcs_object_key or embedding required")
-    try:
-        from similarity.compare_pins import compare_image_to_pins
-
-        return compare_image_to_pins(
-            gcs_object_key=body.gcs_object_key or "",
-            gcs_bucket=body.gcs_bucket,
-            pin_codes=list(body.pin_codes),
-            topk=max(1, min(int(body.topk or 5), 20)),
-            embedding=body.embedding,
-        )
-    except FileNotFoundError as exc:
-        raise HTTPException(404, str(exc)) from exc
-    except ValueError as exc:
-        raise HTTPException(400, str(exc)) from exc
-    except RuntimeError as exc:
-        raise HTTPException(503, str(exc)) from exc
-    except Exception as exc:
-        log.exception("compare_pins failed")
         raise HTTPException(500, str(exc)) from exc
 
 
