@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SuffAI Command Center</title>
   <script src="./config.js"></script>
+  <script src="./session.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -442,9 +443,7 @@
 </head>
 <body class="h-full">
   <script>
-    if (localStorage.getItem('suffai_demo_session') !== '1') {
-      location.replace('./login.html');
-    }
+    if (!SuffaiSession.requireAuth('geo')) { /* redirected */ }
   </script>
   <div class="app">
     <!-- LEFT FILTERS -->
@@ -1053,7 +1052,10 @@
       const metricsUrl = apiBase ? (apiBase + '/v1/metrics') : '/v1/metrics';
       let res;
       try {
-        res = await fetch(metricsUrl);
+        res = await fetch(metricsUrl, {
+          cache: 'no-store',
+          headers: { Accept: 'application/json', ...SuffaiSession.authHeaders() },
+        });
       } catch (e) {
         console.error('[geo] metrics fetch failed', e);
         throw new Error('Could not reach /v1/metrics — check command-center Cloud Run / network');
@@ -1071,73 +1073,23 @@
       }
       DATA = await res.json();
 
+      // Brand role: UI only offers own brand + Competitors (server also masks metrics)
+      const sess = SuffaiSession.getSession();
+      let brandOpts = DATA.filters.brands || [];
+      if (sess && sess.role === 'brand' && sess.brand_name) {
+        brandOpts = [sess.brand_name, 'Competitors'];
+        if (DATA.filters) DATA.filters.brands = brandOpts.slice();
+      }
+
       buildDropdown('pin', DATA.filters.pin_codes, 'All areas', pinOptionLabel);
       buildDropdown('age', DATA.filters.age_groups, 'All ages');
       buildDropdown('gender', DATA.filters.genders, 'All genders');
       buildDropdown('rfm', DATA.filters.rfm_segments, 'All segments');
-      buildDropdown('brand', DATA.filters.brands, 'All brands');
+      buildDropdown('brand', brandOpts, 'All brands');
 
       applyFilters();
       setTimeout(() => map.invalidateSize(), 150);
     }
-
-    window.SUFFAI_CHAT_CONFIG = {
-      page: 'geo',
-      getContext: () => {
-        if (!DATA) throw new Error('Geo metrics are still loading. Please try again in a moment.');
-        const cust = DATA.customer_cells.filter(c => matchDemo(c, selection.pin, selection.age, selection.gender, selection.rfm));
-        const garm = DATA.garment_cells.filter(c =>
-          matchDemo(c, selection.pin, selection.age, selection.gender, selection.rfm)
-          && (!selection.brand.length || selection.brand.includes(c.brand))
-        );
-        const sum = (rows, key) => rows.reduce((total, row) => total + (Number(row[key]) || 0), 0);
-        const topCounts = (rows, field, valueField = 'value', countField = 'count') => {
-          const counts = {};
-          rows.forEach(row => (row[field] || []).forEach(item => {
-            const value = String(item[valueField] || '').trim();
-            if (value && !['unknown', 'na', 'n/a'].includes(value.toLowerCase())) {
-              counts[value] = (counts[value] || 0) + (Number(item[countField]) || 0);
-            }
-          }));
-          return Object.entries(counts).sort((a,b) => b[1]-a[1]).slice(0,8).map(([value,count]) => ({value,count}));
-        };
-        const brandCounts = {};
-        garm.forEach(row => { brandCounts[row.brand || 'Unknown'] = (brandCounts[row.brand || 'Unknown'] || 0) + (Number(row.garments) || 0); });
-        const rfmCounts = {};
-        cust.forEach(row => { rfmCounts[row.rfm_segment || 'Unknown'] = (rfmCounts[row.rfm_segment || 'Unknown'] || 0) + (Number(row.customers) || 0); });
-        const pins = selection.pin.length ? selection.pin : Object.keys(DATA.pin_geo || {});
-        const geography = pins.map(pin => {
-          const row = DATA.pin_geo?.[pin];
-          return row ? { pin_code: pin, area_label: row.area_label, customers: row.customers, orders: row.orders, revenue: row.revenue } : null;
-        }).filter(Boolean);
-        return {
-          active_filters: {
-            pin_codes: selection.pin.slice(), age_groups: selection.age.slice(),
-            genders: selection.gender.slice(), rfm_segments: selection.rfm.slice(),
-            brands: selection.brand.slice()
-          },
-          filter_semantics: 'Customer/order totals use selected PIN, age, gender and RFM filters. Garment totals and garment preferences also apply selected brand filters.',
-          metrics: {
-            customers: sum(cust, 'customers'), orders: sum(cust, 'orders'),
-            revenue: sum(cust, 'revenue'), garments: sum(garm, 'garments'),
-            extraction_jobs_count: DATA.extraction_jobs_count ?? null
-          },
-          geographic_summary: geography.slice(0, 25),
-          top_preferences: {
-            colors: topCounts(garm, 'colors'),
-            patterns: topCounts(garm, 'patterns'),
-            sleeve_types: topCounts(garm, 'sleeve_types'),
-            collar_types: topCounts(garm, 'collar_types'),
-            materials: topCounts(garm, 'materials'),
-            sizes: topCounts(garm, 'sizes'),
-            brands: Object.entries(brandCounts).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([value,count])=>({value,count})),
-            rfm_segments: Object.entries(rfmCounts).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([value,count])=>({value,count}))
-          },
-          data_source: 'Current metrics loaded by the Geo page from /v1/metrics',
-          coverage: { customer_cells: cust.length, garment_cells: garm.length }
-        };
-      }
-    };
 
     boot().catch(err => {
       document.body.innerHTML =
@@ -1147,6 +1099,5 @@
         </div>`;
     });
   </script>
-  <script src="./chatbot.js"></script>
 </body>
 </html>

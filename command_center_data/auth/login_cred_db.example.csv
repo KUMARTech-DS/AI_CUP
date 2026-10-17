@@ -1,0 +1,4 @@
+username,password_hash,role,brand_name,customer_id,display_name,active,created_at
+admin1,<sha256-hex-of-password>,admin,,,Admin One,true,2026-01-01T00:00:00+00:00
+brand_nike,<sha256-hex-of-password>,brand,Nike,,Nike Brand,true,2026-01-01T00:00:00+00:00
+cust_abcd1234,<sha256-hex-of-password>,customer,,<customers._id UUID>,Customer Demo,true,2026-01-01T00:00:00+00:00

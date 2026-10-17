@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>THRED_SPATIAL AI - Ads Lab</title>
   <script src="./config.js"></script>
+  <script src="./session.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -119,7 +120,7 @@
 </head>
 <body class="h-screen flex flex-col overflow-hidden">
   <script>
-    if (localStorage.getItem('suffai_demo_session') !== '1') location.replace('./login.html');
+    if (!SuffaiSession.requireAuth('ads')) { /* redirected */ }
   </script>
 
   <header class="glass-panel z-30 border-b border-[#E4DED3] px-4 py-3 flex-none flex items-center justify-between gap-4">
@@ -278,6 +279,31 @@
     };
     const apiBase = () => (window.DASHBOARD_API || '').replace(/\/$/, '');
     const endpoint = (path) => (apiBase() ? apiBase() : '') + path;
+    const session = SuffaiSession.getSession() || {};
+    const lockedBrand = (session.role === 'brand' && session.brand_name) ? String(session.brand_name) : '';
+
+    function applyBrandLock() {
+      const el = $('filterBrand');
+      if (!el || !lockedBrand) return;
+      el.value = lockedBrand;
+      el.readOnly = true;
+      el.setAttribute('aria-readonly', 'true');
+      el.title = 'Locked to your brand session';
+      el.classList.add('opacity-80', 'cursor-not-allowed');
+      updateBrandUploadLabel();
+    }
+
+    /** Collapse other brands → Competitors for brand-role taste panels */
+    function maskBrandDistribution(dist) {
+      if (!lockedBrand || !dist || typeof dist !== 'object') return dist || {};
+      const own = lockedBrand.toLowerCase();
+      const out = {};
+      for (const [name, count] of Object.entries(dist)) {
+        const key = String(name || '').toLowerCase() === own ? lockedBrand : 'Competitors';
+        out[key] = (out[key] || 0) + Number(count || 0);
+      }
+      return out;
+    }
 
     function esc(value) {
       return String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
@@ -352,7 +378,10 @@
     }
     async function loadMetrics() {
       try {
-        const res = await fetch(endpoint('/v1/metrics'), { cache: 'no-store' });
+        const res = await fetch(endpoint('/v1/metrics'), {
+          cache: 'no-store',
+          headers: { Accept: 'application/json', ...SuffaiSession.authHeaders() },
+        });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.detail || `Metrics API returned HTTP ${res.status}`);
         state.metrics = data;
@@ -362,6 +391,7 @@
         selectOptions($('filterAge'), 'All age groups', f.age_groups || []);
         selectOptions($('filterGender'), 'All genders', (f.genders || []).map(g => ({value:g, label:displayGender(g)})));
         selectOptions($('filterRfm'), 'All RFM segments', f.rfm_segments || []);
+        applyBrandLock();
         setApiStatus(true, `BigQuery metrics loaded · ${data.source || 'source not labelled'}`);
         refreshForFilters();
       } catch (e) {
@@ -643,7 +673,7 @@
       renderTastePercentages('insightSizes', state.profile.distributions.size);
       renderTastePercentages('insightCommodities', state.profile.distributions.commodity);
       renderTastePercentages('insightMaterials', state.profile.distributions.material);
-      renderTastePercentages('insightBrands', state.profile.distributions.brand);
+      renderTastePercentages('insightBrands', maskBrandDistribution(state.profile.distributions.brand));
       
       renderCreatives();
       publishAdsContext();
@@ -812,10 +842,13 @@
     ['filterArea','filterAge','filterGender','filterRfm','filterBrand'].forEach(id => $(id).addEventListener('change', refreshForFilters));
     $('filterBrand').addEventListener('input', refreshForFilters);
     $('runButton').addEventListener('click', runAnalysis);
+    applyBrandLock();
 
     async function runAnalysis() {
       if (!state.assets.length || state.loading) return;
+      if (lockedBrand) applyBrandLock();
       const f = currentFilters();
+      if (lockedBrand) f.brand_name = lockedBrand;
       if (!f.brand_name) { alert('Enter a brand name.'); return; }
       if (!f.pin_codes.length) { alert('Select at least one PIN code.'); return; }
       setLoading(true, 'Uploading SKUs · extracting · ranking for audience…');
@@ -827,7 +860,11 @@
         fd.append('gender', f.gender || '');
         fd.append('rfm_segment', f.rfm_segment || '');
         state.assets.forEach(({file}) => fd.append('files', file, file.name));
-        const res = await fetch(endpoint('/v1/ads-lab/campaign'), {method:'POST', body:fd});
+        const res = await fetch(endpoint('/v1/ads-lab/campaign'), {
+          method: 'POST',
+          headers: { ...SuffaiSession.authHeaders() },
+          body: fd,
+        });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.detail || data.message || `Campaign failed (HTTP ${res.status})`);
         state.campaign = data;
@@ -862,59 +899,7 @@
       if (event.key === 'ArrowRight') $('creativeGrid').scrollBy({left: 360, behavior: 'smooth'});
       if (event.key === 'ArrowLeft') $('creativeGrid').scrollBy({left: -360, behavior: 'smooth'});
     });
-    window.SUFFAI_CHAT_CONFIG = {
-      page: 'ads_lab',
-      getContext: () => {
-        if (!state.metrics) throw new Error('Audience metrics are still loading. Please try again in a moment.');
-        const filters = currentFilters();
-        const profile = state.profile || createProfile(filters);
-        const stats = audienceStats(filters);
-        const ranked = makeRankedAssets().slice(0, 20).map(row => ({
-          filename: row.asset?.file?.name || 'Uploaded creative',
-          extraction_status: row.item ? (row.item.ok ? (row.item.status || 'success') : 'failed') : 'pending',
-          extraction_error: row.item && !row.item.ok ? String(row.item.error || 'Extraction failed') : null,
-          extracted_attributes: {
-            color: row.attrs.color || null, pattern: row.attrs.pattern || null,
-            commodity: row.attrs.commodity || null, material: row.attrs.material || null,
-            size: row.attrs.size || null, brand: row.attrs.brand || null,
-            confidence: row.attrs.confidence || null
-          },
-          segment_fit_score: row.fit.score,
-          rank: row.rank,
-          score_definition: 'Relative preference heuristic (0-100), based on weighted overlap between extracted attribute groups and observed segment preference counts; not a conversion probability or uplift.',
-          evidence_groups: row.fit.evidence,
-          explanation: row.fit.reason
-        }));
-        const summarizeDistribution = dist => Object.fromEntries(
-          Object.entries(dist || {}).map(([key, values]) => [
-            key, topN(values, 8).map(([value, count]) => ({ value, count }))
-          ])
-        );
-        return {
-          active_filters: filters,
-          active_filters_label: filtersLabel(filters),
-          audience_metrics: {
-            customers: stats.customers ?? null,
-            source: stats.source || null
-          },
-          audience_profile: {
-            label: profile.label,
-            is_fallback: Boolean(profile.isFallback),
-            requested_filter_keys: profile.requestedKeys || [],
-            matched_filter_keys: profile.keptKeys || [],
-            observed_cell_count: profile.cellCount || 0,
-            top_preference_distributions: summarizeDistribution(profile.distributions)
-          },
-          uploaded_creatives: ranked,
-          creative_count: state.assets.length,
-          extraction_completed_count: state.results.filter(item => item && item.ok).length,
-          extraction_failed_count: state.results.filter(item => item && !item.ok).length,
-          data_source: 'Current Ads Lab session, /v1/metrics, and /v1/ads-lab/extract'
-        };
-      }
-    };
     loadMetrics();
   </script>
-  <script src="./chatbot.js"></script>
 </body>
 </html>
