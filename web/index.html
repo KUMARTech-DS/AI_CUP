@@ -127,25 +127,38 @@
     }
     .frame-wrap iframe.hidden { display: none; }
 
-    /* Floating corner bot — Geo / Ads only */
+    /* Fashion stylist FAB — Geo / Ads only (bottom-right) */
     .chat-fab {
       position: fixed;
       right: 1.25rem;
       bottom: 1.25rem;
       z-index: 50;
-      width: 56px;
-      height: 56px;
+      width: 64px;
+      height: 64px;
+      padding: 0;
       border-radius: 50%;
-      border: 1px solid rgba(196, 165, 116, 0.45);
-      background: rgba(196, 165, 116, 0.22);
-      color: #fff;
-      font-size: 13px;
-      font-weight: 700;
+      border: 2px solid rgba(196, 165, 116, 0.65);
+      background: #1a1510;
       cursor: pointer;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      overflow: hidden;
     }
-    .chat-fab:hover { background: rgba(196, 165, 116, 0.35); }
-    .chat-fab.open { background: rgba(196, 165, 116, 0.45); }
+    .chat-fab img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .chat-fab:hover { border-color: rgba(196, 165, 116, 0.95); transform: scale(1.04); }
+    .chat-fab.open {
+      background: rgba(196, 165, 116, 0.35);
+      color: #fff;
+      font-size: 22px;
+      font-weight: 600;
+      line-height: 60px;
+      text-align: center;
+    }
+    .chat-fab.open img { display: none; }
     .chat-popup {
       display: none;
       position: fixed;
@@ -268,11 +281,13 @@
     <iframe id="frame-admin" class="hidden" title="Admin" src="about:blank" data-src="./admin.html"></iframe>
   </div>
 
-  <!-- Corner bot (Geo + Ads Lab only — hidden on Style Assistant / Admin / customer) -->
-  <button type="button" class="chat-fab" id="chatFab" aria-label="Open assistant" aria-pressed="false" style="display:none">Bot</button>
-  <aside class="chat-popup" id="chatPopup" aria-label="Dashboard assistant">
+  <!-- Fashion stylist (Geo + Ads Lab only — bottom-right) -->
+  <button type="button" class="chat-fab" id="chatFab" aria-label="Open fashion stylist" aria-pressed="false" style="display:none">
+    <img src="./assets/fashion-stylist.svg" alt="" width="64" height="64" />
+  </button>
+  <aside class="chat-popup" id="chatPopup" aria-label="Fashion stylist">
     <div class="chat-popup-header">
-      Dashboard assistant
+      Fashion Stylist
       <span id="chatCtxHint">Answers from metrics.json + current Geo/Ads filters.</span>
     </div>
     <div class="chat-log" id="chatLog"></div>
@@ -307,13 +322,17 @@
       }
     }
 
+    function setChatFabClosed() {
+      chatFab.classList.remove('open');
+      chatFab.setAttribute('aria-pressed', 'false');
+      chatFab.innerHTML = '<img src="./assets/fashion-stylist.svg" alt="" width="64" height="64" />';
+    }
+
     function setChatVisible(show) {
       chatFab.style.display = show ? '' : 'none';
       if (!show) {
         document.body.classList.remove('chat-open');
-        chatFab.classList.remove('open');
-        chatFab.setAttribute('aria-pressed', 'false');
-        chatFab.textContent = 'Bot';
+        setChatFabClosed();
       }
     }
 
@@ -424,10 +443,12 @@
       const open = document.body.classList.toggle('chat-open');
       chatFab.classList.toggle('open', open);
       chatFab.setAttribute('aria-pressed', open ? 'true' : 'false');
-      chatFab.textContent = open ? '×' : 'Bot';
       if (open) {
+        chatFab.textContent = '×';
         refreshAllContext();
         document.getElementById('chatInput').focus();
+      } else {
+        setChatFabClosed();
       }
     });
 
