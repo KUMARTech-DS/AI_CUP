@@ -335,34 +335,89 @@ def call_vertex_chat(
         f"User question:\n{message}"
     )
 
+    
     try:
+        import random
+        import time
+
+        from google.api_core.exceptions import (
+            DeadlineExceeded,
+            ResourceExhausted,
+            ServiceUnavailable,
+        )
+
         vertexai.init(project=project, location=location)
         model = GenerativeModel(model_name)
-        resp = model.generate_content(prompt)
-        text = getattr(resp, "text", None) or ""
-        if not text and getattr(resp, "candidates", None):
-            parts = []
-            for c in resp.candidates:
-                content = getattr(c, "content", None)
-                for p in getattr(content, "parts", []) or []:
-                    t = getattr(p, "text", None)
-                    if t:
-                        parts.append(t)
-            text = "\n".join(parts)
-        if not text.strip():
-            raise RuntimeError("empty model response")
-        return text.strip()
+
+        # Three attempts total: initial request + two retries.
+        retryable_errors = (
+            ResourceExhausted,
+            ServiceUnavailable,
+            DeadlineExceeded,
+        )
+
+        for attempt in range(3):
+            try:
+                resp = model.generate_content(prompt)
+
+                text = getattr(resp, "text", None) or ""
+                if not text and getattr(resp, "candidates", None):
+                    parts = []
+                    for candidate in resp.candidates:
+                        content = getattr(candidate, "content", None)
+                        for part in getattr(content, "parts", []) or []:
+                            part_text = getattr(part, "text", None)
+                            if part_text:
+                                parts.append(part_text)
+                    text = "\n".join(parts)
+
+                if not text.strip():
+                    raise RuntimeError("empty model response")
+
+                return text.strip()
+
+            except retryable_errors as exc:
+                if attempt == 2:
+                    log.exception(
+                        "request_id=%s Vertex retries exhausted "
+                        "project=%s location=%s model=%s",
+                        request_id,
+                        project,
+                        location,
+                        model_name,
+                    )
+                    raise HTTPException(
+                        status_code=503,
+                        detail=f"Vertex chat failed: {exc}",
+                    ) from exc
+
+                delay = (2 ** attempt) + random.uniform(0, 0.5)
+
+                log.warning(
+                    "request_id=%s Vertex transient error=%s "
+                    "attempt=%s/3 retry_in=%.2fs",
+                    request_id,
+                    type(exc).__name__,
+                    attempt + 1,
+                    delay,
+                )
+                time.sleep(delay)
+
     except HTTPException:
         raise
     except Exception as exc:
         log.exception(
-            "request_id=%s Vertex chat failed project=%s location=%s model=%s",
+            "request_id=%s Vertex chat failed "
+            "project=%s location=%s model=%s",
             request_id,
             project,
             location,
             model_name,
         )
-        raise HTTPException(status_code=503, detail=f"Vertex chat failed: {exc}") from exc
+        raise HTTPException(
+            status_code=503,
+            detail=f"Vertex chat failed: {exc}",
+        ) from exc
 
 
 def run_chat(
