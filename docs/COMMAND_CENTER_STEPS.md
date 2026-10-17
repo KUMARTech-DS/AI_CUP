@@ -1,12 +1,13 @@
 # Command Center — quick steps
 
-Full GCP API list + deploy: **[GCP_COMMAND_CENTER.md](GCP_COMMAND_CENTER.md)**
+Full GCP API list + deploy: **[GCP_COMMAND_CENTER.md](GCP_COMMAND_CENTER.md)**  
+**Services already live — redeploy:** **[GCP_REDEPLOY_E2E.md](GCP_REDEPLOY_E2E.md)**
 
 ## Layout
 
 | Folder | Role |
 |--------|------|
-| `web/` | UI (login, Geo, Ads Lab) |
+| `web/` | UI (login, Geo, Ads Lab, Style Assistant, Admin) |
 | `command_center/` | BFF APIs (does not change `worker/` extraction) |
 | `command_center_data/` | Sample CSVs + pin population (**load into BQ**; not runtime fallback) |
 
@@ -23,7 +24,7 @@ No `metrics.json` or local CSV fallback. Failures show HTTP / UI errors — chec
 ## Local (needs BQ + ADC)
 
 ```bash
-cd AI_CUP_updated
+cd /Users/rahul.kumar/Downloads/AI_CUP/AI_CUP_latest
 export USE_BQ=true GOOGLE_CLOUD_PROJECT=YOUR_PROJECT BQ_DATASET=suffai_ops
 gcloud auth application-default login
 pip install -r command_center/requirements.txt
@@ -42,7 +43,7 @@ uvicorn command_center.main:app --host 127.0.0.1 --port 8083
 ```bash
 export GOOGLE_CLOUD_PROJECT=YOUR_PROJECT
 export GCP_REGION=asia-south1
-export EXTRACTION_URL=$(gcloud run services describe suffai-extraction \
-  --region=$GCP_REGION --format='value(status.url)')
-./deploy/deploy_command_center.sh
+# Full redeploy (recommended when live): see docs/GCP_REDEPLOY_E2E.md
+./deploy/04_integrate_command_center.sh
+./deploy/05_verify_similarity_e2e.sh
 ```

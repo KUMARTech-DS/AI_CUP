@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SuffAI — Style Assistant</title>
   <script src="./config.js"></script>
+<<<<<<< HEAD
+  <script src="./session.js"></script>
+=======
+>>>>>>> main
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Outfit:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
@@ -202,7 +206,11 @@
 </head>
 <body class="h-screen flex flex-col overflow-hidden">
   <script>
+<<<<<<< HEAD
+    if (!SuffaiSession.requireAuth('style')) { /* redirected */ }
+=======
     if (localStorage.getItem('suffai_demo_session') !== '1') location.replace('./login.html');
+>>>>>>> main
   </script>
 
   <header class="glass z-20 border-b border-[#E4DED3] px-4 py-3 flex-none flex items-center justify-between gap-4">
@@ -307,6 +315,23 @@
     };
 
     const state = { users: [], brands: [], loading: false, result: null };
+<<<<<<< HEAD
+    const session = SuffaiSession.getSession() || {};
+    const lockedCustomerId = (session.role === 'customer' && session.customer_id)
+      ? String(session.customer_id)
+      : '';
+
+    function applyCustomerLock() {
+      const uSel = $('userSelect');
+      if (!uSel || !lockedCustomerId) return;
+      const label = session.display_name || session.username || lockedCustomerId;
+      uSel.innerHTML = `<option value="${escapeHtml(lockedCustomerId)}" selected>${escapeHtml(label)}</option>`;
+      uSel.disabled = true;
+      uSel.title = 'Locked to your customer session';
+      updateRunEnabled();
+    }
+=======
+>>>>>>> main
 
     function setError(msg) {
       const el = $('errorBox');
@@ -482,6 +507,41 @@
     async function loadSelectors() {
       setError('');
       try {
+<<<<<<< HEAD
+        const authH = SuffaiSession.authHeaders();
+        const fetches = [
+          fetch(endpoint('/v1/style-assistant/brands'), { headers: { Accept: 'application/json', ...authH } }),
+        ];
+        if (!lockedCustomerId) {
+          fetches.unshift(
+            fetch(endpoint('/v1/style-assistant/users'), { headers: { Accept: 'application/json', ...authH } })
+          );
+        }
+        const results = await Promise.all(fetches);
+        let uData = { users: [] };
+        let bRes, bData;
+        if (lockedCustomerId) {
+          bRes = results[0];
+          bData = await bRes.json().catch(() => ({}));
+          state.users = [lockedCustomerId];
+          applyCustomerLock();
+        } else {
+          const uRes = results[0];
+          bRes = results[1];
+          uData = await uRes.json().catch(() => ({}));
+          bData = await bRes.json().catch(() => ({}));
+          if (!uRes.ok) throw new Error(uData.detail || 'Failed to load customers');
+          state.users = uData.users || [];
+          const uSel = $('userSelect');
+          uSel.innerHTML = state.users.length
+            ? '<option value="">Select customer…</option>' + state.users.map(u => `<option value="${escapeHtml(u)}">${escapeHtml(u)}</option>`).join('')
+            : '<option value="">No customers in user_wardrobe</option>';
+        }
+        if (!bRes.ok) throw new Error(bData.detail || 'Failed to load brands');
+
+        state.brands = bData.brands || [];
+
+=======
         const [uRes, bRes] = await Promise.all([
           fetch(endpoint('/v1/style-assistant/users')),
           fetch(endpoint('/v1/style-assistant/brands'))
@@ -499,24 +559,41 @@
           ? '<option value="">Select customer…</option>' + state.users.map(u => `<option value="${escapeHtml(u)}">${escapeHtml(u)}</option>`).join('')
           : '<option value="">No customers in user_wardrobe</option>';
 
+>>>>>>> main
         const bSel = $('brandSelect');
         bSel.innerHTML = state.brands.length
           ? '<option value="">Select brand…</option>' + state.brands.map(b => `<option value="${escapeHtml(b)}">${escapeHtml(b)}</option>`).join('')
           : '<option value="">No brands in brand_skus</option>';
 
+<<<<<<< HEAD
+        $('apiStatus').textContent = lockedCustomerId
+          ? `Your wardrobe · ${state.brands.length} brands`
+          : `${state.users.length} customers · ${state.brands.length} brands`;
+=======
         $('apiStatus').textContent = `${state.users.length} customers · ${state.brands.length} brands`;
+>>>>>>> main
         updateRunEnabled();
       } catch (e) {
         console.error('[style_assistant]', e);
         $('apiStatus').textContent = 'API error';
         setError(e.message || String(e));
+<<<<<<< HEAD
+        if (!lockedCustomerId) $('userSelect').innerHTML = '<option value="">Unavailable</option>';
+        else applyCustomerLock();
+=======
         $('userSelect').innerHTML = '<option value="">Unavailable</option>';
+>>>>>>> main
         $('brandSelect').innerHTML = '<option value="">Unavailable</option>';
       }
     }
 
     async function generate() {
+<<<<<<< HEAD
+      let user_uuid = $('userSelect').value;
+      if (lockedCustomerId) user_uuid = lockedCustomerId;
+=======
       const user_uuid = $('userSelect').value;
+>>>>>>> main
       const brand_name = $('brandSelect').value;
       if (!user_uuid || !brand_name || state.loading) return;
       setError('');
@@ -525,7 +602,15 @@
       try {
         const res = await fetch(endpoint('/v1/style-assistant/recommend'), {
           method: 'POST',
+<<<<<<< HEAD
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            ...SuffaiSession.authHeaders(),
+          },
+=======
           headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+>>>>>>> main
           body: JSON.stringify({ user_uuid, brand_name, limit: 6 })
         });
         const data = await res.json().catch(() => ({}));

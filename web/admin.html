@@ -6,6 +6,7 @@
   <title>SuffAI Admin — Unique Garments</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="./config.js"></script>
+  <script src="./session.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Outfit:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet" />
   <style>
     :root {
@@ -85,9 +86,7 @@
 </head>
 <body>
   <script>
-    if (localStorage.getItem('suffai_demo_session') !== '1') {
-      location.replace('./login.html');
-    }
+    if (!SuffaiSession.requireAuth('admin')) { /* redirected */ }
   </script>
 
   <div class="max-w-6xl mx-auto px-5 py-8">

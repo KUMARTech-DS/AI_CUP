@@ -42,3 +42,15 @@ CREATE TABLE IF NOT EXISTS suffai_ops.commodities (
   gender STRING,
   material STRING
 );
+
+-- Role-based Command Center login (load via login_cred_db.csv)
+CREATE TABLE IF NOT EXISTS suffai_ops.login_cred_db (
+  username STRING NOT NULL,
+  password_hash STRING NOT NULL,
+  role STRING NOT NULL,
+  brand_name STRING,
+  customer_id STRING,
+  display_name STRING,
+  active BOOL,
+  created_at TIMESTAMP
+);

@@ -17,8 +17,9 @@ import uuid
 from pathlib import Path
 from typing import Any, Optional
 
-from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile
+from fastapi import FastAPI, File, Form, Header, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -39,7 +40,9 @@ sys.path.insert(0, str(CC_DIR))
 sys.path.insert(0, str(SCRIPTS))
 
 import aggregate_metrics as agg  # noqa: E402
+import auth_acl  # noqa: E402
 import brand_campaign as brand_camp  # noqa: E402
+import style_assistant as style_asst  # noqa: E402
 import style_assistant as style_asst  # noqa: E402
 
 app = FastAPI(title="SuffAI Command Center", version="1.0.0")
@@ -201,6 +204,43 @@ class ChatRequest(BaseModel):
     context: dict[str, Any] = Field(default_factory=dict)
     # From legacy api/routers/chat.py — optional explicit filters (PIN/age/gender/RFM/brand)
     filter_context: Optional[dict[str, Any]] = None
+
+
+class StyleRecommendRequest(BaseModel):
+    user_uuid: str = Field(default="", min_length=0)
+    brand_name: str = Field(..., min_length=1)
+    limit: int = Field(default=6, ge=1, le=12)
+
+
+class LoginRequest(BaseModel):
+    username: str = Field(..., min_length=1)
+    password: str = Field(..., min_length=1)
+
+
+def _token_from_request(
+    request: Request,
+    authorization: Optional[str] = None,
+    x_session_token: Optional[str] = None,
+) -> Optional[str]:
+    if x_session_token and x_session_token.strip():
+        return x_session_token.strip()
+    if authorization and authorization.lower().startswith("bearer "):
+        return authorization.split(" ", 1)[1].strip()
+    # Also accept query ?token= for simple static HTML fetches
+    q = request.query_params.get("token")
+    return q.strip() if q else None
+
+
+def _require_session(
+    request: Request,
+    authorization: Optional[str] = None,
+    x_session_token: Optional[str] = None,
+) -> dict[str, Any]:
+    token = _token_from_request(request, authorization, x_session_token)
+    sess = auth_acl.get_session(token)
+    if not sess:
+        raise HTTPException(401, "Not authenticated — sign in again")
+    return sess
 
 
 class StyleRecommendRequest(BaseModel):
@@ -399,18 +439,65 @@ def health():
         "ads_lab_campaign": True,
         "admin_proxy": True,
         "style_assistant": True,
+        "style_assistant": True,
+        "auth": True,
     }
 
 
-@app.get("/v1/metrics")
-def metrics():
+@app.post("/v1/auth/login")
+def auth_login(body: LoginRequest):
     try:
-        return compute_metrics()
+        sess = auth_acl.authenticate(body.username, body.password)
+    except PermissionError:
+        raise HTTPException(401, "Invalid username or password") from None
+    except Exception as exc:
+        log.exception("auth login failed")
+        raise HTTPException(503, f"Auth unavailable: {exc}") from exc
+    log.info("auth login ok user=%s role=%s", sess.get("username"), sess.get("role"))
+    return {"ok": True, **sess}
+
+
+@app.get("/v1/auth/me")
+def auth_me(
+    request: Request,
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None, alias="X-Session-Token"),
+):
+    sess = _require_session(request, authorization, x_session_token)
+    return {"ok": True, **sess}
+
+
+@app.post("/v1/auth/logout")
+def auth_logout(
+    request: Request,
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None, alias="X-Session-Token"),
+):
+    token = _token_from_request(request, authorization, x_session_token)
+    auth_acl.destroy_session(token)
+    return {"ok": True}
+
+
+@app.get("/v1/metrics")
+def metrics(
+    request: Request,
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None, alias="X-Session-Token"),
+):
+    try:
+        payload = compute_metrics()
     except HTTPException:
         raise
     except Exception as exc:
         log.exception("metrics endpoint unexpected error")
         raise HTTPException(500, f"metrics failed: {exc}") from exc
+
+    # Optional session: brand role gets Competitors masking
+    token = _token_from_request(request, authorization, x_session_token)
+    sess = auth_acl.get_session(token) if token else None
+    if sess and sess.get("role") == "brand" and sess.get("brand_name"):
+        payload = auth_acl.mask_metrics_for_brand(payload, str(sess["brand_name"]))
+    return payload
 
 
 @app.post("/v1/ads-lab/extract")
@@ -623,12 +710,15 @@ def _call_compare_pins(
 
 @app.post("/v1/ads-lab/campaign")
 async def ads_lab_campaign(
+    request: Request,
     files: list[UploadFile] = File(...),
     brand_name: str = Form(...),
     pin_codes: str = Form(...),
     age_group: str = Form(""),
     gender: str = Form(""),
     rfm_segment: str = Form(""),
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None, alias="X-Session-Token"),
 ):
     """
     Brand SKU campaign: GCS brands/{brand}/… → extract (brand overwritten) →
@@ -636,6 +726,17 @@ async def ads_lab_campaign(
     Does not modify suffai-extraction.
     """
     brand = (brand_name or "").strip()
+    # Brand role: force own brand (cannot upload as another brand)
+    token = _token_from_request(request, authorization, x_session_token)
+    sess = auth_acl.get_session(token) if token else None
+    if sess and sess.get("role") == "brand":
+        forced = (sess.get("brand_name") or "").strip()
+        if not forced:
+            raise HTTPException(403, "Brand session missing brand_name")
+        brand = forced
+    elif sess and sess.get("role") == "customer":
+        raise HTTPException(403, "Customers cannot run Ads Lab campaigns")
+
     pins = _parse_pin_codes(pin_codes)
     age = (age_group or "").strip() or None
     gen = (gender or "").strip() or None
@@ -950,6 +1051,92 @@ def style_assistant_brands(limit: int = Query(200, ge=1, le=500)):
 
 
 @app.post("/v1/style-assistant/recommend")
+def style_assistant_recommend(
+    body: StyleRecommendRequest,
+    request: Request,
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None, alias="X-Session-Token"),
+):
+    """
+    Feature 2: rank brand SKUs against a user's wardrobe (Feature 1 blend),
+    then Vertex LLM builds wardrobe + SKU outfit combinations with copy.
+    """
+    request_id = uuid.uuid4().hex[:12]
+    user_uuid = (body.user_uuid or "").strip()
+    brand_name = (body.brand_name or "").strip()
+
+    token = _token_from_request(request, authorization, x_session_token)
+    sess = auth_acl.get_session(token) if token else None
+    if sess and sess.get("role") == "customer":
+        forced = (sess.get("customer_id") or "").strip()
+        if not forced:
+            raise HTTPException(403, "Customer session missing customer_id")
+        user_uuid = forced
+    elif sess and sess.get("role") == "brand":
+        raise HTTPException(403, "Brand accounts cannot use Style Assistant")
+
+    if not user_uuid:
+        raise HTTPException(400, "user_uuid is required")
+    if not brand_name:
+        raise HTTPException(400, "brand_name is required")
+    if not os.getenv("DATABASE_URL", "").strip():
+        raise HTTPException(503, "DATABASE_URL not set")
+    if not _env_bool("ENABLE_VERTEX", False):
+        raise HTTPException(
+            503,
+            "Style Assistant needs ENABLE_VERTEX=true (outfit copy via Vertex)",
+        )
+
+    log.info(
+        "request_id=%s style recommend user=%s brand=%s limit=%s",
+        request_id,
+        user_uuid,
+        brand_name,
+        body.limit,
+    )
+    try:
+        payload = style_asst.recommend_looks(
+            user_uuid=user_uuid,
+            brand_name=brand_name,
+            limit=body.limit,
+        )
+    except LookupError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except Exception as exc:
+        log.exception("request_id=%s style recommend failed", request_id)
+        raise HTTPException(503, f"style recommend failed: {exc}") from exc
+
+    payload["request_id"] = request_id
+    return payload
+
+
+@app.get("/v1/style-assistant/users")
+def style_assistant_users(limit: int = Query(200, ge=1, le=500)):
+    """Distinct customer ids from user_wardrobe for Style Assistant dropdown."""
+    if not os.getenv("DATABASE_URL", "").strip():
+        raise HTTPException(503, "DATABASE_URL not set")
+    try:
+        users = style_asst.list_style_users(limit=limit)
+        return {"users": users, "count": len(users)}
+    except Exception as exc:
+        log.exception("style-assistant users failed")
+        raise HTTPException(503, f"style-assistant users failed: {exc}") from exc
+
+
+@app.get("/v1/style-assistant/brands")
+def style_assistant_brands(limit: int = Query(200, ge=1, le=500)):
+    """Distinct advertising brands from brand_skus for Style Assistant dropdown."""
+    if not os.getenv("DATABASE_URL", "").strip():
+        raise HTTPException(503, "DATABASE_URL not set")
+    try:
+        brands = style_asst.list_style_brands(limit=limit)
+        return {"brands": brands, "count": len(brands)}
+    except Exception as exc:
+        log.exception("style-assistant brands failed")
+        raise HTTPException(503, f"style-assistant brands failed: {exc}") from exc
+
+
+@app.post("/v1/style-assistant/recommend")
 def style_assistant_recommend(body: StyleRecommendRequest):
     """
     Feature 2: rank brand SKUs against a user's wardrobe (Feature 1 blend),
@@ -1107,6 +1294,12 @@ def root():
             "POST /v1/chat",
             "GET /v1/admin/unique-summary",
             "GET /v1/admin/unique-garments",
+            "GET /v1/style-assistant/users",
+            "GET /v1/style-assistant/brands",
+            "POST /v1/style-assistant/recommend",
+            "POST /v1/auth/login",
+            "GET /v1/auth/me",
+            "POST /v1/auth/logout",
             "GET /v1/style-assistant/users",
             "GET /v1/style-assistant/brands",
             "POST /v1/style-assistant/recommend",

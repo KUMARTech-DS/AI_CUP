@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SuffAI · Sign in</title>
+  <script src="./config.js"></script>
+  <script src="./session.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Outfit:wght@400;500;600&display=swap" rel="stylesheet" />
   <style>
@@ -70,6 +72,7 @@
       cursor: pointer;
     }
     button:hover { background: #d4b684; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
     .err {
       display: none;
       margin-bottom: 0.85rem;
@@ -81,48 +84,78 @@
       font-size: 13px;
     }
     .hint { margin-top: 1rem; font-size: 12px; color: #8a94a3; line-height: 1.45; }
-    .hint code { color: #c4a574; font-size: 11px; }
   </style>
 </head>
 <body>
   <div class="card">
     <div style="font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#8a94a3;font-weight:600">SuffAI</div>
     <h1 class="title">Sign in</h1>
-    <p style="margin:0 0 1.4rem;font-size:13px;color:#8a94a3">Demo access for Command Center (Geo + Ads Lab).</p>
+    <p style="margin:0 0 1.4rem;font-size:13px;color:#8a94a3">Brand · Customer · Admin access to Command Center.</p>
     <div id="err" class="err">Invalid username or password.</div>
     <form id="form">
       <label for="user">Username</label>
       <input id="user" name="user" autocomplete="username" required />
       <label for="pass">Password</label>
       <input id="pass" name="pass" type="password" autocomplete="current-password" required />
-      <button type="submit">Continue</button>
+      <button type="submit" id="btn">Continue</button>
     </form>
     <p class="hint">
-      Demo only (not server auth).<br />
-      Use <code>brand</code> / <code>brand123</code>
+      Credentials live in BigQuery <code style="color:#c4a574">login_cred_db</code>
+      (or local CSV fallback). No self-signup.
     </p>
   </div>
   <script>
-    // Demo credentials only — visible in source. Not production security.
-    const DEMO_USER = 'brand';
-    const DEMO_PASS = 'brand123';
-
-    if (localStorage.getItem('suffai_demo_session') === '1') {
-      location.replace('./index.html');
-    }
-
-    document.getElementById('form').addEventListener('submit', (e) => {
-      e.preventDefault();
-      const u = document.getElementById('user').value.trim();
-      const p = document.getElementById('pass').value;
-      if (u === DEMO_USER && p === DEMO_PASS) {
-        localStorage.setItem('suffai_demo_session', '1');
-        localStorage.setItem('suffai_demo_user', u);
-        location.href = './index.html';
-        return;
+    (async function () {
+      const existing = SuffaiSession.getSession();
+      if (existing && existing.token) {
+        const me = await SuffaiSession.fetchMe();
+        if (me) {
+          location.replace('./index.html');
+          return;
+        }
       }
-      document.getElementById('err').style.display = 'block';
-    });
+
+      const form = document.getElementById('form');
+      const err = document.getElementById('err');
+      const btn = document.getElementById('btn');
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        err.style.display = 'none';
+        btn.disabled = true;
+        const username = document.getElementById('user').value.trim();
+        const password = document.getElementById('pass').value;
+        try {
+          const res = await fetch(SuffaiSession.apiBase() + '/v1/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            body: JSON.stringify({ username, password }),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            err.textContent = data.detail || 'Invalid username or password.';
+            err.style.display = 'block';
+            return;
+          }
+          SuffaiSession.setSession({
+            token: data.token,
+            role: data.role,
+            username: data.username,
+            brand_name: data.brand_name || null,
+            customer_id: data.customer_id || null,
+            display_name: data.display_name || data.username,
+            allowed_tabs: data.allowed_tabs || [],
+          });
+          location.href = './index.html';
+        } catch (ex) {
+          console.error('[login]', ex);
+          err.textContent = 'Could not reach auth API. Is command-center running?';
+          err.style.display = 'block';
+        } finally {
+          btn.disabled = false;
+        }
+      });
+    })();
   </script>
 </body>
 </html>

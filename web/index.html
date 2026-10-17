@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SuffAI Command Center</title>
+  <script src="./config.js"></script>
+  <script src="./session.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Outfit:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet" />
   <style>
@@ -237,35 +239,50 @@
   </style>
 </head>
 <body>
-  <script>
-    if (localStorage.getItem('suffai_demo_session') !== '1') {
-      location.replace('./login.html');
-    }
-  </script>
-
-  <header class="shell-top">
+  <header class="shell-top" id="shellTop" style="visibility:hidden">
     <div class="brand">
       <div class="brand-mark">SA</div>
       <div>
         <h1>SuffAI Command Center</h1>
+<<<<<<< HEAD
+        <p id="shellSubtitle">Geo · Ads Lab · Style · Admin</p>
+=======
         <p>Geo · Ads Lab · Style · Admin</p>
+>>>>>>> main
       </div>
     </div>
 
     <nav class="tabs" aria-label="Sections">
+<<<<<<< HEAD
+      <button type="button" class="tab" data-tab="geo" hidden>Geo</button>
+      <button type="button" class="tab" data-tab="ads" hidden>Ads Lab</button>
+      <button type="button" class="tab" data-tab="style" hidden>Style Assistant</button>
+      <button type="button" class="tab" data-tab="admin" hidden>Admin</button>
+=======
       <button type="button" class="tab active" data-tab="geo">Geo</button>
       <button type="button" class="tab" data-tab="ads">Ads Lab</button>
       <button type="button" class="tab" data-tab="style">Style Assistant</button>
       <button type="button" class="tab" data-tab="admin">Admin</button>
+>>>>>>> main
     </nav>
 
     <div class="right">
-      <div class="user">Signed in as <b id="userLabel">brand</b></div>
+      <div class="user">Signed in as <b id="userLabel">…</b></div>
       <button type="button" class="logout" id="btnLogout">Log out</button>
     </div>
   </header>
 
   <div class="frame-wrap">
+<<<<<<< HEAD
+    <iframe id="frame-geo" class="hidden" title="Geo" src="about:blank" data-src="./geo.html"></iframe>
+    <iframe id="frame-ads" class="hidden" title="Ads Lab" src="about:blank" data-src="./ads_lab.html"></iframe>
+    <iframe id="frame-style" class="hidden" title="Style Assistant" src="about:blank" data-src="./style_assistant.html"></iframe>
+    <iframe id="frame-admin" class="hidden" title="Admin" src="about:blank" data-src="./admin.html"></iframe>
+  </div>
+
+  <!-- Corner bot (Geo + Ads Lab only — hidden on Style Assistant / Admin / customer) -->
+  <button type="button" class="chat-fab" id="chatFab" aria-label="Open assistant" aria-pressed="false" style="display:none">Bot</button>
+=======
     <iframe id="frame-geo" title="Geo" src="./geo.html"></iframe>
     <iframe id="frame-ads" class="hidden" title="Ads Lab" src="./ads_lab.html"></iframe>
     <iframe id="frame-style" class="hidden" title="Style Assistant" src="./style_assistant.html"></iframe>
@@ -274,6 +291,7 @@
 
   <!-- Corner bot (Geo + Ads Lab only — hidden on Style Assistant / Admin) -->
   <button type="button" class="chat-fab" id="chatFab" aria-label="Open assistant" aria-pressed="false">Bot</button>
+>>>>>>> main
   <aside class="chat-popup" id="chatPopup" aria-label="Dashboard assistant">
     <div class="chat-popup-header">
       Dashboard assistant
@@ -287,9 +305,6 @@
   </aside>
 
   <script>
-    const user = localStorage.getItem('suffai_demo_user') || 'brand';
-    document.getElementById('userLabel').textContent = user;
-
     const tabs = {
       geo: document.getElementById('frame-geo'),
       ads: document.getElementById('frame-ads'),
@@ -298,12 +313,21 @@
     };
 
     const chatFab = document.getElementById('chatFab');
+    let allowed = [];
+    let session = null;
 
     window.__CC_CONTEXT__ = {
-      active_tab: 'geo',
+      active_tab: null,
       geo: null,
       ads: null
     };
+
+    function ensureFrameSrc(frame) {
+      const src = frame.getAttribute('data-src');
+      if (src && (!frame.src || frame.src === 'about:blank' || frame.src.endsWith('about:blank'))) {
+        frame.src = src;
+      }
+    }
 
     function setChatVisible(show) {
       chatFab.style.display = show ? '' : 'none';
@@ -325,6 +349,7 @@
 
     function requestContext(frame) {
       try {
+        if (!frame || frame.classList.contains('hidden')) return;
         frame.contentWindow.postMessage({ type: 'cc-context-request' }, '*');
       } catch (e) {
         console.error('[chat] postMessage failed', e);
@@ -335,6 +360,21 @@
       requestContext(tabs.geo);
       requestContext(tabs.ads);
       updateHint();
+    }
+
+    function activateTab(id) {
+      if (allowed.indexOf(id) < 0) return;
+      window.__CC_CONTEXT__.active_tab = id;
+      document.querySelectorAll('.tab').forEach(b => {
+        b.classList.toggle('active', b.dataset.tab === id);
+      });
+      Object.entries(tabs).forEach(([key, frame]) => {
+        const show = key === id;
+        frame.classList.toggle('hidden', !show);
+        if (show) ensureFrameSrc(frame);
+      });
+      setChatVisible(id === 'geo' || id === 'ads');
+      if (id === 'geo' || id === 'ads') refreshAllContext();
     }
 
     window.addEventListener('message', (ev) => {
@@ -356,6 +396,9 @@
     });
 
     document.querySelectorAll('.tab').forEach(btn => {
+<<<<<<< HEAD
+      btn.addEventListener('click', () => activateTab(btn.dataset.tab));
+=======
       btn.addEventListener('click', () => {
         const id = btn.dataset.tab;
         window.__CC_CONTEXT__.active_tab = id;
@@ -367,13 +410,51 @@
         setChatVisible(id === 'geo' || id === 'ads');
         if (id === 'geo' || id === 'ads') refreshAllContext();
       });
+>>>>>>> main
     });
 
     document.getElementById('btnLogout').addEventListener('click', () => {
-      localStorage.removeItem('suffai_demo_session');
-      localStorage.removeItem('suffai_demo_user');
-      location.href = './login.html';
+      SuffaiSession.logout();
     });
+
+    (async function bootShell() {
+      const local = SuffaiSession.getSession();
+      if (!local || !local.token) {
+        location.replace('./login.html');
+        return;
+      }
+      session = await SuffaiSession.fetchMe();
+      if (!session) {
+        location.replace('./login.html');
+        return;
+      }
+      allowed = session.allowed_tabs || [];
+      if (!allowed.length) {
+        SuffaiSession.clearSession();
+        location.replace('./login.html');
+        return;
+      }
+
+      const label = session.display_name || session.username || session.role;
+      const roleBit = session.role ? (' · ' + session.role) : '';
+      document.getElementById('userLabel').textContent = label + roleBit;
+      document.getElementById('shellSubtitle').textContent = allowed
+        .map(t => ({ geo: 'Geo', ads: 'Ads Lab', style: 'Style', admin: 'Admin' }[t] || t))
+        .join(' · ');
+
+      document.querySelectorAll('.tab').forEach(btn => {
+        const ok = allowed.indexOf(btn.dataset.tab) >= 0;
+        btn.hidden = !ok;
+      });
+
+      // Prefer hash / ?tab= if allowed, else first allowed (customer → style)
+      const params = new URLSearchParams(location.search);
+      const hashTab = (location.hash || '').replace(/^#/, '');
+      const want = params.get('tab') || hashTab || allowed[0];
+      const start = allowed.indexOf(want) >= 0 ? want : allowed[0];
+      document.getElementById('shellTop').style.visibility = 'visible';
+      activateTab(start);
+    })();
 
     chatFab.addEventListener('click', () => {
       const open = document.body.classList.toggle('chat-open');
