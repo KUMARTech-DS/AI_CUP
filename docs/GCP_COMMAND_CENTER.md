@@ -45,6 +45,7 @@ AI_CUP_latest/
 | `POST` | `/v1/ads-lab/extract` | Upload → GCS `demo/` → existing `suffai-extraction` `/v1/extract` (baseline extract; still available) |
 | `POST` | `/v1/ads-lab/campaign` | **Primary Ads Lab path:** brand SKU campaign — GCS `brands/{brand}/…` → extract (brand overwrite) → similarity compare-pins → rank with PIN+age+gender+RFM; brand role forces `brand_name` |
 | `POST` | `/v1/chat` | Corner bot on Command Center (not legacy `api/`): Vertex Gemini + slim `web/metrics.json` + Geo/Ads UI + optional `filter_context` |
+| `POST` | `/v1/geo/brief` | Geo Market brief (Vertex Gemini) from **PII-free** store-score aggregates; template fallback in UI if Vertex off |
 | `GET` | `/v1/admin/unique-summary` | Admin tab proxy → `suffai-similarity` `/v1/admin/unique-garments/summary` |
 | `GET` | `/v1/admin/unique-garments` | Admin tab proxy → `suffai-similarity` `/v1/admin/unique-garments` |
 | `GET` | `/v1/style-assistant/users` | Style Assistant: distinct `user_uuid` from `user_wardrobe` |
@@ -63,6 +64,8 @@ AI_CUP_latest/
 **Ads Lab campaign (Part 1):** brand name + multi-PIN + age/gender/RFM → `POST /v1/ads-lab/campaign`. Extraction service unchanged; brand overwritten in BFF. Ranking blends PIN unique-garment similarity (`suffai-similarity` `/v1/similarity/compare-pins`) with metrics taste for the full audience. Tables: `brand_campaigns`, `brand_skus`, `brand_sku_pin_scores` (migration `005_brand_sku_campaigns.sql`). Requires `SIMILARITY_URL` + `DATABASE_URL` on command-center.
 
 **Style Assistant (Part 2):** tab `style_assistant.html` — pick `user_uuid` + advertising brand → `POST /v1/style-assistant/recommend`. Response sections: **`complete_outfit`** (complementary pairs + Vertex copy), **`similar_likes`** (same-category “you may also like”), **`wardrobe`**. Feature 1 blend for scoring. Buy CTA uses optional `STYLE_BUY_URL_TEMPLATE` (`{sku_uuid}`, `{brand_name}`). Needs `DATABASE_URL`, `ENABLE_VERTEX=true`, GCS signed URLs. No new migration (005 + wardrobe tables).
+
+**Geo store placement:** Hub **centroid is fixed at pincode** (`pin_geo`). Demo filters change Estimated footfall. Open-store uses **brand vs competitor garment share** at the PIN (under filters) plus **brand commodity counts**, then `POST /v1/geo/brief` asks Gemini for `decision` + full `explanation` + `brief` (JSON). Heuristic prior used if Vertex fails (`fallback=true`, still returns a decision). No per-user lat/lon or PII in the prompt.
 
 ---
 
@@ -94,6 +97,20 @@ chmod +x command_center/scripts/load_login_creds_bq.sh
 Default seed: **admin1** / **123@admin**; 8 brand users (one per commodity brand); 70 customer users (one per `customers.csv` `_id`). No signup UI.
 
 Schema example: `command_center_data/auth/login_cred_db.example.csv`.
+
+**Smoke (CSV local or live URL):**
+
+```bash
+# Local CSV roles
+AUTH_SOURCE=csv python3 command_center/scripts/smoke_role_auth.py
+
+# After deploy — login + GET /v1/metrics for admin/brand/customer
+CC_URL=$(gcloud run services describe suffai-command-center \
+  --region="${GCP_REGION:-asia-south1}" --format='value(status.url)')
+CC_URL="$CC_URL" ./command_center/scripts/smoke_role_auth.sh
+```
+
+If only `admin1` works in GCP, reload `login_cred_db` (step above) and use the **new** plaintext passwords for brand/customer. Live UI is served from `web/` only — do not deploy conflicted copies under `docs/`.
 
 ---
 

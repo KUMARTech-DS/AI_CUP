@@ -99,6 +99,17 @@
     location.href = './login.html';
   }
 
+  /** FastAPI often returns detail as string | object | list — never show [object Object]. */
+  function formatApiDetail(detail, fallback) {
+    if (detail == null || detail === '') return fallback || '';
+    if (typeof detail === 'string') return detail;
+    try {
+      return JSON.stringify(detail);
+    } catch (_) {
+      return String(detail);
+    }
+  }
+
   global.SuffaiSession = {
     KEY,
     getSession,
@@ -111,5 +122,6 @@
     fetchMe,
     logout,
     apiBase,
+    formatApiDetail,
   };
 })(window);

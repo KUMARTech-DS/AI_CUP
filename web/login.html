@@ -133,7 +133,10 @@
           });
           const data = await res.json().catch(() => ({}));
           if (!res.ok) {
-            err.textContent = data.detail || 'Invalid username or password.';
+            err.textContent = SuffaiSession.formatApiDetail(
+              data.detail,
+              'Invalid username or password.'
+            );
             err.style.display = 'block';
             return;
           }
