@@ -1,7 +1,8 @@
 """
 SUFFAI Brand Intelligence Portal (PRD-aligned)
 
-Nav: Geo Intelligence | Brand & Competition | Campaign Lab | Ask Suffai
+Nav: Geo Intelligence | Brand & Competition | Campaign Lab
+(Chat lives on Command Center — see command_center/chatbot.py)
 
 Run: streamlit run brand_app.py --server.port 8503
 """
@@ -22,8 +23,6 @@ from services.data_loader import runtime_mode
 from services.auth_service import list_brand_accounts, verify_brand_login, BRAND_DEMO_PASSWORD
 from services.governed import load_governed, rfm_summary_df, brand_empty_state
 from suffai.metrics.geo import PIN_AREA_LABELS
-from suffai.api.chat_tools import build_tool_context, route_chat_query
-from services.governed import garment_store
 
 st.set_page_config(
     page_title="SUFFAI · Brand Intelligence",
@@ -147,29 +146,11 @@ with tab_campaign:
     render_campaign_tab(my_brand, empty_summary, empty_taste)
 
 with tab_chat:
-    st.subheader("Ask Suffai")
-    st.caption("Governed tools only — no generated SQL, no PII, no market-share invention.")
-    if "brand_intel_chat" not in st.session_state:
-        st.session_state.brand_intel_chat = []
-
-    for msg in st.session_state.brand_intel_chat:
-        with st.chat_message(msg["role"]):
-            st.markdown(msg["content"])
-
-    prompt = st.chat_input("e.g. Which commodities are popular in PIN 560103?")
-    if prompt:
-        st.session_state.brand_intel_chat.append({"role": "user", "content": prompt})
-        ctx = build_tool_context(
-            gov["orders"], gov["lines"], gov["rfm"], garment_store()
-        )
-        out = route_chat_query(prompt, ctx)
-        answer = out["answer"]
-        if out.get("tool"):
-            answer += f"\n\n_Source tool: `{out['tool']}` · metric_version v1_"
-        st.session_state.brand_intel_chat.append({"role": "assistant", "content": answer})
-        st.rerun()
-
-    # Keep legacy assistant available collapsed for comparison
+    st.subheader("Chat moved to Command Center")
+    st.info(
+        "Dashboard chat (metrics.json + Geo/Ads filters → Gemini) is in "
+        "`command_center/chatbot.py`, exposed as POST /v1/chat on the Command Center shell."
+    )
     with st.expander("Legacy prototype assistant (deprecated)"):
         render_assistant_tab(
             my_brand=my_brand,

@@ -41,6 +41,7 @@ sys.path.insert(0, str(SCRIPTS))
 import aggregate_metrics as agg  # noqa: E402
 import auth_acl  # noqa: E402
 import brand_campaign as brand_camp  # noqa: E402
+import chatbot  # noqa: E402
 import style_assistant as style_asst  # noqa: E402
 
 app = FastAPI(title="SuffAI Command Center", version="1.0.0")
@@ -132,95 +133,7 @@ def compute_metrics() -> dict[str, Any]:
     return payload
 
 
-CHAT_SYSTEM = (
-    "You are the SuffAI Command Center assistant for brand analysts. "
-    "Answer only from the provided dashboard context (metrics.json summary, "
-    "current Geo/Ads Lab UI state, and optional filter_context for PIN/age/"
-    "gender/RFM/brand). "
-    "Do not invent metrics, customers, or scores that are not in the context. "
-    "If something is missing, say what filter or data would help. "
-    "Admin / wardrobe / similarity data is out of scope. Be concise and practical."
-)
-
-GEO_BRIEF_SYSTEM = """You are a senior retail location strategist for SuffAI Command Center.
-
-You receive ONLY aggregated, PII-free JSON about one focus PIN (pincode hub) and comparison hubs.
-The map centroid is FIXED at the pincode hub — do not suggest moving the pin. Demographic
-filters (age, gender, RFM, etc.) change estimated segment footfall and competitive mix only.
-
-========================
-YOUR JOB
-========================
-1) Decide whether the brand should OPEN A STORE at focus_pin: exactly one of Yes | Consider | No.
-2) Explain the decision clearly for a brand marketer (not a data scientist).
-3) Write a short market brief they can act on.
-
-A centroid existing is NOT a reason to open. You must weigh demand, estimated footfall,
-brand-vs-competitor wardrobe share at that PIN under the selected filters, and the brand's
-commodity mix.
-
-========================
-HOW TO DECIDE (use the numbers in JSON; do not invent)
-========================
-Primary signals on focus_pin:
-- demand: filtered customer count in the PIN for the selected demo filters
-- est_footfall: Estimated segment footfall (always call it Estimated)
-- brand_garments / competitor_garments / brand_share: wardrobe garment observations
-  for analysis_brand vs everyone else (or "Competitors") in that PIN under the same filters
-- commodities: top {commodity, count} rows for analysis_brand in that PIN (assortment proof)
-- catchment_pop: coarse population buffer (secondary only)
-- heuristic_decision / score: a weak prior from rules — you may override it if the
-  competitive + commodity evidence disagrees, but say why
-
-Guidance (adapt to sparse demo data; do not require huge absolute counts):
-- Yes: meaningful filtered demand AND brand_share clearly competitive (often ≥ ~0.30–0.35)
-  AND brand_garments not tiny AND commodities show a coherent assortment story for the filters
-- Consider: mixed signals (decent demand but weak share, or strong share but thin footfall,
-  or commodities concentrated in one weak category)
-- No: near-zero demand/footfall for the filter slice, OR brand_garments ~0, OR brand_share
-  dominated by competitors with no commodity foothold
-
-If analysis_brand is missing or brand_garments+competitor_garments are all zero, choose No
-or Consider and explain that competitive evidence is insufficient — never invent shares.
-
-========================
-EXPLANATION REQUIREMENTS
-========================
-In "explanation" (4–8 sentences or short bullets), cover:
-1) Audience slice (filters: PIN, age, gender, RFM) and Estimated footfall / demand
-2) Brand vs competitor balance at this PIN (cite brand_share and garment counts)
-3) What commodities the brand shows in wardrobe data (cite top 2–3 from commodities)
-4) Explicit open-store call: Yes / Consider / No and the single strongest reason
-5) One practical next step (e.g. test assortment, compare top_pins, widen filters)
-
-Never mention individual people, phones, emails, addresses, or exact personal coordinates.
-Use area_label + PIN only. Do not invent PINs, counts, or percentages not present in JSON.
-If a field is null/missing, say the evidence is incomplete.
-
-========================
-OUTPUT FORMAT (STRICT)
-========================
-Return ONLY valid JSON (no markdown fences, no preamble) with this schema:
-{
-  "decision": "Yes" | "Consider" | "No",
-  "confidence": "high" | "medium" | "low",
-  "explanation": "string — full decision rationale as specified above",
-  "key_factors": ["short factor 1", "short factor 2", "short factor 3"],
-  "brief": "string — 90-160 word market brief summarizing audience, competition, commodities, and the store action"
-}
-"""
-
-CHAT_MAX_MESSAGE_CHARS = int(os.getenv("CHAT_MAX_MESSAGE_CHARS", "2000"))
-CHAT_MAX_CONTEXT_CHARS = int(os.getenv("CHAT_MAX_CONTEXT_CHARS", "24000"))
-GEO_BRIEF_MAX_CHARS = int(os.getenv("GEO_BRIEF_MAX_CHARS", "12000"))
 METRICS_JSON = WEB_DIR / "metrics.json"
-
-
-class ChatRequest(BaseModel):
-    message: str = Field(..., min_length=1)
-    context: dict[str, Any] = Field(default_factory=dict)
-    # From legacy api/routers/chat.py — optional explicit filters (PIN/age/gender/RFM/brand)
-    filter_context: Optional[dict[str, Any]] = None
 
 
 class GeoBriefRequest(BaseModel):
@@ -270,125 +183,6 @@ def _require_session(
     if not sess:
         raise HTTPException(401, "Not authenticated — sign in again")
     return sess
-
-
-def _slim_metrics_json() -> dict[str, Any]:
-    """Build a small summary from web/metrics.json for the chat model."""
-    if not METRICS_JSON.is_file():
-        return {"error": "metrics.json missing", "path": str(METRICS_JSON)}
-    try:
-        raw = json.loads(METRICS_JSON.read_text(encoding="utf-8"))
-    except Exception as exc:
-        log.exception("Failed to read metrics.json")
-        return {"error": f"metrics.json read failed: {exc}"}
-
-    customers = raw.get("customer_cells") or []
-    garments = raw.get("garment_cells") or []
-    pin_geo = raw.get("pin_geo") or {}
-
-    total_customers = sum(int(c.get("customers") or 0) for c in customers if isinstance(c, dict))
-    total_orders = sum(int(c.get("orders") or 0) for c in customers if isinstance(c, dict))
-    total_revenue = sum(float(c.get("revenue") or 0) for c in customers if isinstance(c, dict))
-    total_garments = sum(int(g.get("garments") or 0) for g in garments if isinstance(g, dict))
-
-    brand_counts: dict[str, int] = {}
-    for g in garments:
-        if not isinstance(g, dict):
-            continue
-        b = g.get("brand") or "unknown"
-        brand_counts[str(b)] = brand_counts.get(str(b), 0) + int(g.get("garments") or 0)
-    top_brands = sorted(brand_counts.items(), key=lambda x: x[1], reverse=True)[:10]
-
-    pin_labels = []
-    for pin, geo in list(pin_geo.items())[:20]:
-        if isinstance(geo, dict):
-            pin_labels.append(
-                {
-                    "pin": pin,
-                    "area_label": geo.get("area_label"),
-                    "population_pin": geo.get("population_pin"),
-                }
-            )
-
-    return {
-        "source": "web/metrics.json",
-        "generated_at": raw.get("generated_at"),
-        "filters": raw.get("filters") if isinstance(raw.get("filters"), dict) else {},
-        "totals": {
-            "customers": total_customers,
-            "orders": total_orders,
-            "revenue": round(total_revenue, 2),
-            "garments": total_garments,
-            "customer_cells": len(customers),
-            "garment_cells": len(garments),
-        },
-        "top_brands": [{"brand": b, "garments": n} for b, n in top_brands],
-        "pins": pin_labels,
-        "extraction_jobs_count": raw.get("extraction_jobs_count"),
-    }
-
-
-def _sanitize_ui_context(raw: Any) -> dict[str, Any]:
-    if not isinstance(raw, dict):
-        return {}
-    out: dict[str, Any] = {"active_tab": raw.get("active_tab")}
-    geo = raw.get("geo")
-    if isinstance(geo, dict):
-        out["geo"] = {
-            "filters": geo.get("filters") if isinstance(geo.get("filters"), dict) else {},
-            "summary": geo.get("summary") if isinstance(geo.get("summary"), dict) else {},
-        }
-    ads = raw.get("ads")
-    if isinstance(ads, dict):
-        ranked = ads.get("ranked") if isinstance(ads.get("ranked"), list) else []
-        slim = []
-        for row in ranked[:20]:
-            if not isinstance(row, dict):
-                continue
-            slim.append(
-                {
-                    "filename": row.get("filename"),
-                    "rank": row.get("rank"),
-                    "score": row.get("score"),
-                    "attrs": row.get("attrs") if isinstance(row.get("attrs"), dict) else {},
-                    "reason": row.get("reason"),
-                    "ok": row.get("ok"),
-                }
-            )
-        out["ads"] = {
-            "filters": ads.get("filters") if isinstance(ads.get("filters"), dict) else {},
-            "filters_label": ads.get("filters_label") or "",
-            "ranked": slim,
-        }
-    return out
-
-
-def _sanitize_filter_context(raw: Any) -> dict[str, Any]:
-    """Allowlist explicit audience filters (legacy chat filter_context)."""
-    if not isinstance(raw, dict):
-        return {}
-    allowed = (
-        "pin_code",
-        "pin_codes",
-        "age_group",
-        "gender",
-        "rfm_segment",
-        "brand",
-        "brand_name",
-        "active_tab",
-    )
-    out: dict[str, Any] = {}
-    for k in allowed:
-        if k not in raw:
-            continue
-        v = raw[k]
-        if v is None or v == "":
-            continue
-        if k == "pin_codes" and isinstance(v, list):
-            out[k] = [str(p).strip() for p in v if str(p).strip()][:50]
-        elif isinstance(v, (str, int, float, bool)):
-            out[k] = v
-    return out
 
 
 # Keys that must never be forwarded to Gemini (PII / raw identity / precise personal geo)
@@ -614,69 +408,6 @@ def _heuristic_store_decision_from_focus(focus: Optional[dict[str, Any]]) -> str
     if share_f >= 0.22 or (brand_g >= 3 and foot >= 40):
         return "Consider"
     return "No"
-
-
-def _call_vertex_chat(
-    message: str,
-    context: dict[str, Any],
-    request_id: str,
-    *,
-    system: Optional[str] = None,
-    max_context_chars: Optional[int] = None,
-) -> str:
-    project = os.getenv("GOOGLE_CLOUD_PROJECT") or os.getenv("GCP_PROJECT") or ""
-    location = os.getenv("VERTEX_LOCATION", "asia-south1")
-    model_name = os.getenv("VERTEX_CHAT_MODEL", "gemini-2.0-flash")
-    if not project:
-        raise HTTPException(status_code=503, detail="GOOGLE_CLOUD_PROJECT is not set")
-
-    try:
-        import vertexai  # type: ignore
-        from vertexai.generative_models import GenerativeModel  # type: ignore
-    except ImportError as exc:
-        log.exception("request_id=%s missing google-cloud-aiplatform", request_id)
-        raise HTTPException(status_code=503, detail=f"Missing Vertex libs: {exc}") from exc
-
-    cap = max_context_chars if max_context_chars is not None else CHAT_MAX_CONTEXT_CHARS
-    context_json = json.dumps(context, ensure_ascii=False, default=str)
-    if len(context_json) > cap:
-        context_json = context_json[:cap] + "…[truncated]"
-
-    sys_prompt = system or CHAT_SYSTEM
-    prompt = (
-        f"{sys_prompt}\n\n"
-        f"Dashboard context (JSON):\n{context_json}\n\n"
-        f"User question:\n{message}"
-    )
-
-    try:
-        vertexai.init(project=project, location=location)
-        model = GenerativeModel(model_name)
-        resp = model.generate_content(prompt)
-        text = getattr(resp, "text", None) or ""
-        if not text and getattr(resp, "candidates", None):
-            parts = []
-            for c in resp.candidates:
-                content = getattr(c, "content", None)
-                for p in getattr(content, "parts", []) or []:
-                    t = getattr(p, "text", None)
-                    if t:
-                        parts.append(t)
-            text = "\n".join(parts)
-        if not text.strip():
-            raise RuntimeError("empty model response")
-        return text.strip()
-    except HTTPException:
-        raise
-    except Exception as exc:
-        log.exception(
-            "request_id=%s Vertex chat failed project=%s location=%s model=%s",
-            request_id,
-            project,
-            location,
-            model_name,
-        )
-        raise HTTPException(status_code=503, detail=f"Vertex chat failed: {exc}") from exc
 
 
 @app.get("/health")
@@ -1496,12 +1227,12 @@ def geo_brief(
         return _fallback_payload("ENABLE_VERTEX=false")
 
     try:
-        raw = _call_vertex_chat(
+        raw = chatbot.call_vertex_chat(
             "Return the store-opening decision JSON now.",
             payload,
             request_id,
-            system=GEO_BRIEF_SYSTEM,
-            max_context_chars=GEO_BRIEF_MAX_CHARS,
+            system=chatbot.GEO_BRIEF_SYSTEM,
+            max_context_chars=chatbot.GEO_BRIEF_MAX_CHARS,
         )
         parsed = _parse_geo_brief_model_json(raw)
     except HTTPException as exc:
@@ -1533,70 +1264,9 @@ def geo_brief(
 
 
 @app.post("/v1/chat")
-def chat(body: ChatRequest):
+def chat(body: chatbot.ChatRequest):
     """Dashboard Q&A from metrics.json summary + Geo/Ads UI filters."""
-    request_id = uuid.uuid4().hex[:12]
-    message = (body.message or "").strip()
-    if not message:
-        return JSONResponse(
-            status_code=400,
-            content={"detail": "message is required", "request_id": request_id},
-        )
-    if len(message) > CHAT_MAX_MESSAGE_CHARS:
-        return JSONResponse(
-            status_code=400,
-            content={
-                "detail": f"message too long (max {CHAT_MAX_MESSAGE_CHARS} chars)",
-                "request_id": request_id,
-            },
-        )
-
-    if not _env_bool("ENABLE_VERTEX", False):
-        log.warning("request_id=%s chat rejected ENABLE_VERTEX=false", request_id)
-        return JSONResponse(
-            status_code=503,
-            content={
-                "detail": "Chat disabled: set ENABLE_VERTEX=true on command-center",
-                "request_id": request_id,
-            },
-        )
-
-    ui_ctx = _sanitize_ui_context(body.context)
-    filter_ctx = _sanitize_filter_context(body.filter_context)
-    # Also accept filter_context nested under context (UI convenience)
-    if not filter_ctx and isinstance(body.context, dict):
-        filter_ctx = _sanitize_filter_context(body.context.get("filter_context"))
-    metrics_summary = _slim_metrics_json()
-    context = {
-        "metrics_json": metrics_summary,
-        "ui": ui_ctx,
-        "filter_context": filter_ctx,
-    }
-    log.info(
-        "request_id=%s chat start tab=%s metrics_ok=%s filters=%s msg_len=%s",
-        request_id,
-        ui_ctx.get("active_tab"),
-        "error" not in metrics_summary,
-        bool(filter_ctx),
-        len(message),
-    )
-
-    try:
-        answer = _call_vertex_chat(message, context, request_id)
-    except HTTPException as exc:
-        detail = exc.detail if isinstance(exc.detail, str) else str(exc.detail)
-        return JSONResponse(
-            status_code=exc.status_code,
-            content={"detail": detail, "request_id": request_id},
-        )
-
-    log.info("request_id=%s chat ok answer_len=%s", request_id, len(answer))
-    return {
-        "ok": True,
-        "answer": answer,
-        "request_id": request_id,
-        "model": os.getenv("VERTEX_CHAT_MODEL", "gemini-2.0-flash"),
-    }
+    return chatbot.run_chat(body, METRICS_JSON)
 
 
 @app.get("/")
