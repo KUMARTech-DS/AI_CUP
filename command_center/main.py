@@ -326,9 +326,24 @@ def _call_vertex_chat(message: str, context: dict[str, Any], request_id: str) ->
         log.exception("request_id=%s missing google-cloud-aiplatform", request_id)
         raise HTTPException(status_code=503, detail=f"Missing Vertex libs: {exc}") from exc
 
-    context_json = json.dumps(context, ensure_ascii=False, default=str)
+    context_json = json.dumps(
+    context,
+    ensure_ascii=False,
+    default=str,
+    separators=(",", ":"),
+    )
+    
     if len(context_json) > CHAT_MAX_CONTEXT_CHARS:
-        context_json = context_json[:CHAT_MAX_CONTEXT_CHARS] + "…[truncated]"
+        log.error(
+            "Chat context too large: request_id=%s chars=%d limit=%d",
+            request_id,
+            len(context_json),
+            CHAT_MAX_CONTEXT_CHARS,
+        )
+        raise HTTPException(
+            status_code=413,
+            detail="Complete dashboard metrics exceed the configured chat context limit.",
+        )
 
     prompt = (
         f"{CHAT_SYSTEM}\n\n"
