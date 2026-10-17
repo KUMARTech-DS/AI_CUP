@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Build & deploy suffai-command-center only (does not change extraction / similarity app code).
+# Uses --update-env-vars so existing keys (e.g. DATABASE_URL from Secret Manager) are preserved.
 set -euo pipefail
 
 PROJECT="${GOOGLE_CLOUD_PROJECT:?Set GOOGLE_CLOUD_PROJECT}"
@@ -32,18 +33,26 @@ fi
 if [[ -n "$SIMILARITY_URL" ]]; then
   ENV_VARS="${ENV_VARS},SIMILARITY_URL=${SIMILARITY_URL}"
 fi
+if [[ -n "${DATABASE_URL:-}" ]]; then
+  ENV_VARS="${ENV_VARS},DATABASE_URL=${DATABASE_URL}"
+fi
 
-gcloud run deploy suffai-command-center \
-  --image="$IMG" \
-  --region="$REGION" \
-  --platform=managed \
-  --allow-unauthenticated \
-  --memory=1Gi \
-  --cpu=1 \
-  --set-env-vars="$ENV_VARS" \
+DEPLOY_ARGS=(
+  --image="$IMG"
+  --region="$REGION"
+  --platform=managed
+  --allow-unauthenticated
+  --memory=1Gi
+  --cpu=1
+  --update-env-vars="$ENV_VARS"
   --project="$PROJECT"
+)
+if [[ -n "${CLOUD_SQL_INSTANCE:-}" ]]; then
+  DEPLOY_ARGS+=(--add-cloudsql-instances="$CLOUD_SQL_INSTANCE")
+fi
 
-# Optional: attach Cloud SQL if DATABASE_URL uses unix socket — set DATABASE_URL via Secret Manager in console.
+gcloud run deploy suffai-command-center "${DEPLOY_ARGS[@]}"
+
 URL="$(gcloud run services describe suffai-command-center --region="$REGION" --project="$PROJECT" --format='value(status.url)')"
 echo ""
 echo "Command Center: $URL/login.html"
@@ -52,3 +61,8 @@ echo "Metrics:        $URL/v1/metrics"
 echo "Extract:        POST $URL/v1/ads-lab/extract"
 echo "Campaign:       POST $URL/v1/ads-lab/campaign  (needs SIMILARITY_URL + DATABASE_URL)"
 echo "Chat:           POST $URL/v1/chat  (ENABLE_VERTEX=${ENABLE_VERTEX}; uses web/metrics.json)"
+echo "Admin:          GET  $URL/v1/admin/unique-summary  (proxies similarity)"
+echo "Style:          GET  $URL/v1/style-assistant/users|brands"
+echo "                POST $URL/v1/style-assistant/recommend"
+echo ""
+echo "Redeploy guide: docs/GCP_REDEPLOY_E2E.md"

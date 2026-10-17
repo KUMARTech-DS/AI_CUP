@@ -9,7 +9,6 @@ Does NOT modify worker/ (extraction) or similarity/ core ingest.
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 import os
@@ -18,9 +17,9 @@ import uuid
 from pathlib import Path
 from typing import Any, Optional
 
-from fastapi import FastAPI, File, Form, HTTPException, Request, Query, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, RedirectResponse, Response
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from urllib.parse import urlencode
@@ -41,6 +40,7 @@ sys.path.insert(0, str(SCRIPTS))
 
 import aggregate_metrics as agg  # noqa: E402
 import brand_campaign as brand_camp  # noqa: E402
+import style_assistant as style_asst  # noqa: E402
 
 app = FastAPI(title="SuffAI Command Center", version="1.0.0")
 
@@ -151,6 +151,12 @@ class ChatRequest(BaseModel):
     context: dict[str, Any] = Field(default_factory=dict)
     # From legacy api/routers/chat.py — optional explicit filters (PIN/age/gender/RFM/brand)
     filter_context: Optional[dict[str, Any]] = None
+
+
+class StyleRecommendRequest(BaseModel):
+    user_uuid: str = Field(..., min_length=1)
+    brand_name: str = Field(..., min_length=1)
+    limit: int = Field(default=6, ge=1, le=12)
 
 
 def _slim_metrics_json() -> dict[str, Any]:
@@ -343,6 +349,7 @@ def health():
         "similarity_url": bool(os.getenv("SIMILARITY_URL")),
         "ads_lab_campaign": True,
         "admin_proxy": True,
+        "style_assistant": True,
     }
 
 
@@ -488,37 +495,6 @@ async def ads_lab_extract(files: list[UploadFile] = File(...)):
         raise HTTPException(400, "No valid images uploaded")
 
     return {"ok": True, "items": results}
-
-
-@app.post("/v1/chat/assistant")
-async def chat_assistant_proxy(request: Request):
-    """Forward browser chat requests to the existing suffai-api service."""
-    api_base = (os.getenv("API_PUBLIC_URL") or "").rstrip("/")
-    if not api_base:
-        raise HTTPException(503, "API_PUBLIC_URL is not configured on Command Center")
-
-    body = await request.body()
-    if len(body) > 40000:
-        raise HTTPException(413, "Chat request is too large")
-
-    def forward():
-        import urllib.error
-        import urllib.request
-
-        req = urllib.request.Request(
-            f"{api_base}/v1/chat/assistant",
-            data=body,
-            method="POST",
-            headers={"Content-Type": "application/json"},
-        )
-        try:
-            with urllib.request.urlopen(req, timeout=90) as resp:
-                return resp.status, resp.read()
-        except urllib.error.HTTPError as exc:
-            return exc.code, exc.read()
-
-    status, content = await asyncio.to_thread(forward)
-    return Response(content=content, status_code=status, media_type="application/json")
 
 
 def _parse_pin_codes(raw: str) -> list[str]:
@@ -898,6 +874,76 @@ def _proxy_similarity_get(path: str, params: dict[str, Any]) -> Any:
         raise HTTPException(503, f"similarity unreachable: {exc}") from exc
 
 
+@app.get("/v1/style-assistant/users")
+def style_assistant_users(limit: int = Query(200, ge=1, le=500)):
+    """Distinct customer ids from user_wardrobe for Style Assistant dropdown."""
+    if not os.getenv("DATABASE_URL", "").strip():
+        raise HTTPException(503, "DATABASE_URL not set")
+    try:
+        users = style_asst.list_style_users(limit=limit)
+        return {"users": users, "count": len(users)}
+    except Exception as exc:
+        log.exception("style-assistant users failed")
+        raise HTTPException(503, f"style-assistant users failed: {exc}") from exc
+
+
+@app.get("/v1/style-assistant/brands")
+def style_assistant_brands(limit: int = Query(200, ge=1, le=500)):
+    """Distinct advertising brands from brand_skus for Style Assistant dropdown."""
+    if not os.getenv("DATABASE_URL", "").strip():
+        raise HTTPException(503, "DATABASE_URL not set")
+    try:
+        brands = style_asst.list_style_brands(limit=limit)
+        return {"brands": brands, "count": len(brands)}
+    except Exception as exc:
+        log.exception("style-assistant brands failed")
+        raise HTTPException(503, f"style-assistant brands failed: {exc}") from exc
+
+
+@app.post("/v1/style-assistant/recommend")
+def style_assistant_recommend(body: StyleRecommendRequest):
+    """
+    Feature 2: rank brand SKUs against a user's wardrobe (Feature 1 blend),
+    then Vertex LLM builds wardrobe + SKU outfit combinations with copy.
+    """
+    request_id = uuid.uuid4().hex[:12]
+    user_uuid = (body.user_uuid or "").strip()
+    brand_name = (body.brand_name or "").strip()
+    if not user_uuid:
+        raise HTTPException(400, "user_uuid is required")
+    if not brand_name:
+        raise HTTPException(400, "brand_name is required")
+    if not os.getenv("DATABASE_URL", "").strip():
+        raise HTTPException(503, "DATABASE_URL not set")
+    if not _env_bool("ENABLE_VERTEX", False):
+        raise HTTPException(
+            503,
+            "Style Assistant needs ENABLE_VERTEX=true (outfit copy via Vertex)",
+        )
+
+    log.info(
+        "request_id=%s style recommend user=%s brand=%s limit=%s",
+        request_id,
+        user_uuid,
+        brand_name,
+        body.limit,
+    )
+    try:
+        payload = style_asst.recommend_looks(
+            user_uuid=user_uuid,
+            brand_name=brand_name,
+            limit=body.limit,
+        )
+    except LookupError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except Exception as exc:
+        log.exception("request_id=%s style recommend failed", request_id)
+        raise HTTPException(503, f"style recommend failed: {exc}") from exc
+
+    payload["request_id"] = request_id
+    return payload
+
+
 @app.get("/v1/admin/unique-summary")
 def admin_unique_summary(
     pin: Optional[str] = Query(None),
@@ -1012,6 +1058,9 @@ def root():
             "POST /v1/chat",
             "GET /v1/admin/unique-summary",
             "GET /v1/admin/unique-garments",
+            "GET /v1/style-assistant/users",
+            "GET /v1/style-assistant/brands",
+            "POST /v1/style-assistant/recommend",
         ],
     }
 
