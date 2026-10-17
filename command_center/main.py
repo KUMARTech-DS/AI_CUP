@@ -17,8 +17,9 @@ import uuid
 from pathlib import Path
 from typing import Any, Optional
 
-from fastapi import FastAPI, File, Form, Header, HTTPException, Query, Request, UploadFile
+from fastapi import FastAPI, File, Form, Header, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -41,6 +42,7 @@ sys.path.insert(0, str(SCRIPTS))
 import aggregate_metrics as agg  # noqa: E402
 import auth_acl  # noqa: E402
 import brand_campaign as brand_camp  # noqa: E402
+import style_assistant as style_asst  # noqa: E402
 import style_assistant as style_asst  # noqa: E402
 
 app = FastAPI(title="SuffAI Command Center", version="1.0.0")
@@ -132,15 +134,65 @@ def compute_metrics() -> dict[str, Any]:
     return payload
 
 
-CHAT_SYSTEM = (
-    "You are the SuffAI Command Center assistant for brand analysts. "
-    "Answer only from the provided dashboard context (metrics.json summary, "
-    "current Geo/Ads Lab UI state, and optional filter_context for PIN/age/"
-    "gender/RFM/brand). "
-    "Do not invent metrics, customers, or scores that are not in the context. "
-    "If something is missing, say what filter or data would help. "
-    "Admin / wardrobe / similarity data is out of scope. Be concise and practical."
-)
+CHAT_SYSTEM = """
+ You are SuffAI, an expert fashion retail analytics and business
+recommendation assistant.
+
+Use the supplied dashboard metrics JSON and current UI context to
+answer open-ended questions about demographics, geography, customers,
+brands, garment attributes, and business opportunities.
+
+DATA SOURCES
+The metrics JSON may contain:
+- generated_at
+- filters
+- pin_geo
+- customer_cells
+- garment_cells
+
+Inspect the actual JSON schema and values. Do not assume fields exist
+if they are absent.
+
+ANALYSIS
+- Analyze age groups, gender, RFM segments, PIN codes, and brands
+  when the relevant data is available.
+- Analyze garment colors, patterns, materials, sizes, sleeve types,
+  collar types, and garment names when present.
+- Compare segments and locations using comparable measures.
+- Answer questions beyond these examples when the supplied data
+  supports them.
+- Distinguish customer counts, orders, revenue, clothing counts,
+  and garment counts.
+- Avoid double-counting overlapping metric cells.
+- Do not assume each attribute in an array represents a unique garment.
+- Distinguish observed garment composition from actual customer demand
+  or sales performance.
+
+RECOMMENDATIONS
+When asked for recommendations:
+- Identify the relevant data evidence.
+- Explain the business implication.
+- Recommend a practical action, such as an assortment test,
+  campaign, geographic pilot, or further analysis.
+- Explain uncertainty and what should be validated.
+- Do not present hypotheses as proven findings.
+
+ACCURACY
+- Never invent numbers, brands, trends, or geographic facts.
+- Calculate totals, percentages, and rankings only when the data
+  supports a valid calculation.
+- Respect relevant user-selected filters.
+- If the data is insufficient, say what is missing.
+- If the data is incomplete or truncated, do not claim a complete
+  analysis.
+
+RESPONSE STYLE
+Answer directly, followed by supporting evidence.
+Use concise tables and ranked lists when useful.
+Explain calculation methods where relevant.
+Mention the data timestamp when freshness matters.
+Be analytical, commercially useful, and transparent about uncertainty.
+"""
 
 CHAT_MAX_MESSAGE_CHARS = int(os.getenv("CHAT_MAX_MESSAGE_CHARS", "2000"))
 CHAT_MAX_CONTEXT_CHARS = int(os.getenv("CHAT_MAX_CONTEXT_CHARS", "24000"))
@@ -191,60 +243,50 @@ def _require_session(
     return sess
 
 
+class StyleRecommendRequest(BaseModel):
+    user_uuid: str = Field(..., min_length=1)
+    brand_name: str = Field(..., min_length=1)
+    limit: int = Field(default=6, ge=1, le=12)
+
+
+
 def _slim_metrics_json() -> dict[str, Any]:
-    """Build a small summary from web/metrics.json for the chat model."""
+    """Load the complete dashboard metrics JSON for chat analysis."""
     if not METRICS_JSON.is_file():
-        return {"error": "metrics.json missing", "path": str(METRICS_JSON)}
+        raise FileNotFoundError(
+            f"metrics.json missing: {METRICS_JSON}"
+        )
+
     try:
-        raw = json.loads(METRICS_JSON.read_text(encoding="utf-8"))
-    except Exception as exc:
+        raw = json.loads(
+            METRICS_JSON.read_text(encoding="utf-8")
+        )
+    except (OSError, json.JSONDecodeError):
         log.exception("Failed to read metrics.json")
-        return {"error": f"metrics.json read failed: {exc}"}
+        raise
 
-    customers = raw.get("customer_cells") or []
-    garments = raw.get("garment_cells") or []
-    pin_geo = raw.get("pin_geo") or {}
+    if not isinstance(raw, dict):
+        raise ValueError(
+            "metrics.json must contain a JSON object"
+        )
 
-    total_customers = sum(int(c.get("customers") or 0) for c in customers if isinstance(c, dict))
-    total_orders = sum(int(c.get("orders") or 0) for c in customers if isinstance(c, dict))
-    total_revenue = sum(float(c.get("revenue") or 0) for c in customers if isinstance(c, dict))
-    total_garments = sum(int(g.get("garments") or 0) for g in garments if isinstance(g, dict))
-
-    brand_counts: dict[str, int] = {}
-    for g in garments:
-        if not isinstance(g, dict):
-            continue
-        b = g.get("brand") or "unknown"
-        brand_counts[str(b)] = brand_counts.get(str(b), 0) + int(g.get("garments") or 0)
-    top_brands = sorted(brand_counts.items(), key=lambda x: x[1], reverse=True)[:10]
-
-    pin_labels = []
-    for pin, geo in list(pin_geo.items())[:20]:
-        if isinstance(geo, dict):
-            pin_labels.append(
-                {
-                    "pin": pin,
-                    "area_label": geo.get("area_label"),
-                    "population_pin": geo.get("population_pin"),
-                }
-            )
-
-    return {
-        "source": "web/metrics.json",
-        "generated_at": raw.get("generated_at"),
-        "filters": raw.get("filters") if isinstance(raw.get("filters"), dict) else {},
-        "totals": {
-            "customers": total_customers,
-            "orders": total_orders,
-            "revenue": round(total_revenue, 2),
-            "garments": total_garments,
-            "customer_cells": len(customers),
-            "garment_cells": len(garments),
-        },
-        "top_brands": [{"brand": b, "garments": n} for b, n in top_brands],
-        "pins": pin_labels,
-        "extraction_jobs_count": raw.get("extraction_jobs_count"),
+    required_fields = {
+        "generated_at",
+        "filters",
+        "pin_geo",
+        "customer_cells",
+        "garment_cells",
     }
+
+    missing_fields = required_fields - raw.keys()
+    if missing_fields:
+        raise ValueError(
+            "metrics.json is missing expected fields: "
+            + ", ".join(sorted(missing_fields))
+        )
+
+    # Return all records and fields, not just a summary.
+    return raw
 
 
 def _sanitize_ui_context(raw: Any) -> dict[str, Any]:
@@ -324,9 +366,24 @@ def _call_vertex_chat(message: str, context: dict[str, Any], request_id: str) ->
         log.exception("request_id=%s missing google-cloud-aiplatform", request_id)
         raise HTTPException(status_code=503, detail=f"Missing Vertex libs: {exc}") from exc
 
-    context_json = json.dumps(context, ensure_ascii=False, default=str)
+    context_json = json.dumps(
+    context,
+    ensure_ascii=False,
+    default=str,
+    separators=(",", ":"),
+    )
+    
     if len(context_json) > CHAT_MAX_CONTEXT_CHARS:
-        context_json = context_json[:CHAT_MAX_CONTEXT_CHARS] + "…[truncated]"
+        log.error(
+            "Chat context too large: request_id=%s chars=%d limit=%d",
+            request_id,
+            len(context_json),
+            CHAT_MAX_CONTEXT_CHARS,
+        )
+        raise HTTPException(
+            status_code=413,
+            detail="Complete dashboard metrics exceed the configured chat context limit.",
+        )
 
     prompt = (
         f"{CHAT_SYSTEM}\n\n"
@@ -381,6 +438,7 @@ def health():
         "similarity_url": bool(os.getenv("SIMILARITY_URL")),
         "ads_lab_campaign": True,
         "admin_proxy": True,
+        "style_assistant": True,
         "style_assistant": True,
         "auth": True,
     }
@@ -1052,6 +1110,76 @@ def style_assistant_recommend(
     return payload
 
 
+@app.get("/v1/style-assistant/users")
+def style_assistant_users(limit: int = Query(200, ge=1, le=500)):
+    """Distinct customer ids from user_wardrobe for Style Assistant dropdown."""
+    if not os.getenv("DATABASE_URL", "").strip():
+        raise HTTPException(503, "DATABASE_URL not set")
+    try:
+        users = style_asst.list_style_users(limit=limit)
+        return {"users": users, "count": len(users)}
+    except Exception as exc:
+        log.exception("style-assistant users failed")
+        raise HTTPException(503, f"style-assistant users failed: {exc}") from exc
+
+
+@app.get("/v1/style-assistant/brands")
+def style_assistant_brands(limit: int = Query(200, ge=1, le=500)):
+    """Distinct advertising brands from brand_skus for Style Assistant dropdown."""
+    if not os.getenv("DATABASE_URL", "").strip():
+        raise HTTPException(503, "DATABASE_URL not set")
+    try:
+        brands = style_asst.list_style_brands(limit=limit)
+        return {"brands": brands, "count": len(brands)}
+    except Exception as exc:
+        log.exception("style-assistant brands failed")
+        raise HTTPException(503, f"style-assistant brands failed: {exc}") from exc
+
+
+@app.post("/v1/style-assistant/recommend")
+def style_assistant_recommend(body: StyleRecommendRequest):
+    """
+    Feature 2: rank brand SKUs against a user's wardrobe (Feature 1 blend),
+    then Vertex LLM builds wardrobe + SKU outfit combinations with copy.
+    """
+    request_id = uuid.uuid4().hex[:12]
+    user_uuid = (body.user_uuid or "").strip()
+    brand_name = (body.brand_name or "").strip()
+    if not user_uuid:
+        raise HTTPException(400, "user_uuid is required")
+    if not brand_name:
+        raise HTTPException(400, "brand_name is required")
+    if not os.getenv("DATABASE_URL", "").strip():
+        raise HTTPException(503, "DATABASE_URL not set")
+    if not _env_bool("ENABLE_VERTEX", False):
+        raise HTTPException(
+            503,
+            "Style Assistant needs ENABLE_VERTEX=true (outfit copy via Vertex)",
+        )
+
+    log.info(
+        "request_id=%s style recommend user=%s brand=%s limit=%s",
+        request_id,
+        user_uuid,
+        brand_name,
+        body.limit,
+    )
+    try:
+        payload = style_asst.recommend_looks(
+            user_uuid=user_uuid,
+            brand_name=brand_name,
+            limit=body.limit,
+        )
+    except LookupError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except Exception as exc:
+        log.exception("request_id=%s style recommend failed", request_id)
+        raise HTTPException(503, f"style recommend failed: {exc}") from exc
+
+    payload["request_id"] = request_id
+    return payload
+
+
 @app.get("/v1/admin/unique-summary")
 def admin_unique_summary(
     pin: Optional[str] = Query(None),
@@ -1172,6 +1300,9 @@ def root():
             "POST /v1/auth/login",
             "GET /v1/auth/me",
             "POST /v1/auth/logout",
+            "GET /v1/style-assistant/users",
+            "GET /v1/style-assistant/brands",
+            "POST /v1/style-assistant/recommend",
         ],
     }
 
