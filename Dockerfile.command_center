@@ -1,6 +1,6 @@
 # Cloud Run: suffai-command-center
-# Serves web/ (Geo + Ads Lab UI) + command_center BFF APIs.
-# Does not replace suffai-api or suffai-extraction.
+# Serves web/ (Geo + Ads Lab + Style Assistant + Admin) + command_center BFF APIs.
+# Does not replace suffai-extraction.
 FROM python:3.11-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \

@@ -248,13 +248,14 @@
       <div class="brand-mark">SA</div>
       <div>
         <h1>SuffAI Command Center</h1>
-        <p>Geo intelligence · Ads Lab · Admin</p>
+        <p>Geo · Ads Lab · Style · Admin</p>
       </div>
     </div>
 
     <nav class="tabs" aria-label="Sections">
       <button type="button" class="tab active" data-tab="geo">Geo</button>
       <button type="button" class="tab" data-tab="ads">Ads Lab</button>
+      <button type="button" class="tab" data-tab="style">Style Assistant</button>
       <button type="button" class="tab" data-tab="admin">Admin</button>
     </nav>
 
@@ -267,10 +268,11 @@
   <div class="frame-wrap">
     <iframe id="frame-geo" title="Geo" src="./geo.html"></iframe>
     <iframe id="frame-ads" class="hidden" title="Ads Lab" src="./ads_lab.html"></iframe>
+    <iframe id="frame-style" class="hidden" title="Style Assistant" src="./style_assistant.html"></iframe>
     <iframe id="frame-admin" class="hidden" title="Admin" src="./admin.html"></iframe>
   </div>
 
-  <!-- Corner bot (Geo + Ads Lab only — hidden on Admin) -->
+  <!-- Corner bot (Geo + Ads Lab only — hidden on Style Assistant / Admin) -->
   <button type="button" class="chat-fab" id="chatFab" aria-label="Open assistant" aria-pressed="false">Bot</button>
   <aside class="chat-popup" id="chatPopup" aria-label="Dashboard assistant">
     <div class="chat-popup-header">
@@ -291,6 +293,7 @@
     const tabs = {
       geo: document.getElementById('frame-geo'),
       ads: document.getElementById('frame-ads'),
+      style: document.getElementById('frame-style'),
       admin: document.getElementById('frame-admin')
     };
 
@@ -360,7 +363,7 @@
         Object.entries(tabs).forEach(([key, frame]) => {
           frame.classList.toggle('hidden', key !== id);
         });
-        // Chat is Geo + Ads only (not Admin)
+        // Chat is Geo + Ads only (not Style Assistant / Admin)
         setChatVisible(id === 'geo' || id === 'ads');
         if (id === 'geo' || id === 'ads') refreshAllContext();
       });
