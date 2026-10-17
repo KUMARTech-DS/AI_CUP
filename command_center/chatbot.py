@@ -312,7 +312,7 @@ def call_vertex_chat(
 ) -> str:
     project = os.getenv("GOOGLE_CLOUD_PROJECT") or os.getenv("GCP_PROJECT") or ""
     location = os.getenv("VERTEX_LOCATION", "asia-south1")
-    model_name = os.getenv("VERTEX_CHAT_MODEL", "gemini-2.0-flash")
+    model_name = os.getenv("VERTEX_CHAT_MODEL", "gemini-2.5-flash")
     if not project:
         raise HTTPException(status_code=503, detail="GOOGLE_CLOUD_PROJECT is not set")
 
@@ -386,7 +386,7 @@ def run_chat(
             },
         )
 
-    if not _env_bool("ENABLE_VERTEX", False):
+    if not _env_bool("ENABLE_VERTEX", True):
         log.warning("request_id=%s chat rejected ENABLE_VERTEX=false", request_id)
         return JSONResponse(
             status_code=503,
@@ -429,5 +429,5 @@ def run_chat(
         "ok": True,
         "answer": answer,
         "request_id": request_id,
-        "model": os.getenv("VERTEX_CHAT_MODEL", "gemini-2.0-flash"),
+        "model": os.getenv("VERTEX_CHAT_MODEL", "gemini-2.5-flash"),
     }

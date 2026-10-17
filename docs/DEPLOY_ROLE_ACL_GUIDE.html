@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>SuffAI Command Center — Deploy Guide (Role-based Login ACL)</title>
+  <style>
+    @page { size: A4; margin: 18mm 16mm; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+      font-size: 10.5pt;
+      line-height: 1.45;
+      color: #1a1a1a;
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 8px 0 24px;
+    }
+    h1 {
+      font-size: 20pt;
+      margin: 0 0 6px;
+      color: #111;
+      border-bottom: 2px solid #89765C;
+      padding-bottom: 8px;
+    }
+    h2 {
+      font-size: 13pt;
+      margin: 22px 0 8px;
+      color: #292722;
+      page-break-after: avoid;
+    }
+    h3 {
+      font-size: 11pt;
+      margin: 14px 0 6px;
+      color: #4A4339;
+      page-break-after: avoid;
+    }
+    p, li { margin: 0 0 8px; }
+    .subtitle { color: #555; font-size: 10pt; margin-bottom: 16px; }
+    .meta {
+      background: #F5F1EA;
+      border-left: 4px solid #89765C;
+      padding: 10px 12px;
+      margin: 12px 0 18px;
+      font-size: 9.5pt;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10px 0 16px;
+      font-size: 9.5pt;
+      page-break-inside: avoid;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 6px 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: #F0ECE4; font-weight: 600; }
+    code, pre {
+      font-family: "SF Mono", Menlo, Consolas, monospace;
+      font-size: 8.5pt;
+    }
+    pre {
+      background: #1e1e1e;
+      color: #f0f0f0;
+      padding: 10px 12px;
+      border-radius: 4px;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      page-break-inside: avoid;
+      margin: 8px 0 14px;
+    }
+    .step-num {
+      display: inline-block;
+      background: #292722;
+      color: #FAF8F4;
+      font-weight: 700;
+      font-size: 9pt;
+      padding: 2px 8px;
+      border-radius: 3px;
+      margin-right: 6px;
+    }
+    .note {
+      background: #fff8e6;
+      border: 1px solid #e6d5a8;
+      padding: 8px 10px;
+      margin: 8px 0 12px;
+      font-size: 9.5pt;
+      page-break-inside: avoid;
+    }
+    .warn {
+      background: #fdecec;
+      border: 1px solid #e8b4b4;
+      padding: 8px 10px;
+      margin: 8px 0 12px;
+      font-size: 9.5pt;
+    }
+    ul.check { list-style: none; padding-left: 0; }
+    ul.check li::before { content: "☐ "; }
+    .footer {
+      margin-top: 28px;
+      padding-top: 10px;
+      border-top: 1px solid #ddd;
+      font-size: 8.5pt;
+      color: #777;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>SuffAI Command Center — Deployment Guide</h1>
+  <p class="subtitle">
+    Step-by-step deploy for <strong>role-based login ACL</strong> and related Command Center changes
+    (Geo / Ads Lab / Style Assistant / Admin). Canonical repo folder: <code>AI_CUP_latest</code>.
+  </p>
+
+  <div class="meta">
+    <strong>Audience:</strong> operators redeploying an existing GCP stack<br/>
+    <strong>Region (default):</strong> <code>asia-south1</code><br/>
+    <strong>Primary service to redeploy:</strong> Cloud Run <code>suffai-command-center</code><br/>
+    <strong>New data:</strong> BigQuery table <code>suffai_ops.login_cred_db</code><br/>
+    <strong>Date:</strong> October 2026
+  </div>
+
+  <h2>1. What these changes include</h2>
+  <ul>
+    <li>BigQuery-backed login (<code>POST /v1/auth/login</code>, <code>/v1/auth/me</code>, <code>/v1/auth/logout</code>)</li>
+    <li>Roles: <strong>brand</strong>, <strong>customer</strong>, <strong>admin</strong> with tab access control</li>
+    <li>Brand users see own brand + <strong>Competitors</strong> on Geo/Ads Lab</li>
+    <li>Customer users locked to their own Style Assistant wardrobe</li>
+    <li>Seed credentials generator + BQ load script (no signup UI)</li>
+  </ul>
+
+  <h3>Access matrix</h3>
+  <table>
+    <tr><th>Role</th><th>Geo</th><th>Ads Lab</th><th>Style Assistant</th><th>Admin</th></tr>
+    <tr><td>brand</td><td>Yes (self + Competitors)</td><td>Yes (brand locked)</td><td>No</td><td>No</td></tr>
+    <tr><td>customer</td><td>No</td><td>No</td><td>Yes (own customer_id)</td><td>No</td></tr>
+    <tr><td>admin</td><td>Yes (all brands)</td><td>Yes</td><td>Yes</td><td>Yes</td></tr>
+  </table>
+
+  <h3>Services — what to redeploy</h3>
+  <table>
+    <tr><th>Cloud Run service</th><th>Redeploy?</th><th>Why</th></tr>
+    <tr><td><code>suffai-command-center</code></td><td><strong>Yes — required</strong></td><td>Auth API, UI ACL, metrics masking, Style/Ads enforcement</td></tr>
+    <tr><td><code>suffai-extraction</code></td><td>No</td><td>Unchanged for ACL</td></tr>
+    <tr><td><code>suffai-similarity</code></td><td>Only if you have other pending similarity changes</td><td>Not required for login ACL alone</td></tr>
+  </table>
+
+  <div class="note">
+    <strong>No new secrets.</strong> Auth uses the existing Cloud Run service account / ADC for BigQuery.
+    Passwords in BQ are SHA-256 hex hashes. Plaintext passwords stay in a local gitignored CSV for handoff only.
+  </div>
+
+  <!-- STEP 0 -->
+  <h2><span class="step-num">Step 0</span> Prerequisites</h2>
+  <ol>
+    <li>Machine with Docker running, <code>gcloud</code> CLI, and <code>bq</code> CLI.</li>
+    <li>Access to the GCP project that already hosts Command Center.</li>
+    <li>Working directory:
+      <pre>cd /Users/rahul.kumar/Downloads/AI_CUP/AI_CUP_latest</pre>
+    </li>
+  </ol>
+
+  <pre>gcloud auth login
+gcloud auth configure-docker asia-south1-docker.pkg.dev
+
+export GOOGLE_CLOUD_PROJECT=YOUR_PROJECT_ID   # replace
+export GCP_REGION=asia-south1
+gcloud config set project "$GOOGLE_CLOUD_PROJECT"
+gcloud config set run/region "$GCP_REGION"</pre>
+
+  <p>Confirm live services:</p>
+  <pre>gcloud run services list --region="$GCP_REGION" --project="$GOOGLE_CLOUD_PROJECT" \
+  --format='table(metadata.name,status.url)'</pre>
+  <p>You should see at least <code>suffai-command-center</code>, <code>suffai-extraction</code>, <code>suffai-similarity</code>.</p>
+
+  <p>Capture URLs (needed for deploy env):</p>
+  <pre>export EXTRACTION_URL=$(gcloud run services describe suffai-extraction \
+  --region="$GCP_REGION" --project="$GOOGLE_CLOUD_PROJECT" \
+  --format='value(status.url)')
+
+export SIMILARITY_URL=$(gcloud run services describe suffai-similarity \
+  --region="$GCP_REGION" --project="$GOOGLE_CLOUD_PROJECT" \
+  --format='value(status.url)')
+
+export CC_URL=$(gcloud run services describe suffai-command-center \
+  --region="$GCP_REGION" --project="$GOOGLE_CLOUD_PROJECT" \
+  --format='value(status.url)')
+
+echo "EXTRACTION_URL=$EXTRACTION_URL"
+echo "SIMILARITY_URL=$SIMILARITY_URL"
+echo "CC_URL=$CC_URL"</pre>
+
+  <!-- STEP 1 -->
+  <h2><span class="step-num">Step 1</span> Generate login credentials (local)</h2>
+  <p>Creates hashed CSV for BigQuery and a plaintext handoff file for you to distribute offline.</p>
+  <pre>python3 command_center/scripts/generate_login_creds.py</pre>
+  <p>Outputs under <code>command_center_data/auth/</code>:</p>
+  <table>
+    <tr><th>File</th><th>Purpose</th></tr>
+    <tr><td><code>login_cred_db.csv</code></td><td>Upload to BigQuery (hashes only)</td></tr>
+    <tr><td><code>login_creds_plaintext.csv</code></td><td><strong>Handoff only</strong> — username + clear password (gitignored)</td></tr>
+    <tr><td><code>brand_logins_summary.csv</code></td><td>Quick brand username summary</td></tr>
+  </table>
+  <div class="warn">
+    Do <strong>not</strong> commit <code>login_creds_plaintext.csv</code>. Keep it offline.
+    Default admin seed: username <code>admin1</code>, password <code>123@admin</code>.
+    Brand users look like <code>brand_nike</code>; customers like <code>cust_&lt;id8&gt;</code>.
+  </div>
+
+  <!-- STEP 2 -->
+  <h2><span class="step-num">Step 2</span> Load credentials into BigQuery</h2>
+  <p>Creates (if needed) and loads <code>suffai_ops.login_cred_db</code>. Do this <strong>before</strong> users try the new login UI in production.</p>
+  <pre>chmod +x command_center/scripts/load_login_creds_bq.sh
+./command_center/scripts/load_login_creds_bq.sh "$GOOGLE_CLOUD_PROJECT"</pre>
+  <p>Or pass an explicit CSV path:</p>
+  <pre>./command_center/scripts/load_login_creds_bq.sh "$GOOGLE_CLOUD_PROJECT" \
+  ./command_center_data/auth/login_cred_db.csv</pre>
+
+  <h3>Verify load</h3>
+  <pre>bq query --use_legacy_sql=false \
+  "SELECT role, COUNT(*) AS n
+   FROM \`${GOOGLE_CLOUD_PROJECT}.suffai_ops.login_cred_db\`
+   GROUP BY role
+   ORDER BY role"</pre>
+  <p>Expect roughly: <code>admin</code> = 1, <code>brand</code> = 8, <code>customer</code> = 70.</p>
+
+  <div class="note">
+    Cloud Run SA for Command Center needs BigQuery Job User + Data Viewer (or equivalent) on dataset
+    <code>suffai_ops</code> — same as existing Geo metrics. No new IAM roles beyond that for auth.
+  </div>
+
+  <!-- STEP 3 -->
+  <h2><span class="step-num">Step 3</span> (Optional) Cloud SQL migration 005</h2>
+  <p>Only if Ads Lab campaign / Style Assistant tables are not already applied in this environment.</p>
+  <pre># If DATABASE_URL works locally:
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/005_brand_sku_campaigns.sql
+
+# Or use Cloud SQL Studio and paste the SQL file contents.</pre>
+  <p>Skip this step if <code>brand_campaigns</code> / <code>brand_skus</code> / <code>brand_sku_pin_scores</code> already exist.</p>
+
+  <!-- STEP 4 -->
+  <h2><span class="step-num">Step 4</span> Redeploy Command Center</h2>
+  <p>Recommended path (resolves extraction/similarity URLs, builds, pushes, deploys):</p>
+  <pre>chmod +x deploy/deploy_command_center.sh deploy/04_integrate_command_center.sh
+./deploy/04_integrate_command_center.sh</pre>
+
+  <p>Or explicitly:</p>
+  <pre>export EXTRACTION_URL SIMILARITY_URL   # from Step 0
+export GCS_IMAGE_BUCKET="${GCS_IMAGE_BUCKET:-${GOOGLE_CLOUD_PROJECT}-suffai-garment-images}"
+export ENABLE_VERTEX=true
+export VERTEX_LOCATION=asia-south1
+export VERTEX_CHAT_MODEL=gemini-2.5-flash
+
+./deploy/deploy_command_center.sh</pre>
+
+  <h3>Cloud Build alternative</h3>
+  <pre>gcloud builds submit --config=deploy/cloudbuild-command-center.yaml .
+
+IMG="${GCP_REGION}-docker.pkg.dev/${GOOGLE_CLOUD_PROJECT}/suffai/suffai-command-center:latest"
+gcloud run deploy suffai-command-center \
+  --image="$IMG" \
+  --region="$GCP_REGION" \
+  --project="$GOOGLE_CLOUD_PROJECT" \
+  --allow-unauthenticated \
+  --memory=1Gi \
+  --update-env-vars="USE_BQ=true,BQ_DATASET=suffai_ops,GOOGLE_CLOUD_PROJECT=${GOOGLE_CLOUD_PROJECT},GCS_IMAGE_BUCKET=${GCS_IMAGE_BUCKET},EXTRACTION_URL=${EXTRACTION_URL},SIMILARITY_URL=${SIMILARITY_URL},ENABLE_VERTEX=true,VERTEX_LOCATION=${VERTEX_LOCATION},VERTEX_CHAT_MODEL=${VERTEX_CHAT_MODEL},CORS_ORIGINS=*"</pre>
+
+  <div class="note">
+    Deploy scripts use <code>--update-env-vars</code> so existing keys (e.g. <code>DATABASE_URL</code> from Secret Manager)
+    are preserved when not overwritten. After deploy, confirm Cloud SQL attachment still present if you use Style/Ads campaign persistence.
+  </div>
+
+  <h3>IAM checks (usually already set)</h3>
+  <ul>
+    <li>CC SA → <code>roles/run.invoker</code> on <code>suffai-extraction</code> and <code>suffai-similarity</code></li>
+    <li>CC SA → BigQuery access on <code>suffai_ops</code> (metrics + <code>login_cred_db</code>)</li>
+    <li>CC SA → Vertex AI User (chat + Style copy)</li>
+  </ul>
+
+  <!-- STEP 5 -->
+  <h2><span class="step-num">Step 5</span> Verify deployment</h2>
+
+  <h3>5.1 Health</h3>
+  <pre>CC_URL=$(gcloud run services describe suffai-command-center \
+  --region="$GCP_REGION" --project="$GOOGLE_CLOUD_PROJECT" \
+  --format='value(status.url)')
+
+curl -sS "$CC_URL/health" | python3 -m json.tool</pre>
+  <p>Expect flags including <code>use_bq</code>, <code>auth</code>, <code>ads_lab_campaign</code>, <code>style_assistant</code> true (as configured).</p>
+
+  <h3>5.2 Auth login</h3>
+  <pre>curl -sS -X POST "$CC_URL/v1/auth/login" \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"admin1","password":"123@admin"}' | python3 -m json.tool</pre>
+  <p>Expect JSON with <code>token</code>, <code>role</code> = <code>admin</code>, and <code>allowed_tabs</code> including <code>geo</code>, <code>ads</code>, <code>style</code>, <code>admin</code>.</p>
+
+  <h3>5.3 Metrics</h3>
+  <pre>curl -sS "$CC_URL/v1/metrics" | head -c 400; echo</pre>
+
+  <h3>5.4 UI smoke checklist</h3>
+  <p>Open <code>$CC_URL/login.html</code> and verify:</p>
+  <ul class="check">
+    <li><strong>admin1</strong> — all four tabs; full brand lists on Geo/Ads</li>
+    <li><strong>brand_*</strong> (from plaintext CSV) — only Geo + Ads Lab; brand filter = own + Competitors; Ads brand field locked</li>
+    <li><strong>cust_*</strong> — only Style Assistant; customer dropdown locked</li>
+    <li>Deep-link to a forbidden page (e.g. customer opening <code>geo.html</code>) redirects away</li>
+    <li>Corner Bot visible on Geo/Ads for brand/admin; hidden for customer / Style / Admin</li>
+    <li>Log out clears session and returns to login</li>
+  </ul>
+
+  <!-- STEP 6 -->
+  <h2><span class="step-num">Step 6</span> Distribute credentials</h2>
+  <ol>
+    <li>Open <code>command_center_data/auth/login_creds_plaintext.csv</code> locally.</li>
+    <li>Share brand rows with brand stakeholders; customer rows with demo customers; keep admin private.</li>
+    <li>Do not upload the plaintext file to GCS, Git, or Slack public channels.</li>
+  </ol>
+
+  <!-- TROUBLESHOOTING -->
+  <h2>Troubleshooting</h2>
+  <table>
+    <tr><th>Symptom</th><th>Likely cause</th><th>Fix</th></tr>
+    <tr>
+      <td>Login 401 Invalid username/password</td>
+      <td>BQ table empty / wrong hash / CSV not loaded</td>
+      <td>Re-run Step 1–2; verify <code>bq query</code> counts</td>
+    </tr>
+    <tr>
+      <td>Login 503 Auth unavailable</td>
+      <td>BQ IAM or project unset on Cloud Run</td>
+      <td>Check <code>GOOGLE_CLOUD_PROJECT</code>, SA BigQuery roles, Cloud Run logs</td>
+    </tr>
+    <tr>
+      <td>Tabs missing after login</td>
+      <td>Old UI revision / cached static HTML</td>
+      <td>Hard refresh; confirm new Cloud Run revision</td>
+    </tr>
+    <tr>
+      <td>Brand sees all brands</td>
+      <td>Metrics called without session token</td>
+      <td>Ensure redeployed UI sends auth headers; re-login</td>
+    </tr>
+    <tr>
+      <td>Sessions disappear after deploy</td>
+      <td>In-memory sessions cleared on new revision</td>
+      <td>Expected — users sign in again</td>
+    </tr>
+  </table>
+
+  <h3>Logs</h3>
+  <pre>gcloud run services logs read suffai-command-center \
+  --region="$GCP_REGION" --project="$GOOGLE_CLOUD_PROJECT" --limit=50</pre>
+  <p>Look for <code>[command_center]</code> and <code>auth login ok</code> lines.</p>
+
+  <!-- QUICK ORDER -->
+  <h2>Recommended order (short)</h2>
+  <pre>0. gcloud auth + export PROJECT / REGION / EXTRACTION_URL / SIMILARITY_URL
+1. python3 command_center/scripts/generate_login_creds.py
+2. ./command_center/scripts/load_login_creds_bq.sh "$GOOGLE_CLOUD_PROJECT"
+3. ./deploy/04_integrate_command_center.sh
+4. curl health + auth login + open /login.html
+5. Distribute plaintext handoff offline</pre>
+
+  <h2>Reference docs in repo</h2>
+  <ul>
+    <li><code>docs/GCP_COMMAND_CENTER.md</code> — APIs, ACL matrix, BQ load notes</li>
+    <li><code>docs/GCP_REDEPLOY_E2E.md</code> — full end-to-end redeploy (campaign, Style, Bot)</li>
+    <li><code>command_center/scripts/generate_login_creds.py</code> — credential seed</li>
+    <li><code>command_center/scripts/load_login_creds_bq.sh</code> — BQ load</li>
+  </ul>
+
+  <div class="footer">
+    SuffAI / AI_CUP_latest — Deploy guide for role-based login ACL.
+    Sessions are in-memory on Cloud Run (TTL ~12h); revison restarts clear active sessions.
+    Out of scope: signup UI, Identity Platform, password reset.
+  </div>
+
+</body>
+</html>

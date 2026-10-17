@@ -1,323 +1,596 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full bg-[#FAF8F4] text-[#292722]">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>THRED_SPATIAL AI - Campaigns</title>
+  <title>SuffAI · Campaigns</title>
   <script src="./config.js"></script>
   <script src="./session.js"></script>
-  <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Outfit:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
-    :root { color-scheme: light; }
-    body { font-family: Inter, sans-serif; background-color: #FAF8F4; color: #292722; }
-    .font-mono { font-family: 'JetBrains Mono', monospace; }
-    ::-webkit-scrollbar { width: 8px; height: 8px; }
-    ::-webkit-scrollbar-track { background: #F0ECE4; }
-    ::-webkit-scrollbar-thumb { background: #DED7CB; border-radius: 4px; }
-    .glass-panel { background: #FAF8F4; border: 1px solid #E4DED3; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,.04); }
-    .field { width: 100%; background: #FFFFFF; border: 1px solid #E4DED3; color: #292722; border-radius: .5rem; padding: .55rem .65rem; font-size: .75rem; }
-    .field:focus { outline: 2px solid #89765C; border-color: #89765C; }
-    .field:disabled { background: #F5F2EC; color: #777066; }
-    .tag { display: inline-flex; align-items: center; gap: .3rem; border-radius: 999px; border: 1px solid #E4DED3; padding: .15rem .5rem; font-size: 10px; color: #4A4339; background: #F0ECE4; }
-    .sim-badge { border-color: #89765C; color: #66513B; background: #F7F1E7; font-weight: 600; }
-    .lbl-sm { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: #777066; font-weight: 600; }
-    .camp-item { display: block; width: 100%; text-align: left; padding: .7rem .8rem; border: 1px solid #E4DED3; border-radius: 10px; background: #FFFFFF; }
-    .camp-item:hover { border-color: #89765C; }
-    .camp-item.active { border-color: #89765C; box-shadow: 0 0 0 2px rgba(137,118,92,.18); background: #FBF8F2; }
-    .status { display: inline-flex; align-items: center; gap: .3rem; font-size: 10px; font-weight: 700; border-radius: 999px; padding: .1rem .5rem; border: 1px solid; }
-    .st-processing { color: #8A5A00; border-color: #E8C46A; background: #FFF7E0; }
-    .st-ranked { color: #3D5A80; border-color: #A9C1E0; background: #EEF4FB; }
-    .st-configured { color: #4A4339; border-color: #DED7CB; background: #F0ECE4; }
-    .st-launched { color: #1F6B45; border-color: #9ED3B5; background: #EAF7F0; }
-    .st-exported { color: #5B4B8A; border-color: #C6B8E8; background: #F3EFFB; }
-    .st-error, .st-ignored { color: #8B2E2E; border-color: #E5B4B4; background: #FBEEEE; }
-    .obj-card { position: relative; display: flex; flex-direction: column; gap: .25rem; padding: .7rem .8rem; border: 1px solid #E4DED3; border-radius: 10px; background: #FFFFFF; cursor: pointer; }
-    .obj-card input { position: absolute; opacity: 0; pointer-events: none; }
-    .obj-card:has(input:checked) { border-color: #89765C; box-shadow: 0 0 0 2px rgba(137,118,92,.18); }
-    .chan-btn { display: flex; align-items: center; gap: .6rem; padding: .7rem .8rem; border: 1px solid #E4DED3; border-radius: 10px; background: #FFFFFF; text-align: left; }
-    .chan-btn[aria-pressed="true"] { border-color: #89765C; background: #FBF8F2; box-shadow: 0 0 0 2px rgba(137,118,92,.18); }
-    .chan-btn:disabled { opacity: .55; cursor: not-allowed; }
-    .chan-check { width: 18px; height: 18px; border-radius: 5px; border: 1px solid #DED7CB; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; color: transparent; flex: none; }
-    .chan-btn[aria-pressed="true"] .chan-check { background: #89765C; border-color: #89765C; color: #FFFFFF; }
-    .sku-pick { display: flex; align-items: center; gap: .6rem; padding: .5rem .6rem; border: 1px solid #E4DED3; border-radius: 10px; background: #FFFFFF; cursor: pointer; }
-    .sku-pick:has(input:checked) { border-color: #89765C; background: #FBF8F2; }
-    .sku-pick.disabled { opacity: .5; cursor: not-allowed; }
-    .est-tile { background: #FFFFFF; border: 1px solid #E4DED3; border-radius: 10px; padding: .6rem .7rem; }
-    .est-tile .lbl { font-size: 9px; text-transform: uppercase; letter-spacing: .08em; color: #777066; font-weight: 600; }
-    .est-tile .val { font-family: 'JetBrains Mono', monospace; font-size: 15px; color: #292722; margin-top: .2rem; }
-    .est-tile .rng { font-size: 10px; color: #777066; margin-top: .1rem; }
-    .bubble-wa { background: #DCF8C6; border-radius: 10px 10px 2px 10px; padding: .6rem .75rem; font-size: 12px; color: #1F2A1F; white-space: pre-wrap; word-break: break-word; }
-    .bubble-sms { background: #E9E9EB; border-radius: 14px 14px 14px 4px; padding: .6rem .75rem; font-size: 12px; color: #1C1C1E; white-space: pre-wrap; word-break: break-word; }
+    :root {
+      color-scheme: light;
+      --cream: #FAF6EE; --panel: #FFFFFF; --raised: #F6EEF0; --line: #EAD9E0; --muted: #8A7480; --ink: #3B2733;
+      --plum: #6B3A55; --plum-dk: #552C43; --wine: #2A0F1F; --wine-2: #4A1A33; --gold: #C9A24A; --gold-lt: #F3D58A;
+      --ok: #3F7D3B; --bad: #A3301F; --ease: cubic-bezier(.22,.8,.24,1);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Outfit, system-ui, sans-serif; background: var(--cream); color: var(--ink); min-height: 100vh; }
+    button, input, select, textarea { font: inherit; color: inherit; }
+    button { cursor: pointer; background: none; border: 0; }
+    :focus-visible { outline: 3px solid rgba(201,162,74,.6); outline-offset: 2px; }
+    .mono { font-family: 'IBM Plex Mono', monospace; }
+    .display { font-family: 'Cormorant Garamond', Georgia, serif; }
+    [hidden] { display: none !important; }
+
+    /* Hero */
+    .hero { position: relative; overflow: hidden; color: #F7EAF0; padding: 22px 28px 26px;
+      background: radial-gradient(60% 120% at 85% 0%, rgba(224,178,84,.28), transparent 60%), linear-gradient(110deg, var(--wine) 0%, var(--wine-2) 55%, var(--plum) 100%); }
+    .hero-in { max-width: 1320px; margin: 0 auto; display: flex; align-items: flex-end; gap: 24px; flex-wrap: wrap; }
+    .back { display: inline-flex; align-items: center; gap: .45rem; padding: .4rem .8rem; border-radius: 999px; font-size: 12px; color: #F1DDE6; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.16); transition: background .2s; }
+    .back:hover { background: rgba(255,255,255,.16); }
+    .hero-title { flex: 1 1 420px; min-width: 0; }
+    .eyebrow { font-size: 10px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; color: var(--gold-lt); margin: 14px 0 4px; }
+    .hero h1 { font-family: 'Cormorant Garamond', Georgia, serif; font-size: clamp(1.9rem, 3vw, 2.6rem); line-height: 1.05; color: #fff; }
+    .hero-sub { font-size: 13px; color: #D9BFCB; margin-top: 6px; }
+    .hero-stats { display: flex; gap: 10px; flex-wrap: wrap; }
+    .hstat { min-width: 120px; padding: 10px 14px; border-radius: 14px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.14); }
+    .hstat span { display: block; font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; color: #C9A9B8; }
+    .hstat b { display: block; font: 600 20px 'IBM Plex Mono', monospace; color: #fff; margin-top: 2px; }
+
+    .why { margin-top: 24px; }
+    .why-h { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 1.6rem; color: var(--ink); margin: 0 0 10px 4px; }
+    .matrix { border-radius: 16px; overflow: hidden; color: #F7EAF0; border: 1px solid #3E1729;
+      background: radial-gradient(60% 120% at 90% 0%, rgba(224,178,84,.22), transparent 60%), linear-gradient(110deg, var(--wine) 0%, var(--wine-2) 55%, var(--plum) 100%); box-shadow: 0 16px 34px rgba(43,15,31,.18); }
+    .matrix table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    .matrix th, .matrix td { padding: 10px 16px; text-align: left; border-top: 1px solid rgba(255,255,255,.08); background: none; text-transform: none; font-family: inherit; }
+    .matrix thead th { border-top: 0; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #C9A9B8; font-weight: 600; }
+    .matrix thead th.us { color: var(--gold-lt); }
+    .matrix td:first-child { color: #D9BFCB; width: 22%; white-space: nowrap; }
+    .matrix td.us { color: #fff; font-weight: 500; background: linear-gradient(90deg, rgba(224,178,84,.14), rgba(224,178,84,.04)); }
+    .matrix td.us i { color: var(--gold-lt); margin-right: 8px; }
+    .matrix td.them { color: #B998A8; }
+    .matrix td.them i { color: #9C7F8D; margin-right: 8px; }
+    .matrix-cta { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 12px 16px; border-top: 1px solid rgba(255,255,255,.1); font-size: 12.5px; color: #F1DDE6; }
+    .matrix-cta button { display: inline-flex; align-items: center; gap: .45rem; padding: .55rem 1rem; border-radius: 10px; font-weight: 600; font-size: 13px; color: var(--wine); background: linear-gradient(135deg, var(--gold-lt), var(--gold)); }
+    @media (max-width: 700px) { .matrix td:first-child { white-space: normal; } .matrix th, .matrix td { padding: 9px 10px; } }
+    .wrap { max-width: 1320px; margin: 0 auto; padding: 24px 28px 60px; }
+    .grid { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 22px; align-items: start; }
+    @media (max-width: 1080px) { .grid { grid-template-columns: 1fr; } .side { position: static !important; } }
+    @media (max-width: 640px) { .wrap { padding: 16px; } .hero { padding: 18px 16px 22px; } }
+
+    .card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,.04); }
+    .step { padding: 18px 20px 20px; margin-bottom: 16px; animation: rise .5s var(--ease) backwards; }
+    .step:nth-child(2) { animation-delay: .05s; } .step:nth-child(3) { animation-delay: .1s; } .step:nth-child(4) { animation-delay: .15s; } .step:nth-child(5) { animation-delay: .2s; }
+    @keyframes rise { from { opacity: 0; transform: translateY(10px); } }
+    .step-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+    .num { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; font: 600 12px 'IBM Plex Mono', monospace; background: var(--raised); border: 1px solid #DCC3CE; color: var(--plum); flex: none; transition: background .3s, color .3s; }
+    .step.done .num { background: var(--plum); color: #fff; border-color: var(--plum); }
+    .step-head h2 { font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+    .step-head p { margin-left: auto; font-size: 11px; color: var(--muted); }
+
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip { display: inline-flex; align-items: center; gap: .4rem; padding: .35rem .75rem; border-radius: 999px; font-size: 12px; background: var(--raised); border: 1px solid var(--line); color: #552C43; }
+    .chip i { color: var(--plum); font-size: 11px; }
+    .aud-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+    .link { font-size: 12px; color: var(--plum); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+
+    /* Creatives picker */
+    .cgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 12px; }
+    .ctile { position: relative; text-align: left; border-radius: 14px; overflow: hidden; background: #fff; border: 1.5px solid var(--line); transition: border-color .25s, box-shadow .25s, transform .25s var(--ease); }
+    .ctile:hover { transform: translateY(-2px); box-shadow: 0 10px 22px rgba(59,39,51,.1); }
+    .ctile[aria-pressed="true"] { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(201,162,74,.2), 0 10px 22px rgba(107,58,85,.14); }
+    .ctile .img { aspect-ratio: 1; background: radial-gradient(circle at 50% 40%, #FFFFFF, #F3E3EA); display: grid; place-items: center; }
+    .ctile .img img { width: 100%; height: 100%; object-fit: contain; padding: 8px; }
+    .ctile .img i { font-size: 28px; color: #DCC3CE; }
+    .ctile .meta { padding: 8px 10px 10px; }
+    .ctile .meta b { display: block; font-size: 11.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ctile .meta span { font: 500 10px 'IBM Plex Mono', monospace; color: var(--muted); }
+    .ctile .badge { position: absolute; top: 8px; left: 8px; font: 600 10px 'IBM Plex Mono', monospace; padding: .15rem .45rem; border-radius: 999px; background: rgba(20,6,13,.6); color: #fff; }
+    .ctile .tick { position: absolute; top: 8px; right: 8px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; background: rgba(255,255,255,.85); color: transparent; border: 1px solid var(--line); transition: background .2s, color .2s; }
+    .ctile[aria-pressed="true"] .tick { background: var(--gold); color: var(--wine); border-color: var(--gold); }
+    .seg { display: inline-flex; padding: 3px; border-radius: 12px; background: var(--raised); border: 1px solid var(--line); margin-top: 14px; }
+    .seg button { padding: .45rem .85rem; border-radius: 9px; font-size: 12px; color: var(--muted); transition: background .25s, color .25s; }
+    .seg button[aria-pressed="true"] { background: #fff; color: var(--plum); font-weight: 600; box-shadow: 0 2px 6px rgba(59,39,51,.08); }
+    .hint { font-size: 11px; color: var(--muted); margin-top: 8px; }
+
+    /* Channels */
+    .chgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(178px, 1fr)); gap: 10px; }
+    .chtile { display: flex; align-items: center; gap: 10px; padding: 12px; border-radius: 14px; border: 1.5px solid var(--line); background: #fff; text-align: left; transition: border-color .25s, background .25s, transform .25s var(--ease); }
+    .chtile:hover { transform: translateY(-1px); }
+    .chtile .ic { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: var(--raised); color: var(--plum); font-size: 15px; flex: none; transition: background .25s, color .25s; }
+    .chtile b { display: block; font-size: 13px; } .chtile span { font-size: 10.5px; color: var(--muted); }
+    .chtile[aria-pressed="true"] { border-color: var(--plum); background: #FBF5F7; }
+    .chtile[aria-pressed="true"] .ic { background: var(--plum); color: #fff; }
+
+    /* Form fields */
+    .fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 14px; }
+    .fields .full { grid-column: 1 / -1; }
+    @media (max-width: 640px) { .fields { grid-template-columns: 1fr; } }
+    label.f { display: block; font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+    .in { width: 100%; margin-top: 5px; background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: .6rem .7rem; font-size: 13px; text-transform: none; letter-spacing: normal; font-weight: 400; color: var(--ink); transition: border-color .2s, box-shadow .2s; }
+    .in:focus { outline: none; border-color: var(--plum); box-shadow: 0 0 0 3px rgba(197,159,176,.35); }
+    .in.err { border-color: var(--bad); box-shadow: 0 0 0 3px rgba(163,48,31,.12); }
+    textarea.in { resize: vertical; min-height: 92px; line-height: 1.5; }
+    select.in { appearance: none; padding-right: 2rem; background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%238A7480' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 8l4 4 4-4'/%3E%3C/svg%3E") no-repeat right .6rem center / 16px; }
+    .count { float: right; font: 500 10px 'IBM Plex Mono', monospace; color: var(--muted); text-transform: none; letter-spacing: 0; }
+    .ferr { font-size: 11px; color: var(--bad); margin-top: 4px; text-transform: none; letter-spacing: 0; font-weight: 500; min-height: 0; }
+    .url-out { display: block; text-transform: none; letter-spacing: 0; font: 400 11px 'IBM Plex Mono', monospace; color: var(--muted); word-break: break-all; margin-top: 6px; }
+    .radios { display: flex; gap: 10px; flex-wrap: wrap; }
+    .radio { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 12px; border: 1.5px solid var(--line); font-size: 13px; cursor: pointer; transition: border-color .2s, background .2s; }
+    .radio:has(input:checked) { border-color: var(--plum); background: #FBF5F7; }
+    .radio input { accent-color: var(--plum); }
+    .switch { display: flex; align-items: center; gap: 10px; font-size: 13px; cursor: pointer; }
+    .switch input { appearance: none; width: 38px; height: 22px; border-radius: 999px; background: #DCC3CE; position: relative; transition: background .25s; flex: none; }
+    .switch input::after { content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .25s var(--ease); box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+    .switch input:checked { background: var(--plum); }
+    .switch input:checked::after { transform: translateX(16px); }
+
+    /* Side: preview + summary */
+    .side { position: sticky; top: 16px; display: flex; flex-direction: column; gap: 16px; }
+    .side { max-height: calc(100vh - 32px); overflow-y: auto; scrollbar-width: none; padding-bottom: 4px; }
+    .side::-webkit-scrollbar { display: none; }
+    .pv { padding: 0; background: none; border: 0; box-shadow: none; }
+    .pv-head { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+    .pv-head h3 { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--plum); }
+    .pv-tabs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; padding: 3px; border-radius: 12px; background: #fff; border: 1px solid var(--line); }
+    .pv-tabs button { padding: .4rem .2rem; border-radius: 9px; font-size: 11px; white-space: nowrap; color: var(--muted); transition: background .2s, color .2s; }
+    .pv-tabs button[aria-selected="true"] { background: var(--plum); color: #fff; font-weight: 600; }
+    .pv-tabs button.inc::before { content: ''; display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: #C9A24A; margin-right: 5px; vertical-align: 1px; }
+    .pv-vars { display: flex; justify-content: center; gap: 6px; margin-top: 12px; }
+    .pv-vars:empty { display: none; }
+    .pv-vars button { min-width: 34px; padding: .3rem .6rem; border-radius: 9px; font: 600 11px 'IBM Plex Mono', monospace; color: var(--muted); background: #fff; border: 1px solid var(--line); }
+    .pv-vars button[aria-pressed="true"] { background: var(--gold); border-color: var(--gold); color: var(--wine); }
+    .ctile.focus { outline: 2px solid var(--plum); outline-offset: 2px; }
+    .ctile .eye { position: absolute; left: 8px; bottom: 54px; font-size: 9.5px; font-weight: 600; padding: .12rem .45rem; border-radius: 999px; background: var(--plum); color: #fff; }
+    /* iPhone: titanium frame, side buttons, Dynamic Island, home indicator */
+    .iphone { position: relative; margin: 0 auto; width: 300px; height: 624px; border-radius: 54px; padding: 11px;
+      background: linear-gradient(145deg, #3a3a3e, #121214 45%, #2a2a2d);
+      box-shadow: inset 0 0 0 1.5px #55555a, inset 0 0 0 5px #0c0c0d, 0 34px 60px rgba(43,15,31,.28), 0 10px 20px rgba(0,0,0,.18); }
+    .iphone::before, .iphone::after { content: ''; position: absolute; width: 3px; border-radius: 2px; background: #2a2a2d; }
+    .iphone::before { left: -3px; top: 132px; height: 64px; box-shadow: 0 -46px 0 -10px #2a2a2d; }
+    .iphone::after { right: -3px; top: 168px; height: 92px; }
+    .screen { position: relative; height: 100%; border-radius: 44px; overflow: hidden; background: #F2F2F4; color: #1c1c1e; font-size: 12px; }
+    .feed { position: absolute; inset: 0; overflow-y: auto; scroll-snap-type: y proximity; scroll-behavior: smooth; scrollbar-width: none; --scr-h: 602px; }
+    .feed::-webkit-scrollbar { display: none; }
+    .feed:focus-visible { outline: none; }
+    .mode { position: relative; min-height: var(--scr-h); scroll-snap-align: start; }
+    .mode + .mode { border-top: 6px solid #E4DADF; }
+    .feed .scr { position: relative; inset: auto; min-height: var(--scr-h); overflow: visible; animation: none; }
+    .mode.off::after { content: 'Not in this campaign · add it in step 3'; position: absolute; left: 50%; bottom: 92px; translate: -50% 0; z-index: 7; white-space: nowrap;
+      font-size: 10px; font-weight: 600; padding: .25rem .6rem; border-radius: 999px; background: rgba(28,8,18,.78); color: #F3D58A; }
+    .scr { position: absolute; inset: 0; overflow-y: auto; scrollbar-width: none; display: flex; flex-direction: column; animation: fade .35s ease; }
+    .scr::-webkit-scrollbar { display: none; }
+    .island { position: absolute; top: 11px; left: 50%; translate: -50% 0; width: 94px; height: 28px; border-radius: 20px; background: #000; z-index: 6; }
+    .sbar { position: sticky; top: 0; z-index: 5; flex: none; height: 50px; display: flex; align-items: center; justify-content: space-between; padding: 4px 26px 0 32px; font: 600 14px Outfit, system-ui; color: var(--sb, #111); background: var(--sbg, transparent); }
+    .sbar span:last-child { display: inline-flex; gap: 5px; align-items: center; font-size: 11px; }
+    .home-ind { position: absolute; bottom: 8px; left: 50%; translate: -50% 0; width: 110px; height: 5px; border-radius: 3px; background: var(--hi, #111); z-index: 6; }
+    .apphd { flex: none; display: flex; align-items: center; gap: 8px; padding: 6px 14px 10px; }
+    .apphd b { font-size: 15px; }
+    .apphd .ico { margin-left: auto; display: flex; gap: 14px; color: #555; }
+    .pv-tag { display: inline-block; font-size: 9.5px; padding: .1rem .45rem; border-radius: 4px; background: #E8F0FE; color: #1A56C4; margin-left: 6px; vertical-align: 2px; font-weight: 600; }
+    /* WhatsApp */
+    .wa-head { flex: none; display: flex; align-items: center; gap: 8px; padding: 4px 12px 10px; background: #fff; border-bottom: 1px solid #e6e6e6; }
+    .wa-head .av, .sms-av { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: var(--plum); color: #fff; font-weight: 700; flex: none; }
+    .wa-head small { display: block; font-size: 10px; color: #667; }
+    .wa-head .ico { margin-left: auto; display: flex; gap: 16px; color: #128C7E; font-size: 14px; }
+    .wa-chat { flex: 1; padding: 10px 10px 70px; background: #EFE7DD radial-gradient(rgba(0,0,0,.035) 1px, transparent 1px) 0 0 / 14px 14px; }
+    .day { display: table; margin: 4px auto 10px; font-size: 10px; padding: .2rem .6rem; border-radius: 6px; background: #fff; color: #667; box-shadow: 0 1px 1px rgba(0,0,0,.06); }
+    .wa-chat .bubble { background: #fff; border-radius: 4px 12px 12px 12px; padding: 5px; max-width: 92%; }
+    .wa-chat .bubble .pv-img { border-radius: 8px; }
+    .wa-chat .bubble .txt { padding: 6px 5px 2px; }
+    .meta-t { display: block; text-align: right; font-size: 9px; color: #889; margin-top: 2px; }
+    .inputbar { position: absolute; left: 0; right: 0; bottom: 0; z-index: 4; display: flex; align-items: center; gap: 8px; padding: 8px 12px 22px; background: rgba(246,246,246,.94); }
+    .inputbar span { flex: 1; padding: .45rem .8rem; border-radius: 999px; background: #fff; border: 1px solid #e3e3e3; color: #999; font-size: 11.5px; }
+    .inputbar i { color: #128C7E; font-size: 15px; }
+    /* SMS / iMessage */
+    .sms-head { flex: none; text-align: center; padding: 0 12px 10px; border-bottom: 1px solid #e3e3e5; background: rgba(250,250,252,.95); }
+    .sms-head .sms-av { margin: 0 auto 4px; }
+    .sms-head b { font-size: 11.5px; font-weight: 500; }
+    .sms-chat { flex: 1; padding: 12px 12px 70px; background: #fff; }
+    .sms-chat .bubble { background: #E9E9EB; border-radius: 18px 18px 18px 6px; }
+    .sms-chat .lnk { color: #0A66D8; text-decoration: underline; }
+    /* Lock screen */
+    .lock { flex: 1; color: #fff; background: radial-gradient(120% 70% at 50% 0%, #8A3A60 0%, #4A1A33 45%, #1C0812 100%); padding-bottom: 60px; }
+    .lock .lk { text-align: center; font-size: 13px; opacity: .85; }
+    .lock .date { text-align: center; font-size: 13px; font-weight: 500; opacity: .9; margin-top: 4px; }
+    .lock .time { text-align: center; font: 600 64px/1 Outfit, system-ui; letter-spacing: -.02em; margin: 2px 0 26px; }
+    .lock .ntf { margin: 0 10px; }
+    .lock .ntf + .ntf { margin-top: -14px; transform: scale(.94); opacity: .55; position: relative; z-index: -1; }
+    .lock-btns { position: absolute; left: 0; right: 0; bottom: 30px; display: flex; justify-content: space-between; padding: 0 34px; }
+    .lock-btns span { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,.18); backdrop-filter: blur(8px); font-size: 14px; }
+    /* Brand app home (in-app) */
+    .ah { flex: none; color: #fff; background: linear-gradient(160deg, var(--plum), var(--wine-2)); border-radius: 0 0 26px 26px; padding-bottom: 14px; }
+    .ah-row { display: flex; align-items: center; gap: 10px; padding: 2px 14px 0; }
+    .ah-av { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,.18); border: 1.5px solid rgba(255,255,255,.4); font-weight: 600; font-size: 14px; flex: none; }
+    .ah-row b { display: block; font-size: 14px; } .ah-row small { font-size: 11px; opacity: .85; }
+    .ah-ico { margin-left: auto; display: flex; gap: 6px; }
+    .ah-ico span { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; background: rgba(255,255,255,.16); font-size: 12px; }
+    .ah-body { padding: 12px 12px 74px; display: flex; flex-direction: column; gap: 12px; }
+    .banner { position: relative; display: grid; grid-template-columns: 1fr 44%; align-items: center; gap: 6px; padding: 12px; border-radius: 16px; background: #fff; box-shadow: 0 4px 14px rgba(0,0,0,.07); overflow: hidden; }
+    .banner h4 { font: 700 15px/1.15 Outfit, system-ui; color: var(--wine); text-transform: uppercase; letter-spacing: .01em; }
+    .banner p { font-size: 10px; color: #666; margin-top: 4px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+    .banner .code { display: inline-block; margin-top: 6px; font: 600 10px 'IBM Plex Mono', monospace; padding: .15rem .45rem; border-radius: 5px; background: #FBF1DC; color: #8C6A22; border: 1px dashed #E8C27A; }
+    .banner .pv-cta { margin-top: 8px; padding: .38rem .7rem; font-size: 10.5px; }
+    .banner .pv-img { aspect-ratio: 1; border-radius: 12px; }
+    .chips2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .chips2 span { display: flex; align-items: center; gap: 7px; padding: 8px 9px; border-radius: 12px; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.05); font-size: 11px; font-weight: 500; }
+    .chips2 i.b { width: 22px; height: 22px; border-radius: 7px; display: grid; place-items: center; background: var(--plum); color: #fff; font-size: 10px; font-style: normal; }
+    .chips2 .fa-chevron-right { margin-left: auto; color: #aaa; font-size: 9px; }
+    .sec-t { font-size: 13px; font-weight: 600; margin: 2px 2px -4px; }
+    .hscroll { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: 0 -12px; padding: 2px 12px; }
+    .pcard { flex: 0 0 118px; border-radius: 12px; background: #fff; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+    .pcard .pv-img { aspect-ratio: 1; border-radius: 0; }
+    .pcard div { padding: 6px 8px 8px; }
+    .pcard b { display: block; font-size: 10.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .pcard small { font-size: 9.5px; color: var(--plum); font-weight: 600; }
+    .tabbar { position: absolute; left: 0; right: 0; bottom: 0; z-index: 4; display: flex; justify-content: space-around; padding: 9px 10px 22px; background: rgba(255,255,255,.96); border-top: 1px solid #eee; color: #999; font-size: 15px; }
+    .tabbar .on { color: var(--plum); }
+    .pv-body { padding: 10px 12px 16px; animation: fade .35s ease; }
+    @keyframes fade { from { opacity: 0; transform: translateY(6px); } }
+    .pv-img { width: 100%; aspect-ratio: 4 / 3; border-radius: 12px; object-fit: contain; background: radial-gradient(circle at 50% 40%, #FFFFFF, #F3E3EA); display: block; }
+    .pv-cta { display: inline-block; margin-top: 10px; padding: .5rem .9rem; border-radius: 8px; background: var(--plum); color: #fff; font-weight: 600; font-size: 11.5px; }
+    .em-from { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+    .em-av { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--plum); color: #fff; font-weight: 700; font-size: 12px; flex: none; }
+    .em-subj { font-weight: 700; font-size: 13px; margin-bottom: 8px; }
+    .em-card { background: #fff; border-radius: 12px; padding: 10px; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+    .em-card h4 { font-family: 'Cormorant Garamond', serif; font-size: 18px; margin: 10px 0 4px; color: var(--ink); }
+    .em-card p { color: #555; line-height: 1.45; white-space: pre-wrap; }
+    .em-foot { font-size: 9px; color: #999; margin-top: 10px; text-align: center; }
+    .bubble { max-width: 88%; padding: 8px 10px; border-radius: 14px 14px 14px 4px; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.08); line-height: 1.45; white-space: pre-wrap; word-break: break-word; }
+    .sms .bubble { background: #E9E9EB; }
+    .wa { background: #EFE7DD; min-height: 100%; }
+    .wa .bubble { background: #fff; }
+    .wa .bubble img { margin-bottom: 6px; }
+    .wa-btn { display: block; text-align: center; margin-top: 6px; padding: 7px; border-radius: 10px; background: #fff; color: #128C7E; font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+    .push { background: linear-gradient(160deg, #4A1A33, #1C0812); min-height: 100%; color: #fff; }
+    .push .time { text-align: center; font: 300 46px Outfit; margin: 26px 0 2px; }
+    .push .date { text-align: center; font-size: 11px; opacity: .8; margin-bottom: 18px; }
+    .ntf { display: flex; gap: 8px; padding: 10px; border-radius: 16px; background: rgba(255,255,255,.88); color: #222; backdrop-filter: blur(10px); }
+    .ntf .app { width: 26px; height: 26px; border-radius: 7px; background: var(--plum); color: var(--gold-lt); display: grid; place-items: center; font-size: 12px; flex: none; }
+    .ntf b { display: block; font-size: 12px; } .ntf p { font-size: 11px; color: #444; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+    .ntf img { width: 42px; height: 42px; border-radius: 8px; object-fit: cover; flex: none; background: #F3E3EA; }
+    .inapp { background: rgba(20,6,13,.55); min-height: 100%; display: grid; place-items: center; padding: 18px; }
+    .modal { background: #fff; border-radius: 18px; overflow: hidden; text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,.35); }
+    .modal .pv-img { border-radius: 0; }
+    .modal div { padding: 12px; }
+    .modal h4 { font-family: 'Cormorant Garamond', serif; font-size: 19px; color: var(--ink); }
+    .modal p { color: #555; font-size: 11.5px; margin-top: 4px; }
+    .pv-note { font-size: 11px; color: var(--muted); text-align: center; margin-top: 12px; }
+
+    .sum { padding: 16px 18px; }
+    .sum h3 { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+    .sum dl { display: grid; grid-template-columns: auto 1fr; gap: 8px 12px; font-size: 12.5px; }
+    .sum dt { color: var(--muted); } .sum dd { text-align: right; font-weight: 500; min-width: 0; overflow-wrap: anywhere; }
+    .errs { margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: rgba(163,48,31,.06); border: 1px solid rgba(163,48,31,.25); color: var(--bad); font-size: 12px; }
+    .errs li { margin-left: 16px; }
+    .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: .45rem; padding: .7rem .9rem; border-radius: 12px; font-size: 13px; font-weight: 600; border: 1px solid var(--line); background: #fff; color: var(--ink); transition: transform .2s var(--ease), box-shadow .2s, background .2s; }
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 6px 14px rgba(59,39,51,.08); }
+    .btn.primary { grid-column: 1 / -1; padding: .85rem; font-size: 14px; border: 0; color: var(--wine); background: linear-gradient(135deg, var(--gold-lt), var(--gold)); box-shadow: 0 10px 22px rgba(201,162,74,.35); }
+    .btn.primary:hover { box-shadow: 0 14px 28px rgba(201,162,74,.45); }
+    .note { font-size: 11px; color: var(--muted); margin-top: 10px; line-height: 1.5; }
+
+    /* History */
+    .hist { margin-top: 24px; overflow: hidden; }
+    .hist-head { padding: 16px 20px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+    .hist-head h2 { font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+    .tbl-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    th { text-align: left; padding: 10px 16px; font: 500 10px 'IBM Plex Mono', monospace; text-transform: uppercase; color: var(--muted); background: var(--raised); white-space: nowrap; }
+    td { padding: 11px 16px; border-top: 1px solid var(--line); vertical-align: middle; }
+    .st { display: inline-flex; align-items: center; gap: .35rem; padding: .2rem .6rem; border-radius: 999px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+    .st.draft { background: var(--raised); color: var(--muted); }
+    .st.ready { background: #FBF1DC; color: #8C6A22; }
+    .row-act { display: flex; gap: 6px; justify-content: flex-end; }
+    .row-act button { padding: .3rem .6rem; border-radius: 8px; font-size: 11.5px; border: 1px solid var(--line); }
+    .row-act button:hover { border-color: var(--plum); color: var(--plum); }
+    .empty-row { padding: 26px; text-align: center; color: var(--muted); font-size: 13px; }
+
+    .sample-bar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 18px; padding: 12px 14px 12px 12px; border-radius: 14px;
+      background: linear-gradient(90deg, #FBF1DC, #FFF8EC); border: 1px solid #E8C27A; color: #6E4C10; font-size: 13px; }
+    .sample-bar p { flex: 1 1 360px; min-width: 0; }
+    .sample-bar .sb-ic { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: #fff; color: #C9A24A; border: 1px solid #E8C27A; flex: none; }
+    .sample-bar .btn { padding: .55rem .9rem; }
+    .btn:disabled { opacity: .45; cursor: not-allowed; transform: none; box-shadow: none; }
+
+    .toast { position: fixed; left: 50%; bottom: 24px; z-index: 99; translate: -50% 20px; opacity: 0; pointer-events: none; display: flex; align-items: center; gap: 10px; max-width: min(560px, calc(100vw - 32px));
+      padding: 12px 16px; border-radius: 14px; background: var(--wine); color: #F7EAF0; font-size: 13px; box-shadow: 0 16px 34px rgba(0,0,0,.3); transition: opacity .3s, translate .4s var(--ease); }
+    .toast.on { opacity: 1; translate: -50% 0; }
+    .toast i { color: var(--gold-lt); }
+
+    /* Merged: backend-driven campaign states, budget + tracking tiles */
+    .st.processing { background: #FFF7E0; color: #8A5A00; }
+    .st.ranked, .st.configured { background: #FBF1DC; color: #8C6A22; }
+    .st.launched { background: #EAF7F0; color: #1F6B45; }
+    .st.exported { background: #F3EFFB; color: #5B4B8A; }
+    .st.error, .st.ignored { background: rgba(163,48,31,.08); color: var(--bad); }
+    .st-head { margin-left: auto; }
+    .step-head .st-head + p { margin-left: 10px; }
+    .notice { margin-top: 12px; padding: 10px 12px; border-radius: 10px; font-size: 12px; }
+    .notice.wait { background: #FFF7E0; border: 1px solid #E8C46A; color: #6B4A00; }
+    .notice.bad { background: rgba(163,48,31,.06); border: 1px solid rgba(163,48,31,.25); color: var(--bad); }
+    .src-note { font-size: 12px; color: var(--muted); margin-top: 10px; }
+    .ctile:disabled { opacity: .5; cursor: not-allowed; transform: none; box-shadow: none; }
+    .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+    .tile { padding: 9px 11px; border-radius: 12px; background: #fff; border: 1px solid var(--line); min-width: 0; }
+    .tile span { display: block; font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+    .tile b { display: block; font: 600 15px 'IBM Plex Mono', monospace; color: var(--ink); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .tile small { display: block; font-size: 10px; color: var(--muted); margin-top: 1px; }
+    .rec { padding: 14px 16px; border-radius: 14px; border: 1.5px solid var(--gold); background: linear-gradient(90deg, #FBF1DC, #FFF8EC); margin-bottom: 14px; }
+    .rec-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .rec-top .big { font: 600 24px 'IBM Plex Mono', monospace; color: var(--ink); margin-top: 2px; }
+    .rec-top .big small { font-size: 12px; color: var(--muted); font-weight: 500; }
+    .rec .range { font-size: 11.5px; color: #6E4C10; margin-top: 2px; }
+    .rec-bar { margin-top: 8px; }
+    .rec-bar .row { display: flex; justify-content: space-between; font-size: 11.5px; }
+    .rec-bar .track { height: 6px; border-radius: 6px; background: rgba(255,255,255,.7); overflow: hidden; margin-top: 3px; }
+    .rec-bar .track i { display: block; height: 100%; background: var(--plum); border-radius: 6px; }
+    .rec ul { margin-top: 8px; padding-left: 16px; font-size: 11.5px; color: #6E4C10; }
+    .sub-h { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin: 16px 0 8px; font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+    .sub-h em { font-style: normal; text-transform: none; letter-spacing: 0; font-weight: 400; }
+    .sim { display: inline-flex; align-items: center; gap: .3rem; padding: .12rem .5rem; border-radius: 999px; font-size: 10px; font-weight: 600; text-transform: none; letter-spacing: 0; background: #FBF1DC; color: #8C6A22; border: 1px solid #E8C27A; }
+    .mini { width: 100%; font-size: 11.5px; margin-top: 8px; }
+    .mini th { padding: 6px 10px; }
+    .mini td { padding: 7px 10px; font-family: 'IBM Plex Mono', monospace; }
+    .mini td:first-child { font-family: inherit; font-weight: 600; }
+    .track-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+    .filters { display: flex; gap: 6px; flex-wrap: wrap; }
+    .filters button { padding: .3rem .7rem; border-radius: 999px; font-size: 11.5px; border: 1px solid var(--line); background: #fff; color: var(--muted); }
+    .filters button[aria-pressed="true"] { background: var(--plum); border-color: var(--plum); color: #fff; }
+    tr.active td { background: #FBF5F7; }
+    fieldset { border: 0; min-width: 0; }
+    fieldset:disabled .step { opacity: .72; }
+    .mode.soon::after { content: 'Preview only · not sent by SuffAI yet'; }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
   </style>
 </head>
-<body class="h-screen flex flex-col overflow-hidden">
-  <script>
-    if (!SuffaiSession.requireAuth('campaigns')) { /* redirected */ }
-  </script>
+<body>
+  <script>if (!SuffaiSession.requireAuth('campaigns')) { /* redirected */ }</script>
 
-  <header class="glass-panel z-30 border-b border-[#E4DED3] px-4 py-3 flex-none flex items-center justify-between gap-4">
-    <div class="flex items-center gap-3 min-w-0">
-      <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-[#89765C] via-[#292722] to-[#DED7CB] p-[2px] flex-none">
-        <div class="bg-[#FAF8F4] w-full h-full rounded-[10px] flex items-center justify-center"><i class="fa-solid fa-bullhorn text-[#89765C] text-lg"></i></div>
+  <header class="hero">
+    <div class="hero-in">
+      <div class="hero-title">
+        <button type="button" class="back" id="backBtn"><i class="fa-solid fa-chevron-left"></i> Back to Ads Lab</button>
+        <p class="eyebrow">1P Campaign Studio · <span class="sim" style="background:rgba(255,255,255,.1);color:#F3D58A;border-color:rgba(243,213,138,.5)"><i class="fa-solid fa-flask"></i> Simulated delivery &amp; outcomes</span></p>
+        <h1 id="heroTitle">You don't have any active campaigns yet</h1>
+        <p class="hero-sub" id="heroSub">Rank SKUs in Ads Lab, then reach that audience on In-app, WhatsApp and SMS.</p>
       </div>
-      <div class="min-w-0">
-        <h1 class="font-extrabold text-lg sm:text-xl tracking-wider text-[#292722] font-mono">CAMPAIGNS <span class="text-[10px] px-2 py-0.5 rounded bg-[#F0ECE4] text-[#89765C] border border-[#E4DED3]">Run on SuffAI</span></h1>
-        <p class="text-[11px] text-[#777066]">Name, channels, budget and tracking for your 1P campaigns.</p>
+      <div class="hero-stats" aria-live="polite">
+        <div class="hstat"><span>Reachable customers</span><b id="hsCustomers">—</b></div>
+        <div class="hstat"><span>Ranked SKUs</span><b id="hsCreatives">0</b></div>
+        <div class="hstat"><span>Best fit</span><b id="hsBest">—</b></div>
       </div>
     </div>
-    <span class="tag sim-badge flex-none" title="SuffAI does not deliver messages or ads yet. Delivery, cost and outcome metrics are simulated."><i class="fa-solid fa-flask"></i> Simulated delivery &amp; outcomes</span>
   </header>
 
-  <main class="flex-1 flex min-h-0 overflow-hidden">
-    <aside class="w-80 max-w-[42vw] flex-none border-r border-[#E4DED3] bg-[#F0ECE4] flex flex-col min-h-0">
-      <div class="p-4 pb-2 flex items-center justify-between gap-2">
-        <h2 class="text-xs font-bold uppercase tracking-wider">Your campaigns</h2>
-        <button id="refreshBtn" type="button" class="text-[10px] px-2 py-1 border border-[#DED7CB] rounded-lg bg-white hover:border-[#89765C]"><i class="fa-solid fa-rotate mr-1"></i>Refresh</button>
-      </div>
-      <div id="statusFilter" class="px-4 pb-2 flex flex-wrap gap-1" role="tablist" aria-label="Filter by status">
-        <button type="button" class="tag" data-filter="">All</button>
-        <button type="button" class="tag" data-filter="ready">Ready</button>
-        <button type="button" class="tag" data-filter="processing">Processing</button>
-        <button type="button" class="tag" data-filter="launched">Running</button>
-        <button type="button" class="tag" data-filter="exported">Exported</button>
-      </div>
-      <div id="campaignList" class="flex-1 overflow-y-auto px-4 pb-4 space-y-2" aria-live="polite">
-        <p class="text-xs text-[#777066]">Loading campaigns…</p>
-      </div>
-    </aside>
+  <main class="wrap">
+    <section id="noDraft" class="sample-bar" role="note">
+      <span class="sb-ic"><i class="fa-solid fa-wand-magic-sparkles"></i></span>
+      <p><b>You're looking at a sample campaign.</b> Pick one of your campaigns below, or rank SKUs in Ads Lab and choose <b>Set up 1P campaign</b>.</p>
+      <button type="button" class="btn" id="goAds">Open Ads Lab <i class="fa-solid fa-arrow-right"></i></button>
+    </section>
 
-    <section id="mainScroll" class="flex-1 min-w-0 overflow-y-auto p-4 sm:p-6 space-y-5">
-      <div id="emptyEditor" class="glass-panel rounded-xl min-h-[260px] flex flex-col items-center justify-center text-center p-8">
-        <i class="fa-solid fa-bullhorn text-5xl text-[#DED7CB] mb-4"></i>
-        <p class="text-sm font-mono text-[#89765C]">Select a campaign to configure or track it.</p>
-        <p class="text-xs text-[#777066] mt-2 max-w-md">New campaigns come from Ads Lab: submit a ranking job, then choose <b>Run on SuffAI (1P)</b>.</p>
-      </div>
-
-      <div id="editor" class="hidden space-y-5">
-        <section class="glass-panel rounded-xl p-4 sm:p-5">
-          <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3">
-            <div class="min-w-0 flex-1">
-              <label class="lbl-sm block">Campaign name (required)<input id="campaignName" type="text" maxlength="120" class="field mt-1 text-sm font-semibold" placeholder="e.g. Koramangala Champions — Festive" /></label>
-              <div id="audienceChips" class="flex flex-wrap gap-1.5 mt-2"></div>
-              <p id="sourceNote" class="text-[11px] text-[#777066] mt-2 hidden"></p>
+    <div class="grid" id="studio">
+      <div>
+        <section class="card step" id="trackingSection" hidden>
+          <div class="track-head">
+            <div>
+              <div class="step-head" style="margin-bottom:4px"><span class="num"><i class="fa-solid fa-chart-line"></i></span><h2>Campaign tracking</h2><span class="sim" style="margin-left:8px">Simulated</span></div>
+              <p class="hint" id="trackingNote"></p>
             </div>
-            <div class="flex items-center gap-2 flex-none">
-              <span id="statusPill" class="status st-ranked">ranked</span>
-            </div>
+            <button type="button" class="btn" id="openMonitorBtn"><i class="fa-solid fa-display"></i> Open monitor</button>
           </div>
-          <div id="processingNote" class="hidden mt-3 rounded-lg border border-[#E8C46A] bg-[#FFF7E0] p-3 text-xs text-[#6B4A00]">
-            <i class="fa-solid fa-circle-notch animate-spin mr-1"></i>The extract &amp; rank job for this campaign is still running. You can configure it once it completes.
-          </div>
-          <div id="errorNote" class="hidden mt-3 rounded-lg border border-[#E5B4B4] bg-[#FBEEEE] p-3 text-xs text-[#8B2E2E]"></div>
+          <div class="tiles" id="impactGrid"></div>
+          <div class="tbl-wrap"><table class="mini">
+            <thead><tr><th>Channel</th><th>Spend</th><th>Sent</th><th>Delivered</th><th>Reach</th><th>Clicks</th><th>CTR</th><th>Conv.</th><th>Revenue</th><th>ROAS</th></tr></thead>
+            <tbody id="channelTrackBody"></tbody>
+          </table></div>
         </section>
 
-        <section id="trackingSection" class="glass-panel rounded-xl p-4 sm:p-5 space-y-4 hidden">
-          <div class="flex items-start justify-between gap-3">
-            <div>
-              <h3 class="text-xs font-bold uppercase tracking-wider"><i class="fa-solid fa-chart-line text-[#89765C] mr-2"></i>Campaign tracking <span class="tag sim-badge ml-1">Simulated</span></h3>
-              <p id="trackingNote" class="text-[10px] text-[#777066] mt-1"></p>
-            </div>
-            <button id="openMonitorBtn" type="button" class="px-3 py-2 border border-[#89765C] text-[#66513B] rounded-lg text-xs font-bold hover:bg-[#F7F1E7]"><i class="fa-solid fa-display mr-1"></i>Open monitor</button>
-          </div>
-          <div id="impactGrid" class="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-2"></div>
-          <div class="overflow-x-auto">
-            <table class="w-full text-left text-xs whitespace-nowrap">
-              <thead class="bg-[#F0ECE4] text-[#777066] font-mono text-[10px] uppercase"><tr><th class="px-3 py-2">Channel</th><th class="px-3 py-2">Spend</th><th class="px-3 py-2">Sent</th><th class="px-3 py-2">Delivered</th><th class="px-3 py-2">Reach</th><th class="px-3 py-2">Clicks</th><th class="px-3 py-2">CTR</th><th class="px-3 py-2">Conv.</th><th class="px-3 py-2">Revenue</th><th class="px-3 py-2">ROAS</th></tr></thead>
-              <tbody id="channelTrackBody" class="divide-y divide-[#E4DED3]"></tbody>
-            </table>
-          </div>
-        </section>
-
-        <fieldset id="configFields" class="space-y-5">
-          <section class="glass-panel rounded-xl p-4 sm:p-5 space-y-4">
-            <h3 class="text-xs font-bold uppercase tracking-wider"><i class="fa-solid fa-bullseye text-[#89765C] mr-2"></i>Objective &amp; channels</h3>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2" role="radiogroup" aria-label="Campaign objective">
-              <label class="obj-card"><input type="radio" name="objective" value="awareness"><span class="font-bold text-xs">Awareness</span><span class="text-[10px] text-[#777066]">Reach most of the audience; lower cost per contact.</span></label>
-              <label class="obj-card"><input type="radio" name="objective" value="consideration" checked><span class="font-bold text-xs">Consideration</span><span class="text-[10px] text-[#777066]">Drive product views and clicks.</span></label>
-              <label class="obj-card"><input type="radio" name="objective" value="conversion"><span class="font-bold text-xs">Conversion</span><span class="text-[10px] text-[#777066]">Fewer, higher-intent customers; optimise for purchases.</span></label>
-            </div>
-            <div>
-              <p class="lbl-sm mb-2">Channels <span class="normal-case tracking-normal font-normal">(pick one or more)</span></p>
-              <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                <button type="button" class="chan-btn" data-channel="in_app" aria-pressed="true"><span class="chan-check"><i class="fa-solid fa-check"></i></span><span><span class="block text-xs font-bold"><i class="fa-solid fa-mobile-screen mr-1 text-[#89765C]"></i>In-app</span><span class="block text-[10px] text-[#777066]">Style Assistant feed · CPM based</span></span></button>
-                <button type="button" class="chan-btn" data-channel="whatsapp" aria-pressed="false"><span class="chan-check"><i class="fa-solid fa-check"></i></span><span><span class="block text-xs font-bold"><i class="fa-brands fa-whatsapp mr-1 text-[#25A244]"></i>WhatsApp</span><span class="block text-[10px] text-[#777066]">₹0.80 / message · simulated</span></span></button>
-                <button type="button" class="chan-btn" data-channel="sms" aria-pressed="false"><span class="chan-check"><i class="fa-solid fa-check"></i></span><span><span class="block text-xs font-bold"><i class="fa-solid fa-comment-sms mr-1 text-[#3D5A80]"></i>SMS</span><span class="block text-[10px] text-[#777066]">₹0.20 / message · simulated</span></span></button>
+        <form id="form" novalidate>
+          <fieldset id="configFields">
+            <section class="card step" id="s1">
+              <div class="step-head"><span class="num">1</span><h2>Audience</h2><span class="st st-head" id="statusPill">ready</span><p>From Ads Lab</p></div>
+              <div class="aud-row">
+                <div class="chips" id="audChips"></div>
+                <button type="button" class="link" id="editAud">Change in Ads Lab</button>
               </div>
-              <p id="channelError" class="text-[11px] text-red-700 mt-1 hidden">Select at least one channel.</p>
-            </div>
-          </section>
+              <p class="src-note" id="sourceNote" hidden></p>
+              <div class="notice wait" id="processingNote" hidden><i class="fa-solid fa-circle-notch fa-spin"></i> The extract &amp; rank job for this campaign is still running. You can configure it once it completes.</div>
+              <div class="notice bad" id="errorNote" hidden>This campaign could not be ranked. Submit a new ranking job from Ads Lab.</div>
+            </section>
 
-          <section id="messageSection" class="glass-panel rounded-xl p-4 sm:p-5 space-y-4 hidden">
-            <div>
-              <h3 class="text-xs font-bold uppercase tracking-wider"><i class="fa-solid fa-message text-[#89765C] mr-2"></i>Messages</h3>
-              <p class="text-[10px] text-[#777066] mt-1">Placeholders: <code>{first_name}</code>, <code>{brand}</code>, <code>{link}</code>. Messages are not sent — delivery is simulated.</p>
-            </div>
-            <div id="waBlock" class="grid grid-cols-1 lg:grid-cols-2 gap-4 hidden">
-              <label class="lbl-sm block">WhatsApp message<textarea id="waText" rows="4" maxlength="1000" class="field mt-1 normal-case tracking-normal font-normal"></textarea><span id="waCount" class="block text-right text-[10px] text-[#777066] mt-1 normal-case tracking-normal font-normal">0 / 1000</span></label>
-              <div><p class="lbl-sm mb-1">Preview</p><div class="rounded-xl bg-[#ECE5DD] p-3 flex justify-end"><div id="waPreview" class="bubble-wa max-w-[85%]"></div></div></div>
-            </div>
-            <div id="smsBlock" class="grid grid-cols-1 lg:grid-cols-2 gap-4 hidden">
-              <label class="lbl-sm block">SMS message<textarea id="smsText" rows="3" maxlength="160" class="field mt-1 normal-case tracking-normal font-normal"></textarea><span id="smsCount" class="block text-right text-[10px] text-[#777066] mt-1 normal-case tracking-normal font-normal">0 / 160</span></label>
-              <div><p class="lbl-sm mb-1">Preview</p><div class="rounded-xl bg-white border border-[#E4DED3] p-3"><div id="smsPreview" class="bubble-sms max-w-[85%]"></div></div></div>
-            </div>
-          </section>
+            <section class="card step" id="s2">
+              <div class="step-head"><span class="num">2</span><h2>Creatives</h2><p id="crCount">Pick one creative</p></div>
+              <div class="cgrid" id="crGrid" role="group" aria-label="Choose creatives"></div>
+              <div class="seg" role="group" aria-label="Delivery mode">
+                <button type="button" data-mode="best" aria-pressed="true">Best creative only</button>
+                <button type="button" data-mode="ab" aria-pressed="false">A/B test selected</button>
+              </div>
+              <p class="hint" id="modeHint"></p>
+            </section>
 
-          <section class="glass-panel rounded-xl p-4 sm:p-5 space-y-4">
-            <div class="flex items-end justify-between gap-2">
-              <h3 class="text-xs font-bold uppercase tracking-wider"><i class="fa-solid fa-shirt text-[#89765C] mr-2"></i>Products &amp; creative</h3>
-              <span id="skuSelectCount" class="tag">0 selected</span>
-            </div>
-            <div id="skuSelectList" class="grid grid-cols-1 md:grid-cols-2 gap-2"></div>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <label class="lbl-sm block md:col-span-2">Creative headline<input id="creativeHeadline" type="text" maxlength="90" class="field mt-1 normal-case tracking-normal font-normal" placeholder="e.g. Festive edits picked for your wardrobe" /></label>
-              <label class="lbl-sm block">Call to action<select id="creativeCta" class="field mt-1 normal-case tracking-normal font-normal"><option>Shop now</option><option>Discover the look</option><option>Explore collection</option><option>Buy now</option></select></label>
-              <label class="lbl-sm block md:col-span-3">Hero SKU<select id="creativeHero" class="field mt-1 normal-case tracking-normal font-normal"><option value="">Top selected SKU</option></select></label>
-            </div>
-          </section>
+            <section class="card step" id="s3">
+              <div class="step-head"><span class="num">3</span><h2>Objective &amp; channels</h2><p>Your first-party channels</p></div>
+              <div class="radios" role="radiogroup" aria-label="Campaign objective" id="objGroup" style="margin-bottom:14px"></div>
+              <div class="chgrid" id="chGrid" role="group" aria-label="Choose channels"></div>
+              <p class="ferr" id="eChannels"></p>
+            </section>
 
-          <section class="glass-panel rounded-xl p-4 sm:p-5 space-y-4">
-            <h3 class="text-xs font-bold uppercase tracking-wider"><i class="fa-solid fa-indian-rupee-sign text-[#89765C] mr-2"></i>Budget &amp; schedule</h3>
-            <div id="budgetCard" class="rounded-xl border border-[#89765C] bg-[#FBF8F2] p-4 space-y-3">
-              <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-                <div>
-                  <p class="lbl-sm">Recommended budget <span class="tag sim-badge ml-1 normal-case tracking-normal">Simulated</span></p>
-                  <p class="font-mono text-2xl mt-1"><span id="recBudget">—</span> <span id="recDaily" class="text-xs text-[#777066]"></span></p>
-                  <p id="recRange" class="text-[11px] text-[#777066] mt-0.5"></p>
+            <section class="card step" id="s4">
+              <div class="step-head"><span class="num">4</span><h2>Message</h2><p>Placeholders: {first_name}, {brand}, {link}</p></div>
+              <div class="fields">
+                <label class="f full">Campaign name<input class="in" id="fName" maxlength="120" autocomplete="off"><span class="ferr" id="eName"></span></label>
+                <label class="f full">Headline <span class="count" id="cHead">0/90</span><input class="in" id="fHead" maxlength="90" autocomplete="off"><span class="ferr" id="eHead"></span></label>
+                <label class="f full" id="waWrap" hidden>WhatsApp message <span class="count" id="cWa">0/1000</span><textarea class="in" id="fWa" maxlength="1000"></textarea><span class="ferr" id="eWa"></span></label>
+                <label class="f full" id="smsWrap" hidden>SMS message <span class="count" id="cSms">0/160</span><textarea class="in" id="fSms" maxlength="160"></textarea><span class="ferr" id="eSms"></span></label>
+                <label class="f">Button text<input class="in" id="fCta" maxlength="24" value="Shop now" autocomplete="off"></label>
+                <label class="f">Offer code <span class="count">optional</span><input class="in mono" id="fCode" maxlength="15" autocomplete="off" placeholder="e.g. NEW15"><span class="ferr" id="eCode"></span></label>
+                <label class="f full">Landing page URL <span class="count">optional</span><input class="in" id="fUrl" type="url" inputmode="url" placeholder="https://yourstore.com/collection" autocomplete="off"><span class="ferr" id="eUrl"></span>
+                  <span class="url-out" id="urlOut"></span></label>
+                <label class="switch full"><input type="checkbox" id="fUtm" checked> Add SuffAI UTM tags to the link</label>
+              </div>
+            </section>
+
+            <section class="card step" id="s5">
+              <div class="step-head"><span class="num">5</span><h2>Budget &amp; schedule</h2><p id="tzNote"></p></div>
+              <div class="rec" id="budgetCard">
+                <div class="rec-top">
+                  <div>
+                    <label class="f">Recommended budget <span class="sim">Simulated</span></label>
+                    <p class="big"><span id="recBudget">—</span> <small id="recDaily"></small></p>
+                    <p class="range" id="recRange"></p>
+                  </div>
+                  <button type="button" class="btn" id="useRecBtn"><i class="fa-solid fa-wand-magic-sparkles"></i> Use recommended</button>
                 </div>
-                <button id="useRecBtn" type="button" class="self-start px-3 py-2 bg-[#292722] hover:bg-[#4A4339] disabled:opacity-40 rounded-lg text-xs font-bold text-white"><i class="fa-solid fa-wand-magic-sparkles mr-1 text-[#89765C]"></i>Use recommended</button>
+                <div id="recBreakdown"></div>
+                <ul id="recReasons"></ul>
               </div>
-              <div id="recBreakdown" class="space-y-1.5"></div>
-              <ul id="recReasons" class="text-[11px] text-[#4A4339] list-disc pl-4 space-y-0.5"></ul>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
-              <label class="lbl-sm block">Budget (₹)<input id="campaignBudget" type="number" min="500" step="500" class="field mt-1" /></label>
-              <label class="lbl-sm block">Duration (days)<input id="campaignDays" type="number" min="1" max="365" value="14" class="field mt-1" /></label>
-              <label class="lbl-sm block">Start date<input id="campaignStart" type="date" class="field mt-1" /></label>
-              <div class="lbl-sm">Daily budget<p id="dailyBudget" class="font-mono text-sm text-[#292722] mt-2 normal-case tracking-normal">—</p></div>
-            </div>
-            <div>
-              <div class="flex items-end justify-between gap-2 mb-2">
-                <p class="lbl-sm">Estimated outcomes <span class="tag sim-badge ml-1 normal-case tracking-normal">Simulated</span></p>
-                <span id="estimateStatus" class="text-[10px] text-[#777066]"></span>
+              <div class="fields">
+                <label class="f">Budget (₹)<input class="in" id="campaignBudget" type="number" min="500" step="500"><span class="ferr" id="eBudget"></span></label>
+                <label class="f">Duration (days)<input class="in" id="campaignDays" type="number" min="1" max="365" value="14"></label>
+                <label class="f">Start date<input class="in" id="campaignStart" type="date"></label>
+                <label class="f">Daily budget<span class="in mono" id="dailyBudget" style="display:block;background:var(--raised)">—</span></label>
+                <label class="f">Frequency cap<select class="in" id="fCap"><option value="1d">1 message per day</option><option value="3d" selected>1 message per 3 days</option><option value="7d">1 message per week</option></select></label>
+                <label class="switch" style="align-self:end;padding-bottom:10px"><input type="checkbox" id="fQuiet" checked> Respect quiet hours (9 PM – 9 AM)</label>
               </div>
-              <div id="estimateGrid" class="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 gap-2"></div>
-              <div id="estimateChannels" class="mt-2 overflow-x-auto"></div>
-            </div>
-          </section>
-        </fieldset>
+              <p class="sub-h">Estimated outcomes <span class="sim">Simulated</span><em id="estimateStatus"></em></p>
+              <div class="tiles" id="estimateGrid"></div>
+              <div class="tbl-wrap" id="estimateChannels"></div>
+            </section>
+          </fieldset>
+        </form>
+      </div>
 
-        <section id="actionBar" class="glass-panel rounded-xl p-4 flex flex-col sm:flex-row sm:items-center gap-3">
-          <p id="actionMsg" class="text-xs text-[#777066] flex-1" aria-live="polite"></p>
-          <div class="flex flex-wrap gap-2 justify-end">
-            <button id="discardBtn" type="button" class="px-3 py-2 border border-[#E4DED3] bg-white hover:border-[#89765C] disabled:opacity-40 rounded-lg text-xs font-bold"><i class="fa-solid fa-trash-can mr-1"></i>Discard</button>
-            <button id="saveBtn" type="button" class="px-3 py-2 border border-[#89765C] bg-white text-[#66513B] hover:bg-[#F7F1E7] disabled:opacity-40 rounded-lg text-xs font-bold"><i class="fa-solid fa-floppy-disk mr-1"></i>Save</button>
-            <button id="launchBtn" type="button" class="px-4 py-2 bg-[#292722] hover:bg-[#4A4339] disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-xs font-bold text-white"><i class="fa-solid fa-rocket mr-1 text-[#89765C]"></i>Launch (simulated)</button>
-          </div>
+      <aside class="side">
+        <section class="card pv" aria-label="Preview">
+          <div class="pv-head"><h3>Live preview</h3><div class="pv-tabs" id="pvTabs" role="tablist"></div></div>
+          <div class="iphone"><div class="screen"><span class="island" aria-hidden="true"></span><div id="screen" class="feed" tabindex="0" aria-label="Preview of every channel — scroll"></div><span class="home-ind" aria-hidden="true"></span></div></div>
+          <div class="pv-vars" id="pvVars" role="group" aria-label="Preview variant"></div>
+          <p class="pv-note" id="pvNote"></p>
         </section>
+        <section class="card sum" aria-label="Summary">
+          <h3>Summary</h3>
+          <dl id="sumList"></dl>
+          <ul class="errs" id="errs" hidden></ul>
+          <div class="actions" id="actionBar">
+            <button type="button" class="btn primary" id="launchBtn"><i class="fa-solid fa-rocket"></i> Launch (simulated)</button>
+            <button type="button" class="btn" id="saveBtn"><i class="fa-regular fa-floppy-disk"></i> Save</button>
+            <button type="button" class="btn" id="discardBtn"><i class="fa-regular fa-trash-can"></i> Discard</button>
+          </div>
+          <p class="note">Launching is simulated: no messages or ads are sent to customers. Delivery, cost and outcome metrics are generated for tracking.</p>
+        </section>
+      </aside>
+    </div>
+
+    <section class="why" id="heroMatrixWrap">
+      <h2 class="why-h">Why run it as a 1P campaign</h2>
+      <div class="matrix" id="heroMatrix">
+        <table>
+          <thead><tr><th scope="col"></th><th scope="col" class="us">1P campaign on SuffAI</th><th scope="col">Paid social ads</th></tr></thead>
+          <tbody>
+            <tr><td>Media cost</td><td class="us"><i class="fa-solid fa-check"></i>Your own channels — pay per message, not per auction</td><td class="them"><i class="fa-solid fa-xmark"></i>Pay per impression or click</td></tr>
+            <tr><td>Who sees it</td><td class="us"><i class="fa-solid fa-check"></i>The exact segment you ranked in Ads Lab</td><td class="them"><i class="fa-solid fa-xmark"></i>Platform lookalike audiences</td></tr>
+            <tr><td>Creative</td><td class="us"><i class="fa-solid fa-check"></i>The best-fit SKU for that segment</td><td class="them"><i class="fa-solid fa-xmark"></i>One ad for a broad audience</td></tr>
+            <tr><td>Personalisation</td><td class="us"><i class="fa-solid fa-check"></i>First name, offer code and send time</td><td class="them"><i class="fa-solid fa-xmark"></i>Limited to platform options</td></tr>
+            <tr><td>Customer data</td><td class="us"><i class="fa-solid fa-check"></i>Stays first-party, with you</td><td class="them"><i class="fa-solid fa-xmark"></i>Shared with the ad platform</td></tr>
+            <tr><td>Frequency</td><td class="us"><i class="fa-solid fa-check"></i>Caps and quiet hours you control</td><td class="them"><i class="fa-solid fa-xmark"></i>Decided by the platform</td></tr>
+          </tbody>
+        </table>
+        <div class="matrix-cta"><span id="matrixLine">Start in Ads Lab: pick an audience and rank your SKUs.</span><button type="button" id="startBtn"><i class="fa-solid fa-arrow-right"></i> Go to Ads Lab</button></div>
       </div>
     </section>
+
+    <section class="card hist">
+      <div class="hist-head">
+        <h2>Your 1P campaigns <span class="chip" id="histCount">0</span></h2>
+        <div class="filters" id="statusFilter" role="group" aria-label="Filter by status">
+          <button type="button" data-filter="" aria-pressed="true">All</button>
+          <button type="button" data-filter="ready" aria-pressed="false">Ready</button>
+          <button type="button" data-filter="processing" aria-pressed="false">Ranking</button>
+          <button type="button" data-filter="launched" aria-pressed="false">Running</button>
+          <button type="button" data-filter="exported" aria-pressed="false">Exported</button>
+          <button type="button" id="refreshBtn" aria-label="Refresh campaigns"><i class="fa-solid fa-rotate"></i></button>
+        </div>
+      </div>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Campaign</th><th>Audience</th><th>Channels</th><th>SKUs</th><th>Budget</th><th>Status</th><th></th></tr></thead>
+        <tbody id="histBody"><tr><td colspan="7" class="empty-row">Loading campaigns…</td></tr></tbody>
+      </table></div>
+    </section>
   </main>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script>
     'use strict';
     const $ = (id) => document.getElementById(id);
+    const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const apiBase = () => (window.DASHBOARD_API || '').replace(/\/$/, '');
     const endpoint = (path) => apiBase() + path;
     const session = SuffaiSession.getSession() || {};
-    const CHANNEL_LABELS = { in_app: 'In-app', whatsapp: 'WhatsApp', sms: 'SMS' };
+    const CHANNELS = {
+      in_app: { name: 'In-app', ic: 'fa-solid fa-mobile-screen', sub: 'Style Assistant feed · CPM based' },
+      whatsapp: { name: 'WhatsApp', ic: 'fa-brands fa-whatsapp', sub: '₹0.80 / message · simulated' },
+      sms: { name: 'SMS', ic: 'fa-solid fa-comment-sms', sub: '₹0.20 / message · simulated' },
+    };
+    // Preview-only screens (Harsha's phone): not deliverable by the campaign API yet
+    const PREVIEW_ONLY = {
+      email: { name: 'Email', ic: 'fa-solid fa-envelope' },
+      push: { name: 'Push', ic: 'fa-solid fa-bell' },
+    };
+    const PV_NAMES = { ...Object.fromEntries(Object.entries(CHANNELS).map(([k, c]) => [k, c.name])), email: 'Email', push: 'Push' };
+    const OBJECTIVES = [
+      ['awareness', 'Awareness', 'Reach most of the audience'],
+      ['consideration', 'Consideration', 'Drive product views and clicks'],
+      ['conversion', 'Conversion', 'Fewer, higher-intent customers'],
+    ];
     const EDITABLE = ['ranked', 'configured', 'exported'];
+    const MAX_CREATIVES = 6;
     const state = {
-      campaigns: [], filter: '', current: null, skus: [], rec: null, estimate: null,
+      campaigns: [], filter: '', current: null, skus: [], thumbs: {}, rec: null, estimate: null,
       sourceContext: null, busy: false, pollTimer: null,
+      picked: [], focus: null, mode: 'best', channels: ['in_app'], preview: 'in_app',
     };
 
-    function esc(v) { return String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
-    function inr(v) { return v == null || v === '' || !Number.isFinite(Number(v)) ? '—' : '₹' + Math.round(Number(v)).toLocaleString('en-IN'); }
-    function num(v) { return v == null || v === '' || !Number.isFinite(Number(v)) ? '—' : Math.round(Number(v)).toLocaleString('en-IN'); }
-    function pct(v, d = 2) { return v == null || v === '' ? '—' : Number(v).toFixed(d) + '%'; }
-    function roas(v) { return v == null || v === '' ? '—' : Number(v).toFixed(1) + 'x'; }
-    function headers(json) {
-      return { Accept: 'application/json', ...(json ? { 'Content-Type': 'application/json' } : {}), ...SuffaiSession.authHeaders() };
+    const inr = (v) => v == null || v === '' || !Number.isFinite(Number(v)) ? '—' : '₹' + Math.round(Number(v)).toLocaleString('en-IN');
+    const num = (v) => v == null || v === '' || !Number.isFinite(Number(v)) ? '—' : Math.round(Number(v)).toLocaleString('en-IN');
+    const pct = (v, d = 2) => v == null || v === '' ? '—' : Number(v).toFixed(d) + '%';
+    const roas = (v) => v == null || v === '' ? '—' : Number(v).toFixed(1) + 'x';
+    const slug = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 48) || 'campaign';
+    function toast(msg, ic = 'fa-circle-check') {
+      const t = $('toast'); t.innerHTML = `<i class="fa-solid ${ic}"></i><span>${esc(msg)}</span>`;
+      t.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('on'), 3600);
     }
-    function apiError(data, fallback) { return SuffaiSession.formatApiDetail(data && data.detail, fallback); }
+    function goTab(tab, href) {
+      if (window.parent && window.parent !== window) window.parent.postMessage({ type: 'open-tab', tab }, location.origin);
+      else location.href = href;
+    }
     async function api(path, opts = {}) {
-      const res = await fetch(endpoint(path), { ...opts, headers: headers(!!opts.body) });
+      const res = await fetch(endpoint(path), {
+        ...opts,
+        headers: { Accept: 'application/json', ...(opts.body ? { 'Content-Type': 'application/json' } : {}), ...SuffaiSession.authHeaders() },
+      });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(apiError(data, 'Request failed (HTTP ' + res.status + ')'));
+      if (!res.ok) throw new Error(SuffaiSession.formatApiDetail(data && data.detail, 'Request failed (HTTP ' + res.status + ')'));
       return data;
     }
     function displayGender(g) { return !g ? 'All genders' : (String(g).toLowerCase().startsWith('m') ? 'Male' : String(g).toLowerCase().startsWith('f') ? 'Female' : g); }
-    function audienceText(c) {
+    function audienceParts(c) {
       const pins = c.pin_codes || [];
       return [pins.length ? (pins.length <= 2 ? 'PIN ' + pins.join(', ') : pins.length + ' PINs') : 'No PIN',
-        c.age_group || 'All ages', displayGender(c.gender), c.rfm_segment || 'All RFM'].join(' · ');
+        c.age_group || 'All ages', displayGender(c.gender), c.rfm_segment || 'All RFM'];
     }
-    function campaignTitle(c) { return c.campaign_name || ('Untitled · ' + audienceText(c)); }
-    function statusLabel(s) {
-      return { processing: 'ranking…', ranked: 'ready', configured: 'saved', launched: 'running', exported: 'exported (3P)', ignored: 'discarded', error: 'error' }[s] || s;
+    function defaultName(c) {
+      const pins = c.pin_codes || [];
+      return `${c.brand_name || 'Brand'} · ${pins.length <= 2 ? pins.join(', ') : pins.length + ' PINs'}${c.rfm_segment ? ' · ' + c.rfm_segment : ''}`;
     }
-
-    /* ---------- List ---------- */
-    async function loadCampaigns() {
-      try {
-        const data = await api('/v1/ads-lab/campaigns?limit=100');
-        state.campaigns = (data.campaigns || []).filter(c => c.status !== 'ignored');
-        renderList();
-        if (state.current) {
-          const fresh = state.campaigns.find(c => c.campaign_id === state.current.campaign_id);
-          if (fresh && fresh.status !== state.current.status) loadCampaign(fresh.campaign_id);
-        }
-        schedulePoll();
-      } catch (e) {
-        $('campaignList').innerHTML = `<p class="text-xs text-red-700">${esc(e.message)}</p>`;
-      }
-    }
-    function schedulePoll() {
-      clearTimeout(state.pollTimer);
-      if (state.campaigns.some(c => c.status === 'processing')) state.pollTimer = setTimeout(loadCampaigns, 10000);
-    }
-    function renderList() {
-      document.querySelectorAll('#statusFilter [data-filter]').forEach(b => b.classList.toggle('sim-badge', b.dataset.filter === state.filter));
-      const rows = state.campaigns.filter(c => {
-        if (!state.filter) return true;
-        if (state.filter === 'ready') return c.status === 'ranked' || c.status === 'configured';
-        return c.status === state.filter;
-      });
-      if (!rows.length) {
-        $('campaignList').innerHTML = '<p class="text-xs text-[#777066]">No campaigns here yet. Create one from Ads Lab.</p>';
-        return;
-      }
-      $('campaignList').innerHTML = rows.map(c => {
-        const active = state.current && state.current.campaign_id === c.campaign_id;
-        const chans = (c.channels || []).map(ch => CHANNEL_LABELS[ch] || ch).join(' · ');
-        const i = c.impact || {};
-        return `<button type="button" class="camp-item ${active ? 'active' : ''}" data-id="${esc(c.campaign_id)}">
-          <div class="flex items-start justify-between gap-2"><span class="text-xs font-semibold leading-snug">${esc(campaignTitle(c))}</span><span class="status st-${esc(c.status)} flex-none">${esc(statusLabel(c.status))}</span></div>
-          <div class="text-[10px] text-[#777066] mt-1">${esc((c.created_at || '').slice(0, 10))} · ${esc(c.sku_count ?? 0)} SKU(s)${c.budget_inr ? ' · ' + esc(inr(c.budget_inr)) : ''}</div>
-          ${chans ? `<div class="text-[10px] text-[#4A4339] mt-0.5">${esc(chans)}</div>` : ''}
-          ${c.status === 'launched' && i.roas != null ? `<div class="text-[10px] text-[#1F6B45] mt-0.5" title="Simulated">Reach ${esc(num(i.reach))} · ROAS ${esc(roas(i.roas))} (sim)</div>` : ''}
-        </button>`;
-      }).join('');
-      $('campaignList').querySelectorAll('.camp-item').forEach(b => b.addEventListener('click', () => loadCampaign(b.dataset.id)));
-    }
-
-    /* ---------- Editor ---------- */
-    function selectedChannels() {
-      return Array.from(document.querySelectorAll('.chan-btn')).filter(b => b.getAttribute('aria-pressed') === 'true').map(b => b.dataset.channel);
-    }
-    function setChannels(list) {
-      const want = new Set(list && list.length ? list : ['in_app']);
-      document.querySelectorAll('.chan-btn').forEach(b => b.setAttribute('aria-pressed', want.has(b.dataset.channel) ? 'true' : 'false'));
-      onChannelsChange();
-    }
-    function selectedObjective() {
-      const el = document.querySelector('input[name="objective"]:checked');
-      return el ? el.value : 'consideration';
-    }
-    function selectedSkuIds() {
-      return Array.from(document.querySelectorAll('#skuSelectList input[type="checkbox"]:checked')).map(i => i.value);
+    const campaignTitle = (c) => c.campaign_name || defaultName(c);
+    const statusLabel = (s) => ({ processing: 'Ranking…', ranked: 'Ready', configured: 'Saved', launched: 'Running', exported: 'Exported (3P)', ignored: 'Discarded', error: 'Error' }[s] || s);
+    function todayIso() {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     }
     function defaultTemplates(brand, name) {
       const n = (name || 'our new collection').trim();
@@ -326,14 +599,105 @@
         sms: `${brand}: styles picked for you from ${n}. See them: {link}`,
       };
     }
-    function renderPreview(text, brand) {
-      return String(text || '')
-        .replace(/\{first_name\}/g, 'Priya')
-        .replace(/\{brand\}/g, brand || 'Brand')
-        .replace(/\{link\}/g, 'suffai.in/s/x7k2');
-    }
-    function editable() { return !!(state.current && EDITABLE.includes(state.current.status)); }
+    const editable = () => !!(state.current && EDITABLE.includes(state.current.status));
+    const usable = (s) => s.extract_ok && s.process_status !== 'failed' && s.process_status !== 'pending';
+    const skuScore = (s) => s.rank_score != null ? Math.round(Number(s.rank_score)) : (s.pin_fit != null ? Math.round(Number(s.pin_fit) * 100) : null);
+    const skuById = (id) => state.skus.find(s => s.sku_uuid === id);
+    const brandName = () => (state.current && state.current.brand_name) || session.brand_name || 'Your brand';
 
+    function garmentImg(kind, c1, c2, o) {
+      const body = {
+        shirt: 'M72 50L48 62L34 150L50 155L62 98V206H138V98L150 155L166 150L152 62L128 50L112 50L100 70L88 50Z',
+        skirt: 'M70 70H130L164 206Q100 222 36 206Z',
+        tee: 'M76 50L44 66L56 98L70 90V202H130V90L144 98L156 66L124 50Q100 68 76 50Z',
+        dress: 'M82 50Q100 62 118 50L124 104L160 210Q100 224 40 210L76 104Z',
+      }[kind];
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 230"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/></linearGradient></defs>
+        <path d="M100 40v-9a8 8 0 1 1 8-8" fill="none" stroke="#9C8B94" stroke-width="3" stroke-linecap="round"/><path d="M56 56Q100 34 144 56" fill="none" stroke="#9A6534" stroke-width="7" stroke-linecap="round"/>
+        <path d="${body}" fill="url(#g)" stroke="${o}" stroke-width="1.6" stroke-linejoin="round"/>${kind === 'skirt' ? `<path d="M70 58H130V70H70Z" fill="${c2}" stroke="${o}"/>` : ''}</svg>`;
+      return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+    }
+    const SAMPLE_CAMPAIGN = { brand_name: 'Your brand', pin_codes: ['560102'], age_group: '25-34', gender: 'F', rfm_segment: 'Loyal', est_audience: null, status: 'sample', channels: ['in_app', 'whatsapp'] };
+    const SAMPLE_SKUS = [
+      ['linen-shirt-beige.jpg', 94, 'shirt', '#F6EAD7', '#E0C9A8', '#8C7052', 'Beige', 'Shirt'],
+      ['pleated-skirt-mustard.jpg', 90, 'skirt', '#E8BC5A', '#B9852A', '#6E4C10', 'Mustard', 'Skirt'],
+      ['graphic-tee-rose.jpg', 86, 'tee', '#EDC3CF', '#C98FA2', '#8E5368', 'Rose', 'T-Shirt'],
+      ['wrap-dress-burgundy.jpg', 81, 'dress', '#9A3657', '#5E1A33', '#3D0F21', 'Burgundy', 'Dress'],
+    ].map(([name, score, kind, c1, c2, o, color, commodity], i) => ({
+      sku_uuid: 'sample-' + i, original_filename: name, extract_ok: true, process_status: 'done', rank: i + 1, rank_score: score,
+      attributes: { color, name: commodity }, thumb: garmentImg(kind, c1, c2, o),
+    }));
+
+    /* Ads Lab hands over local thumbnails for the campaign it just opened (the API has no image URLs here). */
+    function readThumbs(campaignId) {
+      try {
+        const h = JSON.parse(localStorage.getItem('suffai_1p_handoff') || 'null');
+        if (!h || h.campaign_id !== campaignId || !Array.isArray(h.creatives)) return {};
+        return Object.fromEntries(h.creatives.filter(c => c.thumb).map(c => [String(c.name).toLowerCase(), c.thumb]));
+      } catch (_) { return {}; }
+    }
+    const thumbOf = (s) => s ? s.thumb || state.thumbs[String(s.original_filename || '').toLowerCase()] || '' : '';
+
+    /* ---------- Campaign list ---------- */
+    async function loadCampaigns() {
+      try {
+        const data = await api('/v1/ads-lab/campaigns?limit=100');
+        state.campaigns = (data.campaigns || []).filter(c => c.status !== 'ignored');
+        renderHistory();
+        if (state.current) {
+          const fresh = state.campaigns.find(c => c.campaign_id === state.current.campaign_id);
+          if (fresh && fresh.status !== state.current.status) loadCampaign(fresh.campaign_id);
+        }
+        clearTimeout(state.pollTimer);
+        if (state.campaigns.some(c => c.status === 'processing')) state.pollTimer = setTimeout(loadCampaigns, 10000);
+      } catch (e) {
+        $('histBody').innerHTML = `<tr><td colspan="7" class="empty-row" style="color:var(--bad)">${esc(e.message)}</td></tr>`;
+      }
+    }
+    function renderHistory() {
+      document.querySelectorAll('#statusFilter [data-filter]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.filter === state.filter)));
+      const rows = state.campaigns.filter(c => !state.filter
+        || (state.filter === 'ready' ? (c.status === 'ranked' || c.status === 'configured') : c.status === state.filter));
+      $('histCount').textContent = state.campaigns.length;
+      $('histBody').innerHTML = rows.length ? rows.map(c => {
+        const active = state.current && state.current.campaign_id === c.campaign_id;
+        const chans = (c.channels || []).map(ch => CHANNELS[ch]?.name || ch).join(', ') || '—';
+        const i = c.impact || {};
+        return `<tr class="${active ? 'active' : ''}">
+          <td><b>${esc(campaignTitle(c))}</b><div style="font-size:11px;color:var(--muted)">${esc((c.created_at || '').slice(0, 10))}</div></td>
+          <td style="max-width:260px">${esc(audienceParts(c).join(' · '))}</td>
+          <td>${esc(chans)}</td>
+          <td>${esc(c.sku_count ?? 0)}</td>
+          <td class="mono">${esc(c.budget_inr ? inr(c.budget_inr) : '—')}${c.status === 'launched' && i.roas != null ? `<div style="font-size:10.5px;color:#1F6B45" title="Simulated">ROAS ${esc(roas(i.roas))}</div>` : ''}</td>
+          <td><span class="st ${esc(c.status)}">${esc(statusLabel(c.status))}</span></td>
+          <td><div class="row-act"><button type="button" data-load="${esc(c.campaign_id)}">${c.status === 'launched' ? 'Track' : 'Open'}</button></div></td>
+        </tr>`;
+      }).join('') : `<tr><td colspan="7" class="empty-row">${state.campaigns.length ? 'No campaigns with this status.' : 'No campaigns yet. Create one from Ads Lab.'}</td></tr>`;
+      renderHero();
+    }
+    function renderHero() {
+      const running = state.campaigns.filter(c => c.status === 'launched');
+      const c = state.current;
+      if (c) {
+        $('heroTitle').textContent = campaignTitle(c);
+        $('heroSub').textContent = `${c.brand_name || brandName()} · ${audienceParts(c).join(' × ')}`;
+        const ok = state.skus.filter(usable);
+        const best = Math.max(...ok.map(skuScore).filter(Number.isFinite));
+        $('hsCustomers').textContent = num(c.est_audience);
+        $('hsCreatives').textContent = ok.length;
+        $('hsBest').textContent = Number.isFinite(best) ? `${best}/100` : '—';
+      } else {
+        $('heroTitle').textContent = running.length ? `${running.length} campaign${running.length === 1 ? '' : 's'} running` : "You don't have any active campaigns yet";
+        $('heroSub').textContent = 'Rank SKUs in Ads Lab, then reach that audience on In-app, WhatsApp and SMS.';
+      }
+      $('heroMatrixWrap').hidden = running.length > 0;
+    }
+    $('histBody').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-load]');
+      if (b) { loadCampaign(b.dataset.load); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+    });
+
+    /* ---------- Load + fill ---------- */
     async function loadCampaign(id, sourceContext) {
       if (!id) return;
       if (sourceContext && typeof sourceContext === 'object') state.sourceContext = sourceContext;
@@ -346,138 +710,264 @@
           state.estimate = null;
         }
         state.current = c;
-        state.skus = Array.isArray(data.skus) ? data.skus : [];
-        fillEditor(c);
-        renderList();
+        state.skus = (Array.isArray(data.skus) ? data.skus : []).slice().sort((a, b) => (a.rank || 999) - (b.rank || 999));
+        state.thumbs = readThumbs(c.campaign_id);
+        fillStudio(c);
+        renderHistory();
         publishContext();
       } catch (e) {
-        showAction(e.message, true);
+        toast(e.message, 'fa-triangle-exclamation');
       }
     }
     function readStoredSource(id) {
       try { const raw = sessionStorage.getItem('suffai_campaign_source_' + id); return raw ? JSON.parse(raw) : null; } catch (_) { return null; }
     }
 
-    function fillEditor(c) {
-      $('emptyEditor').classList.add('hidden');
-      $('editor').classList.remove('hidden');
-      const brand = c.brand_name || session.brand_name || 'Brand';
-      $('campaignName').value = c.campaign_name || defaultName(c);
-      const pill = $('statusPill');
-      pill.className = 'status st-' + c.status;
-      pill.textContent = statusLabel(c.status);
-      $('audienceChips').innerHTML = [
-        ...audienceText(c).split(' · '),
-        c.est_audience != null ? num(c.est_audience) + ' customers' : null,
-        (c.sku_count ?? state.skus.length) + ' SKU(s)',
-        c.run_mode ? (c.run_mode === '3p' ? 'Exported (3P)' : 'SuffAI (1P)') : null,
-      ].filter(Boolean).map(t => `<span class="tag">${esc(t)}</span>`).join('');
-      const src = state.sourceContext;
-      $('sourceNote').classList.toggle('hidden', !src);
-      $('sourceNote').textContent = src ? 'From Geo: ' + (src.insight || 'opportunity carried over from the Geo tab.') : '';
-      $('processingNote').classList.toggle('hidden', c.status !== 'processing');
-      const err = $('errorNote');
-      err.classList.toggle('hidden', c.status !== 'error');
-      err.textContent = c.status === 'error' ? 'This campaign could not be ranked. Submit a new ranking job from Ads Lab.' : '';
+    function showSample() {
+      state.current = null;
+      state.skus = SAMPLE_SKUS;
+      state.thumbs = {};
+      state.rec = null; state.estimate = null; state.sourceContext = null;
+      $('noDraft').hidden = false;
+      fillStudio(SAMPLE_CAMPAIGN);
+      $('configFields').disabled = false; // let people play with the sample
+      $('fName').value = 'Your brand · Loyal';
+      $('fHead').value = 'New beige shirts picked for you';
+      $('campaignBudget').value = 25000;
+      $('actionBar').hidden = false;
+      $('launchBtn').innerHTML = '<i class="fa-solid fa-ranking-star"></i> Rank your SKUs in Ads Lab to launch';
+      ['saveBtn', 'discardBtn'].forEach(id => { $(id).disabled = true; $(id).title = 'Available for a real campaign'; });
+      renderRecommendation(null, 'Sample — the recommended budget appears for a real campaign.');
+      renderAll();
+    }
 
-      const radio = document.querySelector(`input[name="objective"][value="${c.objective || 'consideration'}"]`);
-      if (radio) radio.checked = true;
-      setChannels(c.channels || ['in_app']);
+    function fillStudio(c) {
+      $('noDraft').hidden = c.status !== 'sample';
+      $('launchBtn').innerHTML = '<i class="fa-solid fa-rocket"></i> Launch (simulated)';
+      ['saveBtn', 'discardBtn'].forEach(id => { $(id).disabled = false; $(id).title = ''; });
+      const brand = c.brand_name || brandName();
+      const icons = ['fa-location-dot', 'fa-cake-candles', 'fa-venus-mars', 'fa-gem'];
+      $('audChips').innerHTML = [`<span class="chip"><i class="fa-solid fa-tag"></i>${esc(brand)}</span>`]
+        .concat(audienceParts(c).map((p, i) => `<span class="chip"><i class="fa-solid ${icons[i]}"></i>${esc(p)}</span>`))
+        .concat([`<span class="chip"><i class="fa-solid fa-users"></i>${c.status === 'sample' ? 'Sample audience' : esc(num(c.est_audience)) + ' customers'}</span>`])
+        .join('');
+      $('statusPill').className = 'st st-head ' + c.status;
+      $('statusPill').textContent = c.status === 'sample' ? 'Sample' : statusLabel(c.status);
+      const src = state.sourceContext;
+      $('sourceNote').hidden = !src;
+      $('sourceNote').textContent = src ? 'From Geo: ' + (src.insight || 'opportunity carried over from the Geo tab.') : '';
+      $('processingNote').hidden = c.status !== 'processing';
+      $('errorNote').hidden = c.status !== 'error';
+
+      const creative = c.creative && typeof c.creative === 'object' ? c.creative : {};
+      const ok = state.skus.filter(usable).map(s => s.sku_uuid);
+      const saved = (c.selected_sku_ids || []).filter(id => ok.includes(id));
+      state.mode = creative.delivery_mode === 'ab' && saved.length > 1 ? 'ab' : 'best';
+      const hero = ok.includes(creative.hero_sku_id) ? creative.hero_sku_id : (saved[0] || ok[0] || null);
+      state.picked = state.mode === 'ab' ? saved : (hero ? [hero] : []);
+      state.focus = hero;
+      state.channels = (c.channels && c.channels.length ? c.channels : ['in_app']).filter(ch => CHANNELS[ch]);
+
+      document.querySelectorAll('input[name="objective"]').forEach(r => { r.checked = r.value === (c.objective || 'consideration'); });
       const tpl = { ...defaultTemplates(brand, c.campaign_name), ...(c.message_template || {}) };
-      $('waText').value = tpl.whatsapp || '';
-      $('smsText').value = tpl.sms || '';
+      $('fName').value = c.campaign_name || defaultName(c);
+      $('fHead').value = creative.headline || '';
+      $('fWa').value = tpl.whatsapp || '';
+      $('fSms').value = tpl.sms || '';
+      $('fCta').value = creative.cta || 'Shop now';
+      $('fCode').value = creative.offer_code || '';
+      $('fUrl').value = String(creative.landing_url || '').replace(/[?&]utm_[^&]+/g, '').replace(/\?$/, '');
+      $('fUtm').checked = creative.utm !== false;
+      $('fCap').value = creative.frequency_cap || '3d';
+      $('fQuiet').checked = creative.quiet_hours !== false;
       $('campaignDays').value = c.duration_days || 14;
       $('campaignStart').value = c.start_date ? String(c.start_date).slice(0, 10) : todayIso();
       $('campaignBudget').value = c.budget_inr != null ? Math.round(Number(c.budget_inr)) : '';
-      const creative = c.creative && typeof c.creative === 'object' ? c.creative : {};
-      $('creativeHeadline').value = creative.headline || '';
-      if (creative.cta) $('creativeCta').value = creative.cta;
-      renderSkus(new Set(c.selected_sku_ids || []), creative.hero_sku_id);
-      updateMessages();
+      showErrs([]);
 
-      const isEditable = editable();
-      $('configFields').disabled = !isEditable;
-      $('campaignName').disabled = !isEditable;
-      $('saveBtn').disabled = !isEditable;
-      $('launchBtn').disabled = !isEditable;
-      $('discardBtn').disabled = !(isEditable);
-      $('actionBar').classList.toggle('hidden', !isEditable);
+      const canEdit = editable();
+      $('configFields').disabled = !canEdit;
+      $('actionBar').hidden = !canEdit;
       renderTracking(c);
-      if (isEditable) fetchRecommendation(c.budget_inr == null);
-      else { renderRecommendation(null); $('estimateGrid').innerHTML = ''; $('estimateChannels').innerHTML = ''; }
-      showAction(isEditable ? (c.status === 'exported' ? 'Exported for 3P. You can still run it on SuffAI.' : '') : '');
-    }
-    function defaultName(c) {
-      const pins = c.pin_codes || [];
-      return `${c.brand_name || 'Brand'} · ${pins.length <= 2 ? pins.join(', ') : pins.length + ' PINs'}${c.rfm_segment ? ' · ' + c.rfm_segment : ''}`;
-    }
-    function todayIso() {
-      const d = new Date();
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      renderCreatives(); renderChannels(); renderAll();
+      if (canEdit) fetchRecommendation(c.budget_inr == null);
+      else { renderRecommendation(null); $('estimateGrid').innerHTML = ''; $('estimateChannels').innerHTML = ''; $('estimateStatus').textContent = ''; }
+      if (canEdit && c.status === 'exported') toast('Exported for 3P. You can still run it on SuffAI.', 'fa-circle-info');
     }
 
-    function renderSkus(selected, heroId) {
-      const items = state.skus.slice().sort((a, b) => (a.rank || 999) - (b.rank || 999));
-      const usableItems = items.filter(s => s.extract_ok && s.process_status !== 'failed' && s.process_status !== 'pending');
-      const defaults = selected.size ? selected : new Set(usableItems.slice(0, 3).map(s => s.sku_uuid));
-      if (!items.length) { $('skuSelectList').innerHTML = '<p class="text-xs text-[#777066]">No SKUs.</p>'; }
-      else {
-        $('skuSelectList').innerHTML = items.map(s => {
-          const usable = usableItems.includes(s);
-          const a = s.attributes || {};
-          const label = [a.color, a.pattern, a.name || a.commodity].filter(Boolean).join(' · ') || 'No attributes';
-          const score = s.rank_score != null ? Math.round(Number(s.rank_score)) + '/100' : (s.pin_fit != null ? Math.round(Number(s.pin_fit) * 100) + '/100' : 'N/A');
-          return `<label class="sku-pick ${usable ? '' : 'disabled'}">
-            <input type="checkbox" value="${esc(s.sku_uuid)}" ${usable && defaults.has(s.sku_uuid) ? 'checked' : ''} ${usable ? '' : 'disabled'} class="accent-[#89765C]">
-            <span class="font-mono text-[10px] text-[#89765C] w-7">#${esc(s.rank ?? '—')}</span>
-            <span class="min-w-0 flex-1"><span class="block text-xs font-semibold truncate">${esc(s.original_filename || 'SKU')}</span><span class="block text-[10px] text-[#777066] truncate">${esc(label)}</span></span>
-            <span class="font-mono text-xs">${esc(usable ? score : (s.process_status === 'pending' ? 'pending' : 'failed'))}</span>
-          </label>`;
-        }).join('');
-        $('skuSelectList').querySelectorAll('input[type="checkbox"]').forEach(cb => cb.addEventListener('change', () => onSkuChange()));
+    /* ---------- Creatives ---------- */
+    function renderCreatives() {
+      $('crGrid').innerHTML = state.skus.length ? state.skus.map(s => {
+        const ok = usable(s), on = state.picked.includes(s.sku_uuid), focus = on && s.sku_uuid === state.focus;
+        const score = skuScore(s), a = s.attributes || {}, thumb = thumbOf(s);
+        const sub = ok ? (score == null ? 'not scored' : `fit ${score}/100`) : (s.process_status === 'pending' ? 'pending' : 'failed');
+        return `<button type="button" class="ctile ${focus ? 'focus' : ''}" data-id="${esc(s.sku_uuid)}" aria-pressed="${on}" ${ok ? '' : 'disabled'} title="${esc([a.color, a.pattern, a.name || a.commodity].filter(Boolean).join(' · '))}">${focus ? '<span class="eye"><i class="fa-regular fa-eye"></i> In preview</span>' : ''}
+          <div class="img">${thumb ? `<img src="${thumb}" alt="">` : '<i class="fa-solid fa-shirt"></i>'}</div>
+          <span class="badge">#${esc(s.rank ?? '—')}</span><span class="tick"><i class="fa-solid fa-check"></i></span>
+          <div class="meta"><b>${esc(s.original_filename || 'SKU')}</b><span>${esc(sub)}</span></div>
+        </button>`;
+      }).join('') : '<p class="hint">No SKUs in this campaign.</p>';
+      $('crCount').textContent = state.mode === 'ab' ? `${state.picked.length} selected · 2 to ${MAX_CREATIVES}` : 'Pick one creative';
+      const letters = 'ABCDEF';
+      $('pvVars').innerHTML = state.mode === 'ab' && state.picked.length > 1
+        ? state.picked.map((id, i) => `<button type="button" data-var="${esc(id)}" aria-pressed="${id === state.focus}" title="${esc(skuById(id)?.original_filename || '')}">${letters[i]}</button>`).join('') : '';
+      document.querySelectorAll('.seg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === state.mode)));
+      const first = skuById(state.picked[0]);
+      $('modeHint').textContent = state.mode === 'ab'
+        ? (state.picked.length > 1 ? `The audience is split evenly across ${state.picked.length} creatives. Tap a selected creative to preview it, tap it again to remove it.` : 'Pick at least two creatives to A/B test.')
+        : (first ? `Everyone gets “${first.original_filename}”. Tap another creative to switch.` : 'Tap a creative to send it.');
+    }
+    const rankOrder = (a, b) => (skuById(a)?.rank || 999) - (skuById(b)?.rank || 999);
+    $('crGrid').addEventListener('click', (e) => {
+      const t = e.target.closest('.ctile'); if (!t || t.disabled) return;
+      const id = t.dataset.id, i = state.picked.indexOf(id);
+      if (state.mode === 'best') { state.picked = [id]; state.focus = id; }
+      else if (i >= 0 && state.focus !== id) state.focus = id;
+      else if (i >= 0) { state.picked.splice(i, 1); state.focus = state.picked[0] || null; }
+      else if (state.picked.length >= MAX_CREATIVES) { toast(`Up to ${MAX_CREATIVES} creatives per campaign`, 'fa-circle-info'); return; }
+      else { state.picked.push(id); state.focus = id; }
+      state.picked.sort(rankOrder);
+      renderCreatives(); renderAll();
+    });
+    document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => {
+      if (state.mode === b.dataset.mode || $('configFields').disabled) return;
+      state.mode = b.dataset.mode;
+      if (state.mode === 'best') state.picked = state.focus ? [state.focus] : state.picked.slice(0, 1);
+      else if (state.picked.length < 2) { // start the test with the next best-ranked creative
+        const next = state.skus.find(s => usable(s) && !state.picked.includes(s.sku_uuid));
+        if (next) state.picked.push(next.sku_uuid);
+        state.picked.sort(rankOrder);
       }
-      onSkuChange(heroId);
+      state.focus = state.picked.includes(state.focus) ? state.focus : state.picked[0];
+      renderCreatives(); renderAll();
+    }));
+    $('pvVars').addEventListener('click', (e) => { const v = e.target.closest('[data-var]'); if (!v) return; state.focus = v.dataset.var; renderCreatives(); renderPreview(); });
+
+    /* ---------- Objective + channels ---------- */
+    $('objGroup').innerHTML = OBJECTIVES.map(([v, label, sub]) =>
+      `<label class="radio"><input type="radio" name="objective" value="${v}" ${v === 'consideration' ? 'checked' : ''}><span><b style="display:block;font-size:13px">${label}</b><span style="font-size:10.5px;color:var(--muted)">${sub}</span></span></label>`).join('');
+    const selectedObjective = () => (document.querySelector('input[name="objective"]:checked') || {}).value || 'consideration';
+    function renderChannels() {
+      $('chGrid').innerHTML = Object.entries(CHANNELS).map(([k, c]) =>
+        `<button type="button" class="chtile" data-ch="${k}" aria-pressed="${state.channels.includes(k)}"><span class="ic"><i class="${c.ic}"></i></span><span><b>${c.name}</b><span>${c.sub}</span></span></button>`).join('');
+      $('eChannels').textContent = state.channels.length ? '' : 'Select at least one channel.';
+      $('waWrap').hidden = !state.channels.includes('whatsapp');
+      $('smsWrap').hidden = !state.channels.includes('sms');
     }
-    function onSkuChange(heroId) {
-      const ids = selectedSkuIds();
-      $('skuSelectCount').textContent = ids.length + ' selected';
-      const prev = heroId || $('creativeHero').value;
-      const byId = {};
-      state.skus.forEach(s => { byId[s.sku_uuid] = s; });
-      $('creativeHero').innerHTML = '<option value="">Top selected SKU</option>' + ids.map(id =>
-        `<option value="${esc(id)}" ${id === prev ? 'selected' : ''}>#${esc(byId[id]?.rank ?? '')} ${esc(byId[id]?.original_filename || 'SKU')}</option>`).join('');
+    $('chGrid').addEventListener('click', (e) => {
+      const t = e.target.closest('.chtile'); if (!t) return;
+      const k = t.dataset.ch, i = state.channels.indexOf(k);
+      if (i >= 0) state.channels.splice(i, 1); else state.channels.push(k);
+      state.channels.sort((a, b) => Object.keys(CHANNELS).indexOf(a) - Object.keys(CHANNELS).indexOf(b));
+      renderChannels(); renderAll(); scheduleRecommendation();
+      showChannel(k); // land the phone on the channel you just touched
+    });
+    $('pvTabs').addEventListener('click', (e) => { const t = e.target.closest('[data-pv]'); if (t) showChannel(t.dataset.pv); });
+
+    /* ---------- Link ---------- */
+    function finalUrl() {
+      const raw = $('fUrl').value.trim();
+      if (!raw) return '';
+      try {
+        const u = new URL(raw);
+        if ($('fUtm').checked) {
+          u.searchParams.set('utm_source', 'suffai');
+          u.searchParams.set('utm_medium', state.channels.length > 1 ? 'multi' : (state.channels[0] || 'in_app'));
+          u.searchParams.set('utm_campaign', slug($('fName').value));
+        }
+        return u.toString();
+      } catch (_) { return ''; }
     }
 
-    function onChannelsChange() {
-      const chans = selectedChannels();
-      $('channelError').classList.toggle('hidden', chans.length > 0);
-      updateMessages();
+    /* ---------- Preview ---------- */
+    function fill(text) {
+      return String(text || '').replace(/\{first_name\}/g, 'Ananya').replace(/\{brand\}/g, brandName()).replace(/\{link\}/g, 'suff.ai/' + slug($('fName').value).slice(0, 10));
     }
-    function updateMessages() {
-      const chans = selectedChannels();
-      const brand = (state.current && state.current.brand_name) || session.brand_name || 'Brand';
-      const wa = chans.includes('whatsapp'), sms = chans.includes('sms');
-      $('messageSection').classList.toggle('hidden', !wa && !sms);
-      $('waBlock').classList.toggle('hidden', !wa);
-      $('smsBlock').classList.toggle('hidden', !sms);
-      $('waCount').textContent = $('waText').value.length + ' / 1000';
-      $('smsCount').textContent = $('smsText').value.length + ' / 160';
-      $('waPreview').textContent = renderPreview($('waText').value, brand) || '(empty message)';
-      $('smsPreview').textContent = renderPreview($('smsText').value, brand) || '(empty message)';
+    function previewHTML(ch) {
+      const s = skuById(state.focus) || skuById(state.picked[0]) || state.skus[0];
+      const imgOf = (x) => thumbOf(x) ? `<img class="pv-img" src="${thumbOf(x)}" alt="">` : '<div class="pv-img"></div>';
+      const img = imgOf(s);
+      const brand = esc(brandName()), initial = brand.charAt(0).toUpperCase();
+      const head = esc($('fHead').value || 'Your headline'), cta = esc($('fCta').value || 'Shop now');
+      const codeV = esc($('fCode').value.trim().toUpperCase());
+      const code = codeV ? `\nUse code ${codeV}` : '';
+      const t = new Date();
+      const body = esc(fill($('fWa').value || $('fSms').value) || 'Your message');
+      const hhmm = t.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true }).replace(/\s?[ap]m/i, '');
+      const sbar = (fg, bg = 'transparent') => `<div class="sbar" style="--sb:${fg};--sbg:${bg}"><span>${hhmm}</span><span><i class="fa-solid fa-signal"></i><i class="fa-solid fa-wifi"></i><i class="fa-solid fa-battery-three-quarters"></i></span></div>`;
+      if (ch === 'email') return `<div class="scr" style="background:#fff">${sbar('#111', '#fff')}
+        <div class="apphd"><i class="fa-solid fa-chevron-left" style="color:#1A56C4"></i><span style="color:#1A56C4">Inbox</span><span class="ico"><i class="fa-regular fa-folder"></i><i class="fa-regular fa-trash-can"></i><i class="fa-regular fa-envelope"></i></span></div>
+        <div class="pv-body" style="padding-top:0"><div class="em-subj">${head}<span class="pv-tag">Promotions</span></div>
+          <div class="em-from"><span class="em-av">${initial}</span><div><b>${brand}</b><div style="font-size:10px;color:#888">to me · ${hhmm}</div></div></div>
+          <div class="em-card">${img}<h4>${head}</h4><p>${body}${code}</p><span class="pv-cta">${cta}</span></div>
+          <div class="em-foot">You're receiving this because you shop with ${brand}. Unsubscribe</div></div></div>`;
+      if (ch === 'push') return `<div class="scr"><div class="lock">${sbar('#fff')}
+        <div class="lk"><i class="fa-solid fa-lock"></i></div><div class="date">${t.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}</div>
+        <div class="time">${hhmm}</div>
+        <div class="ntf"><span class="app"><i class="fa-solid fa-bag-shopping"></i></span><div style="flex:1;min-width:0"><b>${head}</b><p>${body}</p></div>${thumbOf(s) ? `<img src="${thumbOf(s)}" alt="">` : ''}</div>
+        <div class="ntf"><span class="app"></span><div style="flex:1"><b>&nbsp;</b><p>&nbsp;</p></div></div>
+        <div class="lock-btns"><span><i class="fa-solid fa-lightbulb"></i></span><span><i class="fa-solid fa-camera"></i></span></div></div></div>`;
+      if (ch === 'whatsapp') return `<div class="scr">${sbar('#111', '#fff')}
+        <div class="wa-head"><i class="fa-solid fa-chevron-left" style="color:#128C7E"></i><span class="av">${initial}</span><div><b>${brand}</b><small>Business account <i class="fa-solid fa-circle-check" style="color:#25D366"></i></small></div><span class="ico"><i class="fa-solid fa-video"></i><i class="fa-solid fa-phone"></i></span></div>
+        <div class="wa-chat"><span class="day">Today</span><div class="bubble">${img}<div class="txt"><b>${head}</b>\n${esc(fill($('fWa').value) || 'Your WhatsApp message')}${code}<span class="meta-t">${hhmm}</span></div></div><span class="wa-btn"><i class="fa-solid fa-arrow-up-right-from-square"></i> ${cta}</span></div>
+        <div class="inputbar"><i class="fa-solid fa-plus"></i><span>Message</span><i class="fa-solid fa-microphone"></i></div></div>`;
+      if (ch === 'sms') return `<div class="scr">${sbar('#111', 'rgba(250,250,252,.95)')}
+        <div class="sms-head"><span class="sms-av">${initial}</span><b>${brand} <i class="fa-solid fa-chevron-right" style="font-size:8px;color:#999"></i></b></div>
+        <div class="sms-chat"><span class="day" style="box-shadow:none;background:none">Text Message · Today ${hhmm}</span><div class="bubble">${esc(fill($('fSms').value) || 'Your SMS message')}${code}</div></div>
+        <div class="inputbar"><i class="fa-solid fa-camera" style="color:#8e8e93"></i><span>Text Message</span><i class="fa-solid fa-microphone" style="color:#8e8e93"></i></div></div>`;
+      // In-app: the brand's own app home, campaign as the hero banner + picked-for-you rail
+      const c = state.current || {};
+      const area = esc((c.pin_codes || [])[0] ? 'PIN ' + c.pin_codes[0] : 'Your area');
+      const picks = state.picked.map(skuById).filter(Boolean);
+      return `<div class="scr">
+        <div class="ah">${sbar('#fff')}<div class="ah-row"><span class="ah-av">AN</span><div><b>Ananya</b><small><i class="fa-solid fa-location-dot"></i> ${area} <i class="fa-solid fa-chevron-down" style="font-size:8px"></i></small></div>
+          <span class="ah-ico"><span><i class="fa-regular fa-heart"></i></span><span><i class="fa-solid fa-bag-shopping"></i></span><span><i class="fa-regular fa-bell"></i></span></span></div></div>
+        <div class="ah-body">
+          <div class="banner"><div><h4>${head}</h4><p>Styles picked for you by ${brand}.</p>${codeV ? `<span class="code">${codeV}</span><br>` : ''}<span class="pv-cta">${cta}</span></div>${img}</div>
+          <div class="chips2"><span><i class="b">%</i>View coupons<i class="fa-solid fa-chevron-right"></i></span><span><i class="b">%</i>Refer &amp; earn<i class="fa-solid fa-chevron-right"></i></span></div>
+          <p class="sec-t">Picked for you</p>
+          <div class="hscroll">${(picks.length ? picks : [s || {}]).map(x => `<div class="pcard">${imgOf(x)}<div><b>${esc(x.original_filename || 'Your SKU')}</b><small>${cta} ›</small></div></div>`).join('')}</div>
+        </div>
+        <div class="tabbar"><i class="fa-solid fa-house on"></i><i class="fa-solid fa-magnifying-glass"></i><i class="fa-solid fa-bag-shopping"></i><i class="fa-regular fa-user"></i></div></div>`;
     }
+    const PV_ORDER = ['email', 'whatsapp', 'sms', 'push', 'in_app'];
+    const modeClass = (ch) => PREVIEW_ONLY[ch] ? 'off soon' : (state.channels.includes(ch) ? '' : 'off');
+    function renderPreview() {
+      const feed = $('screen'), top = feed.scrollTop;
+      feed.innerHTML = PV_ORDER.map(ch => `<section class="mode ${modeClass(ch)}" data-mode="${ch}" aria-label="${PV_NAMES[ch]} preview">${previewHTML(ch)}</section>`).join('');
+      feed.scrollTop = top; // keep the reader's place while they type
+      syncPreviewTabs();
+    }
+    function syncPreviewTabs() {
+      const feed = $('screen'), modes = Array.from(feed.children);
+      const cur = modes.reduce((acc, m) => (m.offsetTop <= feed.scrollTop + 60 ? m : acc), modes[0]);
+      if (cur) state.preview = cur.dataset.mode;
+      $('pvTabs').innerHTML = PV_ORDER.map(k => `<button type="button" role="tab" data-pv="${k}" class="${state.channels.includes(k) ? 'inc' : ''}" aria-selected="${k === state.preview}">${PV_NAMES[k]}</button>`).join('');
+      feed.parentElement.style.setProperty('--hi', state.preview === 'push' ? '#fff' : '#111');
+      const n = PV_ORDER.indexOf(state.preview) + 1, len = $('fSms').value.length;
+      $('pvNote').textContent = `${PV_NAMES[state.preview]} · ${n} of ${PV_ORDER.length}`
+        + (state.preview === 'sms' ? ` · ≈ ${Math.max(1, Math.ceil(len / 160))} SMS segment${len > 160 ? 's' : ''}, no images` : '')
+        + (PREVIEW_ONLY[state.preview] ? ' · preview only, not sent by SuffAI yet' : state.channels.includes(state.preview) ? '' : ' · not in this campaign') + ' · scroll the phone for every channel';
+    }
+    function showChannel(ch) {
+      const sec = $('screen').querySelector(`[data-mode="${ch}"]`);
+      if (sec) $('screen').scrollTo({ top: sec.offsetTop, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    }
+    let pvRaf = 0;
+    $('screen').addEventListener('scroll', () => { cancelAnimationFrame(pvRaf); pvRaf = requestAnimationFrame(syncPreviewTabs); }, { passive: true });
 
-    /* ---------- Budget recommendation + estimate ---------- */
+    /* ---------- Budget recommendation + estimate (simulated, from the API) ---------- */
     let recTimer = null, recSeq = 0, estTimer = null, estSeq = 0;
+    const daysValue = () => Math.max(1, Math.min(365, Math.round(Number($('campaignDays').value) || 14)));
     function scheduleRecommendation() { clearTimeout(recTimer); recTimer = setTimeout(() => fetchRecommendation(false), 350); }
     async function fetchRecommendation(applyIfEmpty) {
       if (!editable()) return;
-      const chans = selectedChannels();
-      if (!chans.length) { renderRecommendation(null); return; }
+      if (!state.channels.length) { renderRecommendation(null); scheduleEstimate(); return; }
       const seq = ++recSeq;
       try {
         const data = await api('/v1/ads-lab/campaigns/' + encodeURIComponent(state.current.campaign_id) + '/budget-recommendation', {
           method: 'POST',
-          body: JSON.stringify({ objective: selectedObjective(), duration_days: daysValue(), channels: chans }),
+          body: JSON.stringify({ objective: selectedObjective(), duration_days: daysValue(), channels: state.channels }),
         });
         if (seq !== recSeq) return;
         state.rec = data.recommendation;
@@ -494,7 +984,7 @@
       if (!rec) {
         $('recBudget').textContent = '—';
         $('recDaily').textContent = '';
-        $('recRange').textContent = error || (selectedChannels().length ? '' : 'Select a channel to get a recommendation.');
+        $('recRange').textContent = error || (state.channels.length ? '' : 'Select a channel to get a recommendation.');
         $('recBreakdown').innerHTML = '';
         $('recReasons').innerHTML = '';
         return;
@@ -502,24 +992,20 @@
       $('recBudget').textContent = inr(rec.recommended);
       $('recDaily').textContent = '(' + inr(rec.daily_budget) + ' / day)';
       $('recRange').textContent = `Range ${inr(rec.min)} – ${inr(rec.max)} · expected ROAS ${roas(rec.expected_roas)} · target reach ${num(rec.target_reach)} of ${num(rec.audience)} customers`;
-      $('recBreakdown').innerHTML = (rec.breakdown || []).map(b => `<div>
-        <div class="flex justify-between text-[11px]"><span class="font-semibold">${esc(b.label)}</span><span class="font-mono">${esc(inr(b.budget))} · ${esc(b.share_pct)}% · ${esc(num(b.units))} ${esc(b.unit)}</span></div>
-        <div class="h-1.5 rounded-full bg-[#E4DED3] overflow-hidden mt-0.5"><div class="h-full bg-[#89765C]" style="width:${Math.max(2, Math.min(100, Number(b.share_pct) || 0))}%"></div></div>
-      </div>`).join('');
+      $('recBreakdown').innerHTML = (rec.breakdown || []).map(b => `<div class="rec-bar">
+        <div class="row"><b>${esc(b.label)}</b><span class="mono">${esc(inr(b.budget))} · ${esc(b.share_pct)}% · ${esc(num(b.units))} ${esc(b.unit)}</span></div>
+        <div class="track"><i style="width:${Math.max(2, Math.min(100, Number(b.share_pct) || 0))}%"></i></div></div>`).join('');
       $('recReasons').innerHTML = (rec.reasons || []).map(r => `<li>${esc(r)}</li>`).join('');
     }
-    function daysValue() { return Math.max(1, Math.min(365, Math.round(Number($('campaignDays').value) || 14))); }
     function scheduleEstimate() { clearTimeout(estTimer); estTimer = setTimeout(fetchEstimate, 350); }
     async function fetchEstimate() {
-      const budget = Number($('campaignBudget').value || 0);
-      const days = daysValue();
+      const budget = Number($('campaignBudget').value || 0), days = daysValue();
       $('dailyBudget').textContent = budget > 0 ? inr(budget / days) + ' / day' : '—';
       if (!editable()) return;
-      const chans = selectedChannels();
-      if (!(budget > 0) || !chans.length) {
-        $('estimateStatus').textContent = !chans.length ? 'Select a channel.' : 'Enter a budget.';
+      if (!(budget > 0) || !state.channels.length) {
+        $('estimateStatus').textContent = !state.channels.length ? 'Select a channel.' : 'Enter a budget.';
         $('estimateGrid').innerHTML = ''; $('estimateChannels').innerHTML = '';
-        state.estimate = null;
+        state.estimate = null; renderSummary();
         return;
       }
       const seq = ++estSeq;
@@ -527,7 +1013,7 @@
       try {
         const data = await api('/v1/ads-lab/campaigns/' + encodeURIComponent(state.current.campaign_id) + '/estimate', {
           method: 'POST',
-          body: JSON.stringify({ objective: selectedObjective(), budget_inr: budget, duration_days: days, channels: chans }),
+          body: JSON.stringify({ objective: selectedObjective(), budget_inr: budget, duration_days: days, channels: state.channels }),
         });
         if (seq !== estSeq) return;
         state.estimate = data.estimate;
@@ -536,106 +1022,158 @@
         if (seq !== estSeq) return;
         $('estimateStatus').textContent = e.message;
       }
+      renderSummary();
     }
     function renderEstimate(est) {
       const tiles = [['Reach', 'reach', num], ['Impressions / reads', 'impressions', num], ['CTR', 'ctr', v => pct(v)],
         ['Conversions', 'conversions', num], ['Revenue', 'revenue', inr], ['Lift', 'lift', v => pct(v, 1)], ['ROAS', 'roas', roas]];
-      $('estimateGrid').innerHTML = tiles.map(([label, key, fmt]) => `<div class="est-tile"><p class="lbl">${esc(label)}</p><p class="val">${esc(fmt(est.expected[key]))}</p><p class="rng">${esc(fmt(est.low[key]))} – ${esc(fmt(est.high[key]))}</p></div>`).join('');
+      $('estimateGrid').innerHTML = tiles.map(([label, key, fmt]) => `<div class="tile"><span>${esc(label)}</span><b>${esc(fmt(est.expected[key]))}</b><small>${esc(fmt(est.low[key]))} – ${esc(fmt(est.high[key]))}</small></div>`).join('');
       const unspent = Number(est.expected.unspent || 0);
-      $('estimateStatus').textContent = `Audience ${num(est.audience)} · ${est.objective}` + (unspent > 0 ? ` · ${inr(unspent)} of budget would go unspent` : '');
+      $('estimateStatus').textContent = ` · audience ${num(est.audience)} · ${est.objective}` + (unspent > 0 ? ` · ${inr(unspent)} of budget would go unspent` : '');
       const rows = Object.entries(est.by_channel || {});
-      $('estimateChannels').innerHTML = rows.length > 1 || (rows.length === 1 && rows[0][0] !== 'in_app') ? `<table class="w-full text-left text-[11px] whitespace-nowrap">
-        <thead class="text-[#777066] text-[10px] uppercase"><tr><th class="py-1 pr-3">Channel</th><th class="py-1 pr-3">Budget</th><th class="py-1 pr-3">Sent</th><th class="py-1 pr-3">Reach</th><th class="py-1 pr-3">Clicks</th><th class="py-1 pr-3">Conv.</th><th class="py-1 pr-3">ROAS</th></tr></thead>
-        <tbody>${rows.map(([ch, r]) => `<tr class="border-t border-[#E4DED3]"><td class="py-1 pr-3 font-semibold">${esc(r.label)}</td><td class="py-1 pr-3 font-mono">${esc(inr(r.budget))}</td><td class="py-1 pr-3 font-mono">${esc(r.expected.messages != null ? num(r.expected.messages) : num(r.expected.impressions) + ' impr.')}</td><td class="py-1 pr-3 font-mono">${esc(num(r.expected.reach))}</td><td class="py-1 pr-3 font-mono">${esc(num(r.expected.clicks))}</td><td class="py-1 pr-3 font-mono">${esc(num(r.expected.conversions))}</td><td class="py-1 pr-3 font-mono">${esc(roas(r.expected.roas))}</td></tr>`).join('')}</tbody></table>` : '';
+      $('estimateChannels').innerHTML = rows.length > 1 || (rows.length === 1 && rows[0][0] !== 'in_app') ? `<table class="mini">
+        <thead><tr><th>Channel</th><th>Budget</th><th>Sent</th><th>Reach</th><th>Clicks</th><th>Conv.</th><th>ROAS</th></tr></thead>
+        <tbody>${rows.map(([, r]) => `<tr><td>${esc(r.label)}</td><td>${esc(inr(r.budget))}</td><td>${esc(r.expected.messages != null ? num(r.expected.messages) : num(r.expected.impressions) + ' impr.')}</td><td>${esc(num(r.expected.reach))}</td><td>${esc(num(r.expected.clicks))}</td><td>${esc(num(r.expected.conversions))}</td><td>${esc(roas(r.expected.roas))}</td></tr>`).join('')}</tbody></table>` : '';
     }
 
     /* ---------- Tracking (launched) ---------- */
     function renderTracking(c) {
       const show = c.status === 'launched';
-      $('trackingSection').classList.toggle('hidden', !show);
+      $('trackingSection').hidden = !show;
       if (!show) return;
       const i = c.impact || {};
       $('trackingNote').textContent = `Launched ${String(c.launched_at || '').slice(0, 10)} · ${c.duration_days || '—'} days from ${c.start_date || '—'} · ${inr(c.budget_inr)} budget`
         + (c.budget_recommended ? ` (recommended ${inr(c.budget_recommended)})` : '') + '. Nothing is delivered to customers; all figures are simulated.';
       const tiles = [['Spend', inr(i.spend)], ['Reach', num(i.reach)], ['Impressions', num(i.impressions)], ['Clicks', num(i.clicks)],
         ['CTR', pct(i.ctr)], ['Conversions', num(i.conversions)], ['Revenue', inr(i.revenue)], ['ROAS', roas(i.roas)]];
-      $('impactGrid').innerHTML = tiles.map(([l, v]) => `<div class="est-tile"><p class="lbl">${esc(l)}</p><p class="val">${esc(v)}</p></div>`).join('');
+      $('impactGrid').innerHTML = tiles.map(([l, v]) => `<div class="tile"><span>${esc(l)}</span><b>${esc(v)}</b></div>`).join('');
       const br = i.channel_breakdown || {};
       const entries = Object.keys(br).length ? Object.entries(br) : [['in_app', { label: 'In-app', ...i }]];
       $('channelTrackBody').innerHTML = entries.map(([ch, r]) => `<tr>
-        <td class="px-3 py-2 font-semibold">${esc(r.label || CHANNEL_LABELS[ch] || ch)}</td><td class="px-3 py-2 font-mono">${esc(inr(r.spend))}</td>
-        <td class="px-3 py-2 font-mono">${esc(r.messages != null ? num(r.messages) : '—')}</td><td class="px-3 py-2 font-mono">${esc(r.delivered != null ? num(r.delivered) : '—')}</td>
-        <td class="px-3 py-2 font-mono">${esc(num(r.reach))}</td><td class="px-3 py-2 font-mono">${esc(num(r.clicks))}</td><td class="px-3 py-2 font-mono">${esc(pct(r.ctr))}</td>
-        <td class="px-3 py-2 font-mono">${esc(num(r.conversions))}</td><td class="px-3 py-2 font-mono">${esc(inr(r.revenue))}</td><td class="px-3 py-2 font-mono">${esc(roas(r.roas))}</td></tr>`).join('');
+        <td>${esc(r.label || CHANNELS[ch]?.name || ch)}</td><td>${esc(inr(r.spend))}</td>
+        <td>${esc(r.messages != null ? num(r.messages) : '—')}</td><td>${esc(r.delivered != null ? num(r.delivered) : '—')}</td>
+        <td>${esc(num(r.reach))}</td><td>${esc(num(r.clicks))}</td><td>${esc(pct(r.ctr))}</td>
+        <td>${esc(num(r.conversions))}</td><td>${esc(inr(r.revenue))}</td><td>${esc(roas(r.roas))}</td></tr>`).join('');
     }
 
-    /* ---------- Actions ---------- */
-    function showAction(msg, isError) {
-      const el = $('actionMsg');
-      el.textContent = msg || '';
-      el.className = 'text-xs flex-1 ' + (isError ? 'text-red-700' : 'text-[#777066]');
+    /* ---------- Summary + validation ---------- */
+    function renderSummary() {
+      const c = state.current || {};
+      const budget = Number($('campaignBudget').value || 0), days = daysValue();
+      const est = state.estimate && state.estimate.expected;
+      $('sumList').innerHTML = [
+        ['Audience', state.current ? `${num(c.est_audience)} customers` : 'Sample audience'],
+        ['Creatives', `${state.picked.length}${state.mode === 'ab' ? ' · A/B test' : ''}`],
+        ['Channels', state.channels.map(k => CHANNELS[k].name).join(', ') || '—'],
+        ['Objective', (OBJECTIVES.find(o => o[0] === selectedObjective()) || [])[1] || '—'],
+        ['Budget', budget > 0 ? `${inr(budget)} · ${inr(budget / days)}/day` : '—'],
+        ['Schedule', `${$('campaignStart').value || '—'} · ${days} days`],
+        ['Est. ROAS', est ? roas(est.roas) + ' (sim)' : '—'],
+        ['Frequency', $('fCap').selectedOptions[0].text],
+        ['Quiet hours', $('fQuiet').checked ? 'On' : 'Off'],
+      ].map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('');
+    }
+    function renderAll() {
+      $('cHead').textContent = `${$('fHead').value.length}/90`;
+      $('cWa').textContent = `${$('fWa').value.length}/1000`;
+      $('cSms').textContent = `${$('fSms').value.length}/160`;
+      const u = finalUrl(); $('urlOut').textContent = u ? `→ ${u}` : '';
+      $('dailyBudget').textContent = Number($('campaignBudget').value) > 0 ? inr(Number($('campaignBudget').value) / daysValue()) + ' / day' : '—';
+      $('s1').classList.add('done');
+      $('s2').classList.toggle('done', state.picked.length > 0);
+      $('s3').classList.toggle('done', state.channels.length > 0);
+      $('s4').classList.toggle('done', !!($('fName').value.trim() && $('fHead').value.trim()));
+      $('s5').classList.toggle('done', Number($('campaignBudget').value) > 0);
+      renderSummary();
+      renderPreview();
     }
     function configBody() {
-      const ids = selectedSkuIds();
-      const chans = selectedChannels();
       const tpl = {};
-      if (chans.includes('whatsapp')) tpl.whatsapp = $('waText').value.trim();
-      if (chans.includes('sms')) tpl.sms = $('smsText').value.trim();
+      if (state.channels.includes('whatsapp')) tpl.whatsapp = $('fWa').value.trim();
+      if (state.channels.includes('sms')) tpl.sms = $('fSms').value.trim();
       return {
-        campaign_name: $('campaignName').value.trim(),
+        campaign_name: $('fName').value.trim(),
         objective: selectedObjective(),
         budget_inr: Number($('campaignBudget').value || 0),
         duration_days: daysValue(),
         start_date: $('campaignStart').value || null,
-        selected_sku_ids: ids,
-        creative: { headline: $('creativeHeadline').value.trim(), cta: $('creativeCta').value, hero_sku_id: $('creativeHero').value || ids[0] },
+        selected_sku_ids: state.picked.slice(),
+        creative: {
+          headline: $('fHead').value.trim(), cta: $('fCta').value.trim() || 'Shop now',
+          hero_sku_id: state.focus || state.picked[0] || null, delivery_mode: state.mode,
+          offer_code: $('fCode').value.trim().toUpperCase() || null, landing_url: finalUrl() || null, utm: $('fUtm').checked,
+          frequency_cap: $('fCap').value, quiet_hours: $('fQuiet').checked,
+        },
         source_context: state.sourceContext || null,
-        channels: chans,
+        channels: state.channels.slice(),
         message_template: tpl,
       };
     }
     function validate(body) {
-      if (!body.campaign_name) return 'Campaign name is required.';
-      if (!body.channels.length) return 'Select at least one channel.';
-      if (body.channels.includes('whatsapp') && !body.message_template.whatsapp) return 'Write the WhatsApp message.';
-      if (body.channels.includes('sms') && !body.message_template.sms) return 'Write the SMS message.';
-      if (!body.selected_sku_ids.length) return 'Select at least one SKU.';
-      if (!(body.budget_inr > 0)) return 'Enter a budget (or use the recommended budget).';
-      return '';
+      const errs = [], mark = (id, eid, msg) => { $(id).classList.toggle('err', !!msg); $(eid).textContent = msg || ''; if (msg) errs.push(msg); };
+      mark('fName', 'eName', body.campaign_name ? '' : 'Campaign name is required.');
+      mark('fHead', 'eHead', body.creative.headline ? '' : 'Add a headline.');
+      mark('fWa', 'eWa', body.channels.includes('whatsapp') && !body.message_template.whatsapp ? 'Write the WhatsApp message.' : '');
+      mark('fSms', 'eSms', body.channels.includes('sms') && !body.message_template.sms ? 'Write the SMS message.' : '');
+      const code = $('fCode').value.trim();
+      mark('fCode', 'eCode', !code || /^[A-Za-z0-9_-]{3,15}$/.test(code) ? '' : 'Use 3–15 letters or numbers.');
+      const url = $('fUrl').value.trim();
+      let urlErr = '';
+      if (url) { try { if (!/^https?:$/.test(new URL(url).protocol)) urlErr = 'Link must start with http:// or https://'; } catch (_) { urlErr = 'Enter a full link, e.g. https://yourstore.com/sale'; } }
+      mark('fUrl', 'eUrl', urlErr);
+      mark('campaignBudget', 'eBudget', body.budget_inr > 0 ? '' : 'Enter a budget (or use the recommended budget).');
+      if (!body.channels.length) errs.push('Select at least one channel.');
+      if (!body.selected_sku_ids.length) errs.push('Select at least one creative.');
+      if (state.mode === 'ab' && body.selected_sku_ids.length < 2) errs.push('A/B testing needs two or more creatives.');
+      return errs;
     }
-    async function saveConfig() {
-      const body = configBody();
-      const problem = validate(body);
-      if (problem) { showAction(problem, true); return null; }
+    function showErrs(errs) {
+      $('errs').hidden = !errs.length;
+      $('errs').innerHTML = errs.map(e => `<li>${esc(e)}</li>`).join('');
+    }
+    function checked() {
+      const body = configBody(), errs = validate(body);
+      showErrs(errs);
+      if (errs.length) { toast('Fix the highlighted fields first', 'fa-triangle-exclamation'); document.querySelector('.in.err')?.focus(); return null; }
+      return body;
+    }
+    $('form').addEventListener('input', (e) => {
+      renderAll();
+      if (!$('errs').hidden) showErrs(validate(configBody()));
+      if (e.target.id === 'campaignDays' || e.target.name === 'objective') scheduleRecommendation();
+      if (e.target.id === 'campaignBudget') scheduleEstimate();
+    });
+    $('form').addEventListener('change', (e) => { renderAll(); if (e.target.name === 'objective') scheduleRecommendation(); });
+
+    /* ---------- Actions ---------- */
+    async function saveConfig(body) {
       const data = await api('/v1/ads-lab/campaigns/' + encodeURIComponent(state.current.campaign_id) + '/config', { method: 'PATCH', body: JSON.stringify(body) });
       return data.campaign;
     }
     async function onSave() {
       if (state.busy || !editable()) return;
+      const body = checked(); if (!body) return;
       state.busy = true;
       try {
-        const c = await saveConfig();
-        if (c) { showAction('Saved.'); await loadCampaign(c.campaign_id); loadCampaigns(); }
-      } catch (e) { showAction(e.message, true); }
+        const c = await saveConfig(body);
+        toast('Saved');
+        await loadCampaign(c.campaign_id); loadCampaigns();
+      } catch (e) { toast(e.message, 'fa-triangle-exclamation'); }
       finally { state.busy = false; }
     }
     async function onLaunch() {
+      if (!state.current) { goTab('ads', './ads_lab.html'); return; }
       if (state.busy || !editable()) return;
-      const body = configBody();
-      const problem = validate(body);
-      if (problem) { showAction(problem, true); return; }
-      const chans = body.channels.map(c => CHANNEL_LABELS[c]).join(', ');
+      const body = checked(); if (!body) return;
+      const chans = body.channels.map(c => CHANNELS[c].name).join(', ');
       if (!confirm(`Launch "${body.campaign_name}" on ${chans} with ${inr(body.budget_inr)}?\n\nThis is a simulated launch: no messages or ads are sent. Simulated performance is generated for tracking.`)) return;
       state.busy = true;
-      showAction('Launching…');
       try {
-        const c = await saveConfig();
-        if (!c) return;
+        const c = await saveConfig(body);
         await api('/v1/ads-lab/campaigns/' + encodeURIComponent(c.campaign_id) + '/launch', { method: 'POST' });
-        await loadCampaign(c.campaign_id);
-        loadCampaigns();
-        showAction('');
-      } catch (e) { showAction(e.message, true); }
+        toast(`“${body.campaign_name}” is running (simulated)`, 'fa-rocket');
+        await loadCampaign(c.campaign_id); loadCampaigns();
+      } catch (e) { toast(e.message, 'fa-triangle-exclamation'); }
       finally { state.busy = false; }
     }
     async function onDiscard() {
@@ -644,12 +1182,11 @@
       state.busy = true;
       try {
         await api('/v1/ads-lab/campaigns/' + encodeURIComponent(state.current.campaign_id) + '/ignore', { method: 'POST' });
-        state.current = null;
-        $('editor').classList.add('hidden');
-        $('emptyEditor').classList.remove('hidden');
+        showSample();
+        toast('Campaign discarded', 'fa-trash-can');
         loadCampaigns();
         publishContext();
-      } catch (e) { showAction(e.message, true); }
+      } catch (e) { toast(e.message, 'fa-triangle-exclamation'); }
       finally { state.busy = false; }
     }
     function openMonitor() {
@@ -684,23 +1221,17 @@
     });
 
     /* ---------- Wiring ---------- */
-    document.querySelectorAll('.chan-btn').forEach(b => b.addEventListener('click', () => {
-      b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') === 'true' ? 'false' : 'true');
-      onChannelsChange();
-      scheduleRecommendation();
-    }));
-    document.querySelectorAll('input[name="objective"]').forEach(el => el.addEventListener('change', scheduleRecommendation));
-    $('campaignDays').addEventListener('input', scheduleRecommendation);
-    $('campaignBudget').addEventListener('input', scheduleEstimate);
-    ['waText', 'smsText'].forEach(id => $(id).addEventListener('input', updateMessages));
-    $('useRecBtn').addEventListener('click', () => { if (state.rec) { $('campaignBudget').value = Math.round(state.rec.recommended); scheduleEstimate(); } });
+    ['backBtn', 'editAud', 'goAds', 'startBtn'].forEach(id => $(id).addEventListener('click', () => goTab('ads', './ads_lab.html')));
+    $('useRecBtn').addEventListener('click', () => { if (state.rec) { $('campaignBudget').value = Math.round(state.rec.recommended); renderAll(); scheduleEstimate(); } });
     $('saveBtn').addEventListener('click', onSave);
     $('launchBtn').addEventListener('click', onLaunch);
     $('discardBtn').addEventListener('click', onDiscard);
     $('openMonitorBtn').addEventListener('click', openMonitor);
     $('refreshBtn').addEventListener('click', loadCampaigns);
-    document.querySelectorAll('#statusFilter [data-filter]').forEach(b => b.addEventListener('click', () => { state.filter = b.dataset.filter; renderList(); }));
+    document.querySelectorAll('#statusFilter [data-filter]').forEach(b => b.addEventListener('click', () => { state.filter = b.dataset.filter; renderHistory(); }));
+    $('tzNote').textContent = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
 
+    showSample();
     loadCampaigns();
     const initialId = new URLSearchParams(location.search).get('campaign_id');
     if (initialId) loadCampaign(initialId);

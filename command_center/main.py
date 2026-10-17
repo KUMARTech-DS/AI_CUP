@@ -397,8 +397,8 @@ def health():
         "extraction_url": bool(os.getenv("EXTRACTION_URL")),
         "gcs_bucket": bool(os.getenv("GCS_IMAGE_BUCKET")),
         "database_url": bool(os.getenv("DATABASE_URL")),
-        "enable_vertex": _env_bool("ENABLE_VERTEX", False),
-        "vertex_chat_model": os.getenv("VERTEX_CHAT_MODEL", "gemini-2.0-flash"),
+        "enable_vertex": _env_bool("ENABLE_VERTEX", True),
+        "vertex_chat_model": os.getenv("VERTEX_CHAT_MODEL", "gemini-2.5-flash"),
         "metrics_json": METRICS_JSON.is_file(),
         "chat": True,
         "similarity_url": bool(os.getenv("SIMILARITY_URL")),
@@ -1161,7 +1161,7 @@ def style_assistant_recommend(
         raise HTTPException(400, "brand_name is required")
     if not os.getenv("DATABASE_URL", "").strip():
         raise HTTPException(503, "DATABASE_URL not set")
-    if not _env_bool("ENABLE_VERTEX", False):
+    if not _env_bool("ENABLE_VERTEX", True):
         raise HTTPException(
             503,
             "Style Assistant needs ENABLE_VERTEX=true (outfit copy via Vertex)",
@@ -1313,7 +1313,7 @@ def geo_brief_core(body: GeoBriefRequest, sess: Optional[dict[str, Any]]) -> dic
             "model": "heuristic",
         }
 
-    if not _env_bool("ENABLE_VERTEX", False):
+    if not _env_bool("ENABLE_VERTEX", True):
         return _fallback_payload("ENABLE_VERTEX=false")
 
     try:
@@ -1344,7 +1344,7 @@ def geo_brief_core(body: GeoBriefRequest, sess: Optional[dict[str, Any]]) -> dic
         "ok": True,
         "fallback": False,
         "request_id": request_id,
-        "model": os.getenv("VERTEX_CHAT_MODEL", "gemini-2.0-flash"),
+        "model": os.getenv("VERTEX_CHAT_MODEL", "gemini-2.5-flash"),
         "decision": parsed["decision"],
         "confidence": parsed["confidence"],
         "explanation": parsed["explanation"],
@@ -1449,5 +1449,15 @@ def root():
     }
 
 
+class _UIStaticFiles(StaticFiles):
+    """Pages/scripts revalidate on every load (ETag → cheap 304), so UI updates show without a hard refresh."""
+
+    async def get_response(self, path, scope):
+        resp = await super().get_response(path, scope)
+        if not path.lower().endswith((".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".ico", ".woff", ".woff2")):
+            resp.headers["Cache-Control"] = "no-cache"
+        return resp
+
+
 if WEB_DIR.is_dir():
-    app.mount("/", StaticFiles(directory=str(WEB_DIR), html=True), name="ui")
+    app.mount("/", _UIStaticFiles(directory=str(WEB_DIR), html=True), name="ui")
