@@ -209,60 +209,44 @@ class StyleRecommendRequest(BaseModel):
     limit: int = Field(default=6, ge=1, le=12)
 
 
+
 def _slim_metrics_json() -> dict[str, Any]:
-    """Build a small summary from web/metrics.json for the chat model."""
+    """Load the complete dashboard metrics JSON for chat analysis."""
     if not METRICS_JSON.is_file():
-        return {"error": "metrics.json missing", "path": str(METRICS_JSON)}
+        raise FileNotFoundError(
+            f"metrics.json missing: {METRICS_JSON}"
+        )
+
     try:
-        raw = json.loads(METRICS_JSON.read_text(encoding="utf-8"))
-    except Exception as exc:
+        raw = json.loads(
+            METRICS_JSON.read_text(encoding="utf-8")
+        )
+    except (OSError, json.JSONDecodeError):
         log.exception("Failed to read metrics.json")
-        return {"error": f"metrics.json read failed: {exc}"}
+        raise
 
-    customers = raw.get("customer_cells") or []
-    garments = raw.get("garment_cells") or []
-    pin_geo = raw.get("pin_geo") or {}
+    if not isinstance(raw, dict):
+        raise ValueError(
+            "metrics.json must contain a JSON object"
+        )
 
-    total_customers = sum(int(c.get("customers") or 0) for c in customers if isinstance(c, dict))
-    total_orders = sum(int(c.get("orders") or 0) for c in customers if isinstance(c, dict))
-    total_revenue = sum(float(c.get("revenue") or 0) for c in customers if isinstance(c, dict))
-    total_garments = sum(int(g.get("garments") or 0) for g in garments if isinstance(g, dict))
-
-    brand_counts: dict[str, int] = {}
-    for g in garments:
-        if not isinstance(g, dict):
-            continue
-        b = g.get("brand") or "unknown"
-        brand_counts[str(b)] = brand_counts.get(str(b), 0) + int(g.get("garments") or 0)
-    top_brands = sorted(brand_counts.items(), key=lambda x: x[1], reverse=True)[:10]
-
-    pin_labels = []
-    for pin, geo in list(pin_geo.items())[:20]:
-        if isinstance(geo, dict):
-            pin_labels.append(
-                {
-                    "pin": pin,
-                    "area_label": geo.get("area_label"),
-                    "population_pin": geo.get("population_pin"),
-                }
-            )
-
-    return {
-        "source": "web/metrics.json",
-        "generated_at": raw.get("generated_at"),
-        "filters": raw.get("filters") if isinstance(raw.get("filters"), dict) else {},
-        "totals": {
-            "customers": total_customers,
-            "orders": total_orders,
-            "revenue": round(total_revenue, 2),
-            "garments": total_garments,
-            "customer_cells": len(customers),
-            "garment_cells": len(garments),
-        },
-        "top_brands": [{"brand": b, "garments": n} for b, n in top_brands],
-        "pins": pin_labels,
-        "extraction_jobs_count": raw.get("extraction_jobs_count"),
+    required_fields = {
+        "generated_at",
+        "filters",
+        "pin_geo",
+        "customer_cells",
+        "garment_cells",
     }
+
+    missing_fields = required_fields - raw.keys()
+    if missing_fields:
+        raise ValueError(
+            "metrics.json is missing expected fields: "
+            + ", ".join(sorted(missing_fields))
+        )
+
+    # Return all records and fields, not just a summary.
+    return raw
 
 
 def _sanitize_ui_context(raw: Any) -> dict[str, Any]:
