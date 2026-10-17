@@ -1449,7 +1449,7 @@ def run_agent(
     try:
         vertexai.init(project=project, location=os.getenv("VERTEX_LOCATION", "asia-south1"))
         model = GenerativeModel(
-            os.getenv("VERTEX_CHAT_MODEL", "gemini-2.0-flash"),
+            os.getenv("VERTEX_CHAT_MODEL", "gemini-2.5-flash"),
             system_instruction=[AURA_SYSTEM],
             tools=[Tool(function_declarations=_tool_declarations())],
             safety_settings=guard.vertex_safety_settings(),

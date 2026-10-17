@@ -1,34 +1,42 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full bg-[#FAF8F4] text-[#292722]">
+<html lang="en" class="h-full bg-[#FAF6EE] text-[#3B2733]">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>THRED_SPATIAL AI - Ads Lab</title>
+  <title>SuffAI · Ads Lab</title>
   <script src="./config.js"></script>
   <script src="./session.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Outfit:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     :root { color-scheme: light; }
-    body { font-family: Inter, sans-serif; background-color: #FAF8F4; color: #292722; }
-    .font-mono { font-family: 'JetBrains Mono', monospace; }
+    body { font-family: Outfit, system-ui, sans-serif; background-color: #FAF6EE; color: #3B2733; }
+    .font-mono { font-family: 'IBM Plex Mono', monospace; }
+    .font-display { font-family: 'Cormorant Garamond', Georgia, serif; }
+    :focus-visible { outline: 3px solid rgba(197,159,176,.7); outline-offset: 2px; }
     ::-webkit-scrollbar { width: 8px; height: 8px; }
-    ::-webkit-scrollbar-track { background: #F0ECE4; }
-    ::-webkit-scrollbar-thumb { background: #DED7CB; border-radius: 4px; }
-    ::-webkit-scrollbar-thumb:hover { background: #89765C; }
+    ::-webkit-scrollbar-track { background: #F6EEF0; }
+    ::-webkit-scrollbar-thumb { background: #DCC3CE; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #6B3A55; }
     
-    .glass-panel { background: #FAF8F4; border: 1px solid #E4DED3; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,.04); }
-    .holographic-grid { background-color: #FAF8F4; background-image: linear-gradient(#E4DED3 1px, transparent 1px), linear-gradient(90deg, #E4DED3 1px, transparent 1px); background-size: 40px 40px; }
+    .glass-panel { background: #FAF6EE; border: 1px solid #EAD9E0; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,.04); }
+    .holographic-grid { background-color: #FAF6EE; background-image: linear-gradient(#EAD9E0 1px, transparent 1px), linear-gradient(90deg, #EAD9E0 1px, transparent 1px); background-size: 40px 40px; }
     
-    .upload-zone { border: 2px dashed #89765C; transition: all .2s ease; background: #F0ECE4; }
-    .upload-zone.dragover { border-color: #292722; background: #E4DED3; }
+    .upload-zone { border: 2px dashed #6B3A55; transition: all .2s ease; background: #F6EEF0; }
+    .upload-zone.dragover { border-color: #3B2733; background: #EAD9E0; }
     
-    .field { width: 100%; background: #FFFFFF; border: 1px solid #E4DED3; color: #292722; border-radius: .5rem; padding: .55rem .65rem; font-size: .75rem; }
-    .field:focus { outline: 2px solid #89765C; border-color: #89765C; }
+    .field { width: 100%; background: #FFFFFF; border: 1px solid #EAD9E0; color: #3B2733; border-radius: .5rem; padding: .55rem .65rem; font-size: .75rem; }
+    .field:focus { outline: none; border-color: #6B3A55; box-shadow: 0 0 0 3px rgba(197,159,176,.35); }
+    select.field[multiple] option { padding: .3rem .4rem; border-radius: .35rem; cursor: pointer; }
+    select.field[multiple] option:checked { background: #F6EEF0 linear-gradient(0deg,#F6EEF0,#F6EEF0); color: #6B3A55; font-weight: 600; }
+    select.field:not([multiple]) { appearance: none; -webkit-appearance: none; padding-right: 2.2rem; cursor: pointer; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%238A7480' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 8l4 4 4-4'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 0.7rem center; background-size: 16px; }
+    select.field:not([multiple]):focus { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%236B3A55' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 8l4 4 4-4'/%3E%3C/svg%3E"); }
+    select.field:disabled { cursor: not-allowed; }
+    .form-err { padding: .55rem .7rem; border-radius: 10px; background: rgba(180,60,60,.08); border: 1px solid rgba(180,60,60,.3); color: #a03a3a; font-size: 12px; }
     
-    .tag { display: inline-flex; align-items: center; gap: .3rem; border-radius: 999px; border: 1px solid #E4DED3; padding: .15rem .5rem; font-size: 10px; color: #4A4339; background: #F0ECE4; }
-    .muted { color: #777066; }
+    .tag { display: inline-flex; align-items: center; gap: .3rem; border-radius: 999px; border: 1px solid #EAD9E0; padding: .15rem .5rem; font-size: 10px; color: #552C43; background: #F6EEF0; }
+    .muted { color: #8A7480; }
 
     /* Audience taste: one horizontal rail; categories never stack vertically. */
     .taste-rail {
@@ -43,7 +51,7 @@
       scroll-snap-type: x proximity;
       overscroll-behavior-x: contain;
       scrollbar-width: thin;
-      scrollbar-color: #89765C #F0ECE4;
+      scrollbar-color: #6B3A55 #F6EEF0;
     }
 
     .taste-card {
@@ -57,7 +65,7 @@
       overflow: hidden;
       scroll-snap-align: start;
       background: #FFFFFF;
-      border: 1px solid #E4DED3;
+      border: 1px solid #EAD9E0;
       border-radius: 10px;
       padding: 12px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.03);
@@ -68,12 +76,12 @@
       min-height: 0;
       overflow-y: auto;
       scrollbar-width: thin;
-      scrollbar-color: #89765C transparent;
+      scrollbar-color: #6B3A55 transparent;
       padding-right: 2px;
     }
     
     .taste-card .taste-title {
-      color: #89765C;
+      color: #6B3A55;
       font-size: 10px;
       font-weight: 700;
       letter-spacing: .07em;
@@ -81,59 +89,202 @@
       margin-bottom: 8px;
     }
 
-    /* Creative Fit Ranking 3D / Horizontal Rail */
-    .creative-rail {
-      display: flex; gap: 1.5rem; align-items: stretch; overflow-x: auto; overflow-y: hidden;
-      perspective: 1200px; padding: 1.8rem 3rem 2.2rem 1.25rem; position: relative; z-index: 10;
-      scroll-behavior: smooth; scroll-snap-type: x proximity; overscroll-behavior-x: contain;
-      min-height: 530px; width: 100%;
+    /* ---- Creative ranking deck (dark burgundy stage) ----
+       Coverflow-style: the selected card is always centred; the others stack behind it symmetrically
+       (left ones to the left, right ones to the right). JS sets --x/--s/--o/--z per card. */
+    .deck-canvas {
+      background:
+        radial-gradient(60% 55% at 50% 42%, rgba(201,162,74,.10), transparent 70%),
+        radial-gradient(90% 85% at 50% 30%, #4A1A33 0%, #2E0F20 55%, #1C0812 100%);
+      border: 1px solid #3E1729; border-radius: 18px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 22px 44px rgba(28,8,18,.22);
     }
-    .creative-rail:focus-visible { outline: 2px solid #89765C; outline-offset: -2px; }
-    .creative-rail::-webkit-scrollbar { height: 8px; }
-    .creative-rail::-webkit-scrollbar-track { background: #F0ECE4; border-radius: 4px; }
-    .creative-rail::-webkit-scrollbar-thumb { background: #89765C; border-radius: 4px; }
-    
-    .holo-card {
-      flex: 0 0 320px; width: 320px; min-width: 320px; height: 490px; min-height: 490px;
-      display: flex; flex-direction: column; overflow: hidden; cursor: default; position: relative;
-      scroll-snap-align: center; transform: rotateY(-19deg) translateZ(-30px);
-      transform-style: preserve-3d; transition: transform .38s cubic-bezier(.25,.8,.25,1),
-      box-shadow .38s ease, border-color .25s ease, opacity .25s ease;
-      background: #FFFFFF; backdrop-filter: blur(8px);
-      border: 1px solid #E4DED3; border-radius: 12px;
-      box-shadow: 0 10px 28px rgba(0,0,0,0.08);
-      opacity: .95;
+    .deck {
+      --cw: clamp(240px, 23vw, 310px); --ease: cubic-bezier(.22,.8,.24,1);
+      position: relative; height: 540px; overflow: hidden; outline: none; touch-action: pan-y; user-select: none;
     }
-    .holo-card:hover, .holo-card:focus-within {
-      transform: rotateY(0deg) translateZ(35px) scale(1.035); z-index: 20;
-      border-color: #89765C; opacity: 1;
-      box-shadow: 0 15px 40px rgba(137,118,92,.18);
+    .deck:focus-visible { box-shadow: inset 0 0 0 2px rgba(201,162,74,.55); }
+    .deck-glow {
+      position: absolute; left: 50%; top: 50%; z-index: 45; pointer-events: none;
+      width: calc(var(--cw) * 2.1); height: calc(var(--cw) * 2.1); translate: -50% -53%; border-radius: 50%;
+      background: radial-gradient(closest-side, rgba(245,205,110,.62), rgba(212,160,60,.32) 40%, rgba(120,40,75,.25) 64%, transparent 76%);
+      filter: blur(18px); animation: glowPulse 3.4s ease-in-out infinite alternate;
     }
-    .holo-card.rank-1 { border-color: #89765C; box-shadow: 0 0 25px rgba(137,118,92,.15); }
-    .holo-card .card-body { flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #89765C transparent; color: #292722; }
-    
-    .wiz-step { display: inline-flex; align-items: center; gap: .45rem; padding: .4rem .7rem; border-radius: 8px; font-size: 11px; font-weight: 700; color: #777066; }
-    .wiz-step:hover { background: #F0ECE4; color: #292722; }
-    .wiz-num { width: 20px; height: 20px; border-radius: 999px; border: 1px solid #DED7CB; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; background: #FFFFFF; }
-    .wiz-step.current { color: #292722; background: #F0ECE4; }
-    .wiz-step.current .wiz-num { border-color: #89765C; color: #89765C; }
-    .wiz-step.done .wiz-num { background: #89765C; border-color: #89765C; color: #FFFFFF; }
-    .wiz-sep { width: 18px; height: 1px; background: #DED7CB; }
-    .sim-badge { border-color: #89765C; color: #66513B; background: #F7F1E7; font-weight: 600; }
-    .obj-card { position: relative; display: flex; flex-direction: column; gap: .25rem; padding: .7rem .8rem; border: 1px solid #E4DED3; border-radius: 10px; background: #FFFFFF; cursor: pointer; }
-    .obj-card input { position: absolute; opacity: 0; pointer-events: none; }
-    .obj-card:has(input:checked) { border-color: #89765C; box-shadow: 0 0 0 2px rgba(137,118,92,.18); }
-    .sku-pick { display: flex; align-items: center; gap: .6rem; padding: .5rem .6rem; border: 1px solid #E4DED3; border-radius: 10px; background: #FFFFFF; cursor: pointer; }
-    .sku-pick:has(input:checked) { border-color: #89765C; background: #FBF8F2; }
-    .sku-pick.disabled { opacity: .5; cursor: not-allowed; }
-    .est-tile { background: #FFFFFF; border: 1px solid #E4DED3; border-radius: 10px; padding: .6rem .7rem; }
-    .est-tile .lbl { font-size: 9px; text-transform: uppercase; letter-spacing: .08em; color: #777066; font-weight: 600; }
-    .est-tile .val { font-family: 'JetBrains Mono', monospace; font-size: 15px; color: #292722; margin-top: .2rem; }
-    .est-tile .rng { font-size: 10px; color: #777066; margin-top: .1rem; }
+    @keyframes glowPulse { from { opacity: .7; scale: .93; } to { opacity: 1; scale: 1.05; } }
+    .cr-card {
+      --x: 0%; --y: 0px; --s: 1; --o: 1;
+      position: absolute; left: 50%; top: 50%; width: var(--cw); height: 440px; z-index: var(--z, 1);
+      display: flex; flex-direction: column; overflow: hidden; cursor: pointer;
+      background: linear-gradient(180deg, #FFF9FB, #F6E9EF); border: 1px solid #EAD9E0; border-radius: 18px;
+      box-shadow: 0 18px 40px rgba(0,0,0,.45);
+      transform: translate(calc(-50% + var(--x)), calc(-50% + var(--y))) scale(var(--s));
+      opacity: var(--o); filter: saturate(.8) brightness(.78);
+      transition: transform .8s var(--ease), opacity .6s ease, filter .6s ease, box-shadow .6s ease, border-color .5s ease;
+      will-change: transform; color: #3B2733;
+    }
+    .cr-card.is-active {
+      cursor: default; filter: none; border-color: #C9A24A;
+      box-shadow: 0 0 0 1px rgba(201,162,74,.6), 0 0 0 6px rgba(201,162,74,.12), 0 0 60px rgba(224,178,84,.4), 0 34px 70px rgba(0,0,0,.55);
+    }
+    .cr-card.is-gone { pointer-events: none; }
+    .deck-nav {
+      position: absolute; top: 50%; z-index: 60; translate: -50% -50%;
+      width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center;
+      background: linear-gradient(145deg, #4A2F3E, #1F0B16); color: #F3D58A; border: 1px solid rgba(201,162,74,.7);
+      box-shadow: 0 8px 22px rgba(0,0,0,.45), 0 0 0 4px rgba(201,162,74,.14);
+      transition: transform .25s var(--ease), background .25s ease, opacity .25s ease;
+    }
+    .deck-nav.prev { left: calc(50% - var(--cw) / 2 - 30px); }
+    .deck-nav.next { left: calc(50% + var(--cw) / 2 + 30px); }
+    .deck-nav:hover:not(:disabled) { transform: scale(1.1); background: linear-gradient(145deg, #7A3A5C, #3B2733); }
+    .deck-nav:disabled { opacity: 0; pointer-events: none; }
+    .deck-nav:focus-visible { outline: 3px solid rgba(201,162,74,.7); outline-offset: 2px; }
+    .deck-dots { position: absolute; left: 50%; bottom: 12px; translate: -50% 0; z-index: 60; display: flex; gap: 6px; }
+    .deck-dots i { width: 6px; height: 6px; border-radius: 99px; background: rgba(255,255,255,.22); transition: width .4s var(--ease), background .4s ease; }
+    .deck-dots i.on { width: 22px; background: linear-gradient(90deg, #E0B654, #C9A24A); }
 
-    @media (max-width: 640px) {
-      .creative-rail { padding: 1.2rem 1rem 1.6rem; gap: 1rem; min-height: 500px; }
-      .holo-card { flex-basis: 285px; width: 285px; min-width: 285px; height: 475px; min-height: 475px; transform: rotateY(-8deg) translateZ(-10px); }
+    .cr-media { position: relative; flex: 0 0 205px; overflow: hidden; border-bottom: 1px solid #EAD9E0;
+      background: radial-gradient(circle at 50% 40%, #FFFFFF 0%, #F8EAF0 55%, #EDD5DF 100%); }
+    .cr-media img, .cr-media svg { width: 100%; height: 100%; object-fit: contain; padding: 14px; transition: transform .9s var(--ease); }
+    .cr-media img { border-radius: 16px; }
+    .cr-media svg { filter: drop-shadow(0 12px 14px rgba(59,39,51,.28)); }
+    .cr-card.is-active .cr-media :is(img, svg) { transform: scale(1.04); }
+    .cr-rank, .cr-status { position: absolute; top: 12px; border-radius: 999px; background: rgba(255,255,255,.94); border: 1px solid #EAD9E0; color: #3B2733; box-shadow: 0 2px 8px rgba(59,39,51,.08); }
+    .cr-rank { left: 12px; display: inline-flex; align-items: baseline; gap: .45rem; padding: .3rem .85rem .35rem; font-family: 'IBM Plex Mono', monospace; }
+    .cr-rank b { font-size: 22px; font-weight: 700; line-height: 1; letter-spacing: -.01em; }
+    .cr-rank em { font-style: normal; font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+    .cr-status { right: 12px; padding: .25rem .65rem; font-size: 10.5px; color: #8A7480; }
+    .cr-card.top .cr-rank { background: linear-gradient(135deg, #F3D58A, #C9A24A); border-color: #C9A24A; color: #2A0F1F; }
+    .cr-status.bad { color: #a03a3a; border-color: rgba(180,60,60,.3); }
+    .cr-ring { position: absolute; right: 12px; bottom: 12px; width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center;
+      background: conic-gradient(#6B3A55 calc(var(--p, 0) * 1%), #EAD9E0 0); box-shadow: 0 6px 14px rgba(59,39,51,.18); }
+    .cr-card.is-active .cr-ring { background: conic-gradient(#E0B654, #6B3A55 calc(var(--p, 0) * 1%), #EAD9E0 0); }
+    .cr-ring::before { content: ''; position: absolute; inset: 5px; border-radius: 50%; background: #fff; }
+    .cr-ring b { position: relative; font: 600 15px 'IBM Plex Mono', monospace; color: #3B2733; }
+    .cr-ring.na b { font-size: 11px; color: #8A7480; }
+
+    /* Details: scrollable on the centre card */
+    .cr-body { flex: 1 1 auto; min-height: 0; padding: 12px 14px 16px; display: flex; flex-direction: column; gap: 10px; overflow: hidden;
+      scrollbar-width: thin; scrollbar-color: rgba(201,162,74,.6) transparent; }
+    .cr-card.is-active .cr-body { overflow-y: auto; }
+    .cr-body::-webkit-scrollbar { width: 6px; }
+    .cr-body::-webkit-scrollbar-thumb { background: rgba(201,162,74,.55); border-radius: 6px; }
+    .cr-name { font-weight: 600; font-size: 14px; color: #3B2733; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .cr-sub { font-size: 10.5px; color: #8A7480; text-transform: uppercase; letter-spacing: .08em; margin-top: 2px; }
+    .cr-bar { flex: none; height: 4px; border-radius: 4px; background: #EAD9E0; overflow: hidden; }
+    .cr-bar i { display: block; height: 100%; width: calc(var(--p, 0) * 1%); background: linear-gradient(90deg, #C59FB0, #6B3A55); border-radius: 4px; }
+    .cr-card.is-active .cr-bar i { background: linear-gradient(90deg, #E0B654, #6B3A55); }
+    .cr-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+    .cr-card .tag { background: #fff; border-color: #EAD9E0; color: #552C43; }
+    .cr-sec { border-top: 1px solid #EAD9E0; padding-top: 9px; }
+    .cr-sec h5 { font-size: 9px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #8C6A22; margin-bottom: 6px; }
+    .cr-sec p { font-size: 11px; line-height: 1.5; color: #552C43; }
+    .cr-row { display: grid; grid-template-columns: 58px minmax(0,1fr) auto; gap: 3px 8px; align-items: baseline; font-size: 11px; padding: 4px 0; }
+    .cr-row span { color: #8A7480; }
+    .cr-row b { font-weight: 600; color: #3B2733; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .cr-row em { font: 500 10px 'IBM Plex Mono', monospace; font-style: normal; color: #A8919C; }
+    .cr-row em.hit { color: #8C6A22; font-weight: 600; }
+    .cr-row u { grid-column: 1 / -1; height: 3px; border-radius: 3px; background: #EAD9E0; overflow: hidden; text-decoration: none; }
+    .cr-row u::after { content: ''; display: block; height: 100%; width: calc(var(--p, 0) * 1%); background: linear-gradient(90deg, #C59FB0, #C9A24A); border-radius: 3px; }
+    .cr-row small { grid-column: 1 / -1; font-size: 10px; color: #A8919C; }
+    .cr-kv { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .cr-kv div { padding: 6px 8px; border-radius: 9px; background: #fff; border: 1px solid #EAD9E0; min-width: 0; }
+    .cr-kv span { display: block; font-size: 9px; letter-spacing: .08em; text-transform: uppercase; color: #8A7480; }
+    .cr-kv b { display: block; font: 600 12px 'IBM Plex Mono', monospace; color: #3B2733; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .cr-scroll-hint { font-size: 9.5px; color: #A8919C; text-align: center; letter-spacing: .06em; }
+    .cr-card:not(.is-active) .cr-scroll-hint { visibility: hidden; }
+    @media (max-width: 640px) { .deck { --cw: 66vw; height: 510px; } .cr-card { height: 420px; } .deck-nav.prev { left: 26px; } .deck-nav.next { left: calc(100% - 26px); } }
+
+    /* 1P activation bar */
+    .launch-bar { position: relative; overflow: hidden; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 18px 20px; border-radius: 16px;
+      background: linear-gradient(110deg, #2A0F1F 0%, #4A1A33 55%, #6B3A55 100%); border: 1px solid #3E1729; color: #F7EAF0; box-shadow: 0 16px 34px rgba(43,15,31,.22); }
+    .launch-bar::after { content: ''; position: absolute; right: -60px; top: -80px; width: 260px; height: 260px; border-radius: 50%; background: radial-gradient(closest-side, rgba(224,178,84,.35), transparent); pointer-events: none; }
+    .lb-ic { flex: none; width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; background: rgba(224,178,84,.15); border: 1px solid rgba(224,178,84,.45); color: #F3D58A; font-size: 18px; }
+    .lb-text { flex: 1 1 320px; min-width: 0; }
+    .lb-text h3 { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 1.45rem; line-height: 1.1; color: #fff; }
+    .lb-text p { font-size: 12px; color: #D9BFCB; margin-top: 4px; }
+    .lb-meta { display: flex; gap: 8px; flex-wrap: wrap; }
+    .lb-meta span { font: 500 11px 'IBM Plex Mono', monospace; padding: .3rem .65rem; border-radius: 999px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14); color: #F1DDE6; }
+    .lb-link { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: .5rem; padding: .7rem 1.1rem; border-radius: 12px; font-weight: 600; font-size: 13px;
+      background: linear-gradient(135deg, #F3D58A, #C9A24A); color: #2A0F1F; box-shadow: 0 8px 20px rgba(201,162,74,.35); transition: transform .25s var(--ease, ease), box-shadow .25s ease; }
+    .lb-link:hover { transform: translateY(-2px); box-shadow: 0 12px 26px rgba(201,162,74,.45); }
+    .lb-link i { transition: transform .25s ease; } .lb-link:hover i { transform: translateX(3px); }
+    .lb-link:focus-visible { outline: 3px solid #F3D58A; outline-offset: 3px; }
+    .lb-link:disabled { opacity: .45; cursor: not-allowed; transform: none; box-shadow: none; }
+    .lb-text .lb-note { color: #F3D58A; }
+
+    /* Ranking summary strip */
+    .rank-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin-bottom: 4px; }
+    .rank-stat { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: #fff; border: 1px solid #EAD9E0; min-width: 0; }
+    .rank-stat i.ic { width: 32px; height: 32px; flex: none; border-radius: 10px; display: grid; place-items: center; background: #F6EEF0; color: #6B3A55; font-size: 13px; }
+    .rank-stat p { font-size: 9.5px; text-transform: uppercase; letter-spacing: .08em; color: #8A7480; }
+    .rank-stat b { display: block; font: 600 14px 'IBM Plex Mono', monospace; color: #3B2733; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    @keyframes slotIn { from { opacity: 0; translate: 0 12px; } }
+    /* Collapsible sidebar (same toggle as Geo) */
+    .sidebar { transition: margin-left .3s cubic-bezier(.22,.8,.24,1), opacity .2s ease; }
+    @media (min-width: 768px) { .sidebar.collapsed { margin-left: -20rem; opacity: 0; pointer-events: none; } }
+    @media (max-width: 767px) { .sidebar.collapsed { display: none; } }
+    /* Edge tab hugging the sidebar's right edge, top of the content area */
+    .nav-toggle { position: absolute; left: 0; top: 18px; z-index: 40; width: 50px; height: 40px; padding: 0 2px 0 0; gap: 5px;
+      display: inline-flex; flex-direction: row; align-items: center; justify-content: center; line-height: 0;
+      border: 1px solid #EAD9E0; border-left: 0; border-radius: 0 14px 14px 0; background: #FFFFFF; color: #6B3A55;
+      box-shadow: 4px 6px 16px rgba(59,39,51,.10); transition: background .2s, color .2s, border-color .2s, width .2s; }
+    .nav-toggle:hover { width: 54px; border-color: #C59FB0; }
+    @media (max-width: 767px) { .nav-toggle { top: 10px; } }
+    .nav-toggle svg { display: block; flex: none; }
+    .nav-toggle .arrow { transition: transform .25s ease; transform-origin: 50% 50%; }
+    .nav-toggle[aria-expanded="true"] .arrow { transform: rotate(180deg); }
+    .nav-toggle[aria-expanded="true"] { background: #6B3A55; border-color: #6B3A55; color: #fff; }
+    /* Upload thumbnails */
+    .thumbs { flex: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; max-height: 280px; overflow-y: auto; padding: 7px 7px 4px 2px; scrollbar-width: thin; }
+    .thumbs:empty { display: none; }
+    .thumb { position: relative; min-width: 0; animation: slotIn .4s cubic-bezier(.22,.8,.24,1) backwards; }
+    .thumb .ph { aspect-ratio: 1; border-radius: 10px; border: 1px solid #EAD9E0; overflow: hidden; display: grid; place-items: center;
+      background: radial-gradient(circle at 50% 40%, #FFFFFF, #F3E3EA); transition: border-color .2s, box-shadow .2s; }
+    .thumb:hover .ph { border-color: #C59FB0; box-shadow: 0 4px 12px rgba(59,39,51,.1); }
+    .thumb img { width: 100%; height: 100%; object-fit: contain; padding: 4px; }
+    .thumb small { display: block; margin-top: 3px; font-size: 9.5px; color: #8A7480; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .thumb .rm { position: absolute; top: -5px; right: -5px; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center;
+      background: #3B2733; color: #fff; font-size: 10px; border: 2px solid #F6EEF0; box-shadow: 0 2px 6px rgba(0,0,0,.2); transition: transform .2s, background .2s; }
+    .thumb .rm:hover { transform: scale(1.12); background: #a03a3a; }
+    .thumb .rm:focus-visible { outline: 2px solid #6B3A55; outline-offset: 1px; }
+    .icon-btn { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; color: #6B3A55; background: #fff; border: 1px solid #EAD9E0; transition: transform .3s, border-color .2s, color .2s; }
+    .icon-btn:hover:not(:disabled) { border-color: #6B3A55; transform: rotate(-90deg); }
+    .icon-btn:disabled { opacity: .35; cursor: not-allowed; }
+    /* Run button stays visible at the bottom of the sidebar */
+    .run-dock { position: sticky; bottom: -16px; z-index: 5; margin: 0 -16px -16px; padding: 14px 16px 16px;
+      background: linear-gradient(to top, #F6EEF0 78%, rgba(246,238,240,0)); }
+    .stale { display: inline-flex; align-items: center; gap: .4rem; font-size: 11px; padding: .3rem .7rem; border-radius: 999px; background: #FBF1DC; border: 1px solid #E8C27A; color: #8C6A22; }
+
+    /* Empty state: the same deck, looping a demo */
+    .demo-stage { position: relative; overflow: hidden; padding-top: 8px; }
+    .demo-badge { position: absolute; top: 14px; left: 16px; z-index: 70; display: inline-flex; align-items: center; gap: .4rem; padding: .3rem .7rem; border-radius: 999px; background: rgba(224,178,84,.14); border: 1px solid rgba(224,178,84,.5); color: #F3D58A; font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+    .demo-badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #E0B654; animation: blink 1.4s ease-in-out infinite; }
+    @keyframes blink { 50% { opacity: .25; } }
+    .demo-copy { position: relative; z-index: 70; text-align: center; padding: 4px 16px 22px; }
+
+    .wiz-step { display: inline-flex; align-items: center; gap: .45rem; padding: .4rem .7rem; border-radius: 8px; font-size: 11px; font-weight: 700; color: #8A7480; }
+    .wiz-step:hover { background: #F6EEF0; color: #3B2733; }
+    .wiz-num { width: 20px; height: 20px; border-radius: 999px; border: 1px solid #DCC3CE; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; background: #FFFFFF; }
+    .wiz-step.current { color: #3B2733; background: #F6EEF0; }
+    .wiz-step.current .wiz-num { border-color: #6B3A55; color: #6B3A55; }
+    .wiz-step.done .wiz-num { background: #6B3A55; border-color: #6B3A55; color: #FFFFFF; }
+    .wiz-sep { width: 18px; height: 1px; background: #DCC3CE; }
+    .sim-badge { border-color: #6B3A55; color: #552C43; background: #F6EEF0; font-weight: 600; }
+    .obj-card { position: relative; display: flex; flex-direction: column; gap: .25rem; padding: .7rem .8rem; border: 1px solid #EAD9E0; border-radius: 10px; background: #FFFFFF; cursor: pointer; }
+    .obj-card input { position: absolute; opacity: 0; pointer-events: none; }
+    .obj-card:has(input:checked) { border-color: #6B3A55; box-shadow: 0 0 0 2px rgba(107,58,85,.18); }
+    .sku-pick { display: flex; align-items: center; gap: .6rem; padding: .5rem .6rem; border: 1px solid #EAD9E0; border-radius: 10px; background: #FFFFFF; cursor: pointer; }
+    .sku-pick:has(input:checked) { border-color: #6B3A55; background: #FFF9FB; }
+    .sku-pick.disabled { opacity: .5; cursor: not-allowed; }
+    .est-tile { background: #FFFFFF; border: 1px solid #EAD9E0; border-radius: 10px; padding: .6rem .7rem; }
+    .est-tile .lbl { font-size: 9px; text-transform: uppercase; letter-spacing: .08em; color: #8A7480; font-weight: 600; }
+    .est-tile .val { font-family: 'JetBrains Mono', monospace; font-size: 15px; color: #3B2733; margin-top: .2rem; }
+    .est-tile .rng { font-size: 10px; color: #8A7480; margin-top: .1rem; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .cr-card, .cr-media img, .cr-media svg, .thumb, .deck-glow, .deck-dots i { animation: none !important; transition: none !important; }
     }
   </style>
 </head>
@@ -142,53 +293,64 @@
     if (!SuffaiSession.requireAuth('ads')) { /* redirected */ }
   </script>
 
-  <header class="glass-panel z-30 border-b border-[#E4DED3] px-4 py-3 flex-none flex items-center justify-between gap-4">
+  <header class="glass-panel z-30 border-b border-[#EAD9E0] px-4 py-3 flex-none flex items-center justify-between gap-4">
     <div class="flex items-center gap-3 min-w-0">
-      <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-[#89765C] via-[#292722] to-[#DED7CB] p-[2px] flex-none">
-        <div class="bg-[#FAF8F4] w-full h-full rounded-[10px] flex items-center justify-center">
-          <i class="fa-solid fa-ranking-star text-[#89765C] text-lg"></i>
+      <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-[#6B3A55] via-[#3B2733] to-[#DCC3CE] p-[2px] flex-none">
+        <div class="bg-[#FAF6EE] w-full h-full rounded-[10px] flex items-center justify-center">
+          <i class="fa-solid fa-ranking-star text-[#6B3A55] text-lg"></i>
         </div>
       </div>
       <div class="min-w-0">
-        <h1 class="font-extrabold text-lg sm:text-xl tracking-wider text-[#292722] font-mono">PRO ADS LAB <span class="text-[10px] px-2 py-0.5 rounded bg-[#F0ECE4] text-[#89765C] border border-[#E4DED3]">Segment Fit</span></h1>
-        <p class="text-[11px] text-[#777066]">Rank uploaded creatives for a selected geo × age × gender × RFM audience.</p>
+        <h1 class="font-display font-bold text-2xl leading-none text-[#6B3A55]">Ads Lab <span class="align-middle font-sans text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#F6EEF0] text-[#6B3A55] border border-[#EAD9E0]">Segment fit</span></h1>
+        <p class="text-[11px] text-[#8A7480] mt-1">Rank your creatives for a chosen area, age, gender and RFM audience.</p>
       </div>
     </div>
-    <div id="apiStatus" class="tag flex-none"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Loading BigQuery profile…</div>
+    <div id="apiStatus" aria-live="polite" class="tag flex-none hidden sm:inline-flex"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Loading audience data…</div>
   </header>
 
-  <main class="flex-1 flex min-h-0 overflow-hidden">
-    <aside class="w-80 max-w-[45vw] flex-none border-r border-[#E4DED3] bg-[#F0ECE4] flex flex-col p-4 gap-5 overflow-y-auto z-20">
+  <main class="flex-1 flex flex-col md:flex-row min-h-0 overflow-hidden">
+    <aside id="sidebar" aria-label="Brand, audience and upload" class="sidebar w-full md:w-80 md:max-w-[45vw] max-h-[50vh] md:max-h-none flex-none border-b md:border-b-0 md:border-r border-[#EAD9E0] bg-[#F6EEF0] flex flex-col p-4 gap-5 overflow-y-auto z-20">
       <section class="space-y-3">
-        <h2 class="text-xs font-bold uppercase tracking-wider text-[#292722] flex items-center gap-2"><span class="w-5 h-5 rounded bg-[#E4DED3] text-[#292722] flex items-center justify-center text-[10px] border border-[#DED7CB]">1</span> Brand &amp; audience</h2>
-        <label class="block text-[10px] text-[#777066] uppercase tracking-wider font-semibold">Brand name (required)<input id="filterBrand" type="text" class="field mt-1" placeholder="e.g. Nike" autocomplete="organization" /></label>
-        <label class="block text-[10px] text-[#777066] uppercase tracking-wider font-semibold">PIN codes (multi-select)<select id="filterArea" class="field mt-1" multiple size="5"><option value="">Loading areas…</option></select></label>
-        <p class="text-[10px] text-[#777066]">Hold Cmd/Ctrl to select multiple PINs for one campaign.</p>
-        <label class="block text-[10px] text-[#777066] uppercase tracking-wider font-semibold">Age bucket<select id="filterAge" class="field mt-1"><option value="">All age groups</option></select></label>
-        <label class="block text-[10px] text-[#777066] uppercase tracking-wider font-semibold">Gender<select id="filterGender" class="field mt-1"><option value="">All genders</option></select></label>
-        <label class="block text-[10px] text-[#777066] uppercase tracking-wider font-semibold">RFM segment<select id="filterRfm" class="field mt-1"><option value="">All RFM segments</option></select></label>
-        <p class="text-[10px] text-[#777066] leading-relaxed">PIN + age + gender + RFM filter audience garments used in ranking.</p>
+        <h2 class="text-xs font-bold uppercase tracking-wider text-[#3B2733] flex items-center gap-2"><span class="w-5 h-5 rounded bg-[#EAD9E0] text-[#3B2733] flex items-center justify-center text-[10px] border border-[#DCC3CE]">1</span> Brand &amp; audience</h2>
+        <label class="block text-[10px] text-[#8A7480] uppercase tracking-wider font-semibold">Brand name<input id="filterBrand" type="text" class="field mt-1" placeholder="e.g. Nike" autocomplete="organization" /></label>
+        <label class="block text-[10px] text-[#8A7480] uppercase tracking-wider font-semibold">PIN codes <span id="pinCount" class="normal-case tracking-normal font-normal text-[#6B3A55]"></span><select id="filterArea" class="field mt-1" multiple size="5"><option value="">Loading areas…</option></select></label>
+        <p class="text-[10px] text-[#8A7480]">Click to select or deselect PINs. Pick one or more.</p>
+        <label class="block text-[10px] text-[#8A7480] uppercase tracking-wider font-semibold">Age bucket<select id="filterAge" class="field mt-1"><option value="">All age groups</option></select></label>
+        <label class="block text-[10px] text-[#8A7480] uppercase tracking-wider font-semibold">Gender<select id="filterGender" class="field mt-1"><option value="">All genders</option></select></label>
+        <label class="block text-[10px] text-[#8A7480] uppercase tracking-wider font-semibold">RFM segment<select id="filterRfm" class="field mt-1"><option value="">All RFM segments</option></select></label>
+        <p class="text-[10px] text-[#8A7480] leading-relaxed">These filters define the audience your creatives are ranked against.</p>
       </section>
 
       <section class="space-y-3 flex-1 flex flex-col min-h-[180px]">
-        <h2 class="text-xs font-bold uppercase tracking-wider text-[#292722] flex items-center gap-2"><span class="w-5 h-5 rounded bg-[#E4DED3] text-[#292722] flex items-center justify-center text-[10px] border border-[#DED7CB]">2</span> Upload SKUs</h2>
+        <div class="flex items-center justify-between gap-2">
+          <h2 class="text-xs font-bold uppercase tracking-wider text-[#3B2733] flex items-center gap-2"><span class="w-5 h-5 rounded bg-[#EAD9E0] text-[#3B2733] flex items-center justify-center text-[10px] border border-[#DCC3CE]">2</span> Upload SKUs</h2>
+          <button type="button" id="clearSkus" class="icon-btn" title="Remove all selected images" aria-label="Remove all selected images" disabled><i class="fa-solid fa-rotate-right text-[12px]"></i></button>
+        </div>
         <input type="file" id="fileInput" multiple accept="image/*" class="hidden">
         <div id="dropzone" role="button" tabindex="0" class="upload-zone rounded-xl flex flex-col items-center justify-center text-center p-5 cursor-pointer min-h-[130px]">
-          <i class="fa-solid fa-cloud-arrow-up text-3xl text-[#89765C] mb-3"></i>
-          <span class="text-xs text-[#292722] font-semibold">Click or drop SKU images</span>
-          <span class="text-[10px] text-[#777066] mt-1">Any filenames OK — brand comes from the field above.</span>
+          <i class="fa-solid fa-cloud-arrow-up text-3xl text-[#6B3A55] mb-3"></i>
+          <span class="text-xs text-[#3B2733] font-semibold">Click or drop SKU images</span>
+          <span class="text-[10px] text-[#8A7480] mt-1">JPG or PNG. Any file names.</span>
         </div>
-        <p id="uploadSummary" class="text-[10px] text-[#777066]">No creatives uploaded.</p>
-        <p class="text-[11px] text-[#292722]">Campaign brand: <strong id="brandUploadLabel" class="text-[#89765C]">(enter brand name above)</strong></p>
-        <button id="runButton" type="button" class="w-full py-3 bg-[#292722] hover:bg-[#4A4339] disabled:opacity-40 disabled:cursor-not-allowed text-[#FAF8F4] rounded-xl text-sm font-bold flex justify-center items-center gap-2 transition-all shadow-sm" disabled><i class="fa-solid fa-wand-magic-sparkles text-[#89765C]"></i><span>Submit ranking job</span></button>
-        <p class="text-[10px] text-[#777066] leading-relaxed">Extract &amp; rank runs in the background against every garment in the selected PINs. You will see the job size and an estimated finish time, and a popup when your campaign is ready.</p>
+        <div id="thumbs" class="thumbs" aria-label="Selected SKUs"></div>
+        <p id="uploadSummary" class="text-[10px] text-[#8A7480]">No creatives uploaded.</p>
+        <p class="text-[11px] text-[#3B2733]">Campaign brand: <strong id="brandUploadLabel" class="text-[#6B3A55]">(enter brand name above)</strong></p>
+        <div class="run-dock">
+        <button id="runButton" type="button" class="w-full py-3 bg-[#6B3A55] hover:bg-[#552C43] disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl text-sm font-bold flex justify-center items-center gap-2 transition-all shadow-sm" disabled><i class="fa-solid fa-wand-magic-sparkles text-[#C59FB0]"></i><span>Extract &amp; rank SKUs</span></button>
+        <p id="runError" class="form-err hidden mt-2" role="alert"></p>
+        </div>
+        <p class="text-[10px] text-[#8A7480] leading-relaxed">Extract &amp; rank runs in the background against every garment in the selected PINs. You will see the job size and an estimated finish time, and a popup when your campaign is ready.</p>
       </section>
     </aside>
 
     <section class="flex-1 min-w-0 relative flex flex-col holographic-grid overflow-hidden">
-      <div id="loadingOverlay" class="absolute inset-0 z-50 hidden items-center justify-center bg-[#FAF8F4]/80 backdrop-blur-sm"><div class="text-center"><i class="fa-solid fa-circle-notch text-4xl text-[#89765C] animate-spin mb-4"></i><p id="loadingText" class="text-sm font-mono text-[#292722]">Loading…</p></div></div>
-      <div id="mainScroll" class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
-        <nav id="wizardSteps" class="glass-panel rounded-xl p-2 sticky top-0 z-40 flex flex-wrap items-center gap-1 bg-[#FAF8F4]" aria-label="Campaign steps">
+      <button type="button" class="nav-toggle" id="btnToggle" title="Hide brand &amp; upload panel" aria-label="Hide brand and upload panel" aria-controls="sidebar" aria-expanded="true">
+        <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M2 4h12M2 8h12M2 12h12"/></svg>
+        <svg class="arrow" viewBox="0 0 10 16" width="10" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.25 4.5L6.75 8L3.25 11.5"/></svg>
+      </button>
+      <div id="loadingOverlay" role="status" class="absolute inset-0 z-50 hidden items-center justify-center bg-[#FAF6EE]/80 backdrop-blur-sm"><div class="text-center"><i class="fa-solid fa-circle-notch text-4xl text-[#6B3A55] animate-spin mb-4"></i><p id="loadingText" class="text-sm font-mono text-[#3B2733]">Loading…</p></div></div>
+      <div id="mainScroll" class="flex-1 overflow-y-auto p-4 sm:p-6 md:pl-14 space-y-5">
+        <nav id="wizardSteps" class="glass-panel rounded-xl p-2 sticky top-0 z-[80] flex flex-wrap items-center gap-1 bg-[#FAF6EE]" aria-label="Campaign steps">
           <button type="button" class="wiz-step" data-step="opportunity" data-target="stepOpportunity"><span class="wiz-num">1</span><span>Opportunity</span></button>
           <span class="wiz-sep" aria-hidden="true"></span>
           <button type="button" class="wiz-step" data-step="job" data-target="stepJob"><span class="wiz-num">2</span><span>SKUs &amp; ranking job</span></button>
@@ -200,25 +362,25 @@
         <section id="geoContextCard" class="glass-panel rounded-xl p-4 hidden" aria-live="polite">
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0">
-              <p class="text-[10px] uppercase tracking-[.2em] text-[#89765C] font-bold"><i class="fa-solid fa-location-dot mr-1"></i>Opportunity from Geo</p>
-              <p id="geoContextInsight" class="text-xs text-[#292722] mt-1"></p>
+              <p class="text-[10px] uppercase tracking-[.2em] text-[#6B3A55] font-bold"><i class="fa-solid fa-location-dot mr-1"></i>Opportunity from Geo</p>
+              <p id="geoContextInsight" class="text-xs text-[#3B2733] mt-1"></p>
               <div id="geoContextChips" class="flex flex-wrap gap-1.5 mt-2"></div>
             </div>
-            <button id="clearGeoContextBtn" type="button" class="text-[10px] text-[#777066] hover:text-[#89765C] flex-none">Clear</button>
+            <button id="clearGeoContextBtn" type="button" class="text-[10px] text-[#8A7480] hover:text-[#6B3A55] flex-none">Clear</button>
           </div>
         </section>
 
         <section id="stepOpportunity" class="glass-panel rounded-xl p-4 sm:p-5">
           <div class="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-4">
             <div class="min-w-0">
-              <p class="text-[10px] uppercase tracking-[.2em] text-[#89765C] font-bold">Current target</p>
-              <h2 id="segmentTitle" class="text-lg sm:text-xl font-bold mt-1 text-[#292722]">Loading audience…</h2>
-              <p id="profileNote" class="text-xs text-[#777066] mt-2 max-w-3xl">Profile metrics are loading from the command-center API.</p>
+              <p class="text-[10px] uppercase tracking-[.2em] text-[#6B3A55] font-bold">Current target</p>
+              <h2 id="segmentTitle" class="text-lg sm:text-xl font-bold mt-1 text-[#3B2733]">Loading audience…</h2>
+              <p id="profileNote" class="text-xs text-[#8A7480] mt-2 max-w-3xl">Loading the audience profile…</p>
             </div>
             <div class="min-w-[150px]">
-              <div class="bg-[#FFFFFF] border border-[#E4DED3] rounded-lg p-3 shadow-sm">
-                <p class="text-[9px] uppercase tracking-wider text-[#777066] font-semibold">Customers</p>
-                <p id="audienceCustomers" class="font-mono text-lg text-[#292722] mt-1">—</p>
+              <div class="bg-[#FFFFFF] border border-[#EAD9E0] rounded-lg p-3 shadow-sm">
+                <p class="text-[9px] uppercase tracking-wider text-[#8A7480] font-semibold">Customers</p>
+                <p id="audienceCustomers" class="font-mono text-lg text-[#3B2733] mt-1">—</p>
               </div>
               <!-- Hidden fields preserved for JS logic compatibility -->
               <div class="hidden">
@@ -228,27 +390,27 @@
             </div>
           </div>
           
-          <div id="audienceCoverage" role="status" aria-live="polite" class="mt-4 rounded-lg border border-[#E4DED3] bg-[#F0ECE4] p-3">
-            <p id="audienceCoverageTitle" class="text-[11px] font-bold tracking-wide text-[#292722]">CHECKING AUDIENCE-COUNT COVERAGE</p>
-            <p id="audienceCoverageDetail" class="text-xs text-[#777066] mt-1">Checking whether customer totals match the selected audience.</p>
+          <div id="audienceCoverage" role="status" aria-live="polite" class="mt-4 rounded-lg border border-[#EAD9E0] bg-[#F6EEF0] p-3">
+            <p id="audienceCoverageTitle" class="text-[11px] font-bold tracking-wide text-[#3B2733]">CHECKING AUDIENCE-COUNT COVERAGE</p>
+            <p id="audienceCoverageDetail" class="text-xs text-[#8A7480] mt-1">Checking whether customer totals match the selected audience.</p>
           </div>
-          <div id="tasteCoverage" role="status" aria-live="polite" class="mt-3 rounded-lg border border-[#E4DED3] bg-[#F0ECE4] p-3">
-            <p id="tasteCoverageTitle" class="text-[11px] font-bold tracking-wide text-[#292722]">CHECKING GARMENT-PREFERENCE COVERAGE</p>
-            <p id="tasteCoverageDetail" class="text-xs text-[#777066] mt-1">Checking whether garment observations match the selected audience.</p>
+          <div id="tasteCoverage" role="status" aria-live="polite" class="mt-3 rounded-lg border border-[#EAD9E0] bg-[#F6EEF0] p-3">
+            <p id="tasteCoverageTitle" class="text-[11px] font-bold tracking-wide text-[#3B2733]">CHECKING GARMENT-PREFERENCE COVERAGE</p>
+            <p id="tasteCoverageDetail" class="text-xs text-[#8A7480] mt-1">Checking whether garment observations match the selected audience.</p>
           </div>
           
           <!-- Audience Taste Profile - Single Horizontal Scrollable Row (6 Categories) -->
           <div class="mt-4">
             <div class="flex items-end justify-between gap-3 mb-2">
               <div>
-                <h3 class="text-xs font-bold uppercase tracking-wider text-[#292722]">
+                <h3 class="text-xs font-bold uppercase tracking-wider text-[#3B2733]">
                   Audience Taste Profile
                 </h3>
-                <p class="text-[10px] text-[#777066] mt-0.5">
-                  Percentage share derived from actual filtered observations (Category Denominator).
+                <p class="text-[10px] text-[#8A7480] mt-0.5">
+                  Share of each attribute among garments seen in this audience.
                 </p>
               </div>
-              <span class="text-[10px] text-[#89765C] flex-none font-medium">
+              <span class="text-[10px] text-[#6B3A55] flex-none font-medium">
                 Scroll horizontally →
               </span>
             </div>
@@ -282,34 +444,11 @@
           </div>
         </section>
 
-        <section>
-          <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 mb-3">
-            <div><h3 class="text-sm font-bold text-[#292722]"><i class="fa-solid fa-layer-group text-[#89765C] mr-2"></i>Creative ranking for this segment</h3><p class="text-[10px] text-[#777066] mt-1">One card per uploaded file. Scores and order update when the segment changes.</p></div>
-            <div class="flex items-center gap-2">
-              <button id="creativePrev" type="button" aria-label="Scroll creatives left" class="h-8 w-8 rounded-lg border border-[#E4DED3] bg-[#FFFFFF] hover:border-[#89765C] hover:text-[#89765C] transition"><i class="fa-solid fa-chevron-left"></i></button>
-              <button id="creativeNext" type="button" aria-label="Scroll creatives right" class="h-8 w-8 rounded-lg border border-[#E4DED3] bg-[#FFFFFF] hover:border-[#89765C] hover:text-[#89765C] transition"><i class="fa-solid fa-chevron-right"></i></button>
-              <span id="rankCount" class="tag">0 creatives</span>
-            </div>
-          </div>
-          <div id="emptyState" class="glass-panel rounded-xl min-h-[220px] flex flex-col items-center justify-center text-center p-8"><i class="fa-solid fa-images text-5xl text-[#DED7CB] mb-4"></i><p class="text-sm font-mono text-[#89765C]">Upload garment creatives to begin.</p><p class="text-xs text-[#777066] mt-2">After extraction, each uploaded image will be ranked against the selected audience profile.</p></div>
-          <div id="creativeGrid" class="creative-rail" tabindex="0" role="list" aria-label="Ranked creative cards"></div>
-        </section>
-
-        <section class="glass-panel rounded-xl overflow-hidden">
-          <div class="p-4 border-b border-[#E4DED3] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div>
-              <h3 class="text-xs font-bold uppercase tracking-wider text-[#292722]"><i class="fa-solid fa-table text-[#89765C] mr-2"></i>Segment ranking matrix</h3>
-              <p class="text-[10px] text-[#777066] mt-1">Ranking from the completed job. Choose 1P (SuffAI) or 3P (other platforms) below.</p>
-            </div>
-          </div>
-          <div class="overflow-x-auto"><table class="w-full text-left text-xs whitespace-nowrap"><thead class="bg-[#F0ECE4] text-[#777066] font-mono text-[10px] uppercase"><tr><th class="px-4 py-3">Rank</th><th class="px-4 py-3">Creative</th><th class="px-4 py-3">Geo</th><th class="px-4 py-3">Age</th><th class="px-4 py-3">Gender</th><th class="px-4 py-3">RFM</th><th class="px-4 py-3">Extracted taste</th><th class="px-4 py-3 text-right">Segment fit</th></tr></thead><tbody id="matrixBody" class="divide-y divide-[#E4DED3]"><tr><td colspan="8" class="px-4 py-8 text-center text-[#777066]">Upload images to populate the matrix.</td></tr></tbody></table></div>
-        </section>
-
         <section id="stepJob" class="glass-panel rounded-xl p-4 sm:p-5 space-y-4">
           <div class="flex items-start justify-between gap-3">
             <div>
-              <h3 class="text-xs font-bold uppercase tracking-wider text-[#292722]"><i class="fa-solid fa-gears text-[#89765C] mr-2"></i>Extract &amp; rank job</h3>
-              <p id="jobNote" class="text-[10px] text-[#777066] mt-1">Select PINs, upload SKU images and press <b>Submit ranking job</b>. You can leave this page; the job keeps running.</p>
+              <h3 class="text-xs font-bold uppercase tracking-wider text-[#3B2733]"><i class="fa-solid fa-gears text-[#6B3A55] mr-2"></i>Extract &amp; rank job</h3>
+              <p id="jobNote" class="text-[10px] text-[#8A7480] mt-1">Select PINs, upload SKU images and press <b>Submit ranking job</b>. You can leave this page; the job keeps running.</p>
             </div>
             <span id="jobStatusTag" class="tag hidden"></span>
           </div>
@@ -322,48 +461,66 @@
               <div class="est-tile"><p class="lbl">Est. completion</p><p id="jobEta" class="val">—</p><p id="jobEtaSub" class="rng">—</p></div>
             </div>
             <div>
-              <div class="flex justify-between text-[10px] text-[#777066] mb-1"><span id="jobProgressLabel">Queued</span><span id="jobProgressPct">0%</span></div>
-              <div class="h-2 rounded-full bg-[#F0ECE4] border border-[#E4DED3] overflow-hidden"><div id="jobProgressBar" class="h-full bg-[#89765C] transition-all" style="width:0%"></div></div>
+              <div class="flex justify-between text-[10px] text-[#8A7480] mb-1"><span id="jobProgressLabel">Queued</span><span id="jobProgressPct">0%</span></div>
+              <div class="h-2 rounded-full bg-[#F6EEF0] border border-[#EAD9E0] overflow-hidden"><div id="jobProgressBar" class="h-full bg-[#6B3A55] transition-all" style="width:0%"></div></div>
             </div>
             <p id="jobError" class="text-xs text-red-700 hidden"></p>
           </div>
         </section>
 
-        <section id="stepRunMode" class="glass-panel rounded-xl p-4 sm:p-5 space-y-4">
-          <div>
-            <h3 class="text-xs font-bold uppercase tracking-wider text-[#292722]"><i class="fa-solid fa-route text-[#89765C] mr-2"></i>Choose how to run this campaign</h3>
-            <p id="runModeNote" class="text-[10px] text-[#777066] mt-1">Available once the ranking job completes.</p>
-          </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div class="rounded-xl border border-[#E4DED3] bg-white p-4 flex flex-col gap-2">
-              <p class="text-xs font-bold"><i class="fa-solid fa-file-export text-[#89765C] mr-2"></i>Run on other platforms (3P)</p>
-              <p class="text-[11px] text-[#777066] flex-1">Download the ranked SKUs and audience as CSV and run the campaign on any ad platform. Nothing runs on SuffAI.</p>
-              <button id="run3pBtn" type="button" disabled class="self-start px-3 py-2 bg-[#89765C] hover:bg-[#66513B] disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-xs font-bold text-white"><i class="fa-solid fa-file-csv mr-2"></i>Export ranking (CSV)</button>
-            </div>
-            <div class="rounded-xl border border-[#89765C] bg-[#FBF8F2] p-4 flex flex-col gap-2">
-              <p class="text-xs font-bold"><i class="fa-solid fa-bullhorn text-[#89765C] mr-2"></i>Run on SuffAI (1P)</p>
-              <p class="text-[11px] text-[#777066] flex-1">Reach matched customers in-app, on WhatsApp or by SMS. Set the name, channels, recommended budget and track results on the <b>Campaigns</b> tab.</p>
-              <button id="run1pBtn" type="button" disabled class="self-start px-3 py-2 bg-[#292722] hover:bg-[#4A4339] disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-xs font-bold text-white"><i class="fa-solid fa-arrow-right mr-2 text-[#89765C]"></i>Configure on Campaigns</button>
+        <section>
+          <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 mb-3">
+            <div><h3 class="text-sm font-bold text-[#3B2733]"><i class="fa-solid fa-layer-group text-[#6B3A55] mr-2"></i>Creative ranking for this segment</h3><p class="text-[10px] text-[#8A7480] mt-1">One card per uploaded file. Hover or click a card to bring it to the centre · use ‹ › or the arrow keys to browse.</p></div>
+            <div class="flex items-center gap-2">
+              <span id="staleNote" class="stale hidden"><i class="fa-solid fa-triangle-exclamation"></i> Audience changed — run Extract &amp; rank again</span>
+              <span id="rankCount" class="tag">0 creatives</span>
             </div>
           </div>
+          <div id="emptyState" class="demo-stage deck-canvas">
+            <span class="demo-badge">Live demo</span>
+            <div id="demoRail"></div>
+            <div class="demo-copy">
+              <p class="font-display text-2xl text-[#F7EAF0]">Your SKUs will be ranked like this</p>
+              <p class="text-xs text-[#C9A9B8] mt-1">Pick a brand and audience, upload SKU images, then <strong class="text-[#F3D58A]">Extract &amp; rank</strong>. Hover any card to bring it to the centre.</p>
+            </div>
+          </div>
+          <div id="rankStats" class="rank-stats hidden" aria-live="polite"></div>
+          <div id="creativeGrid" class="deck-canvas hidden"></div>
         </section>
+
+        <section id="stepRunMode" class="launch-bar" aria-labelledby="lbTitle">
+          <div class="lb-ic" aria-hidden="true"><i class="fa-solid fa-rocket"></i></div>
+          <div class="lb-text">
+            <h3 id="lbTitle">Activate on SuffAI · 1P campaign</h3>
+            <p>Send your top-ranked creatives to this exact audience through your own channels — in-app, WhatsApp and SMS.</p>
+            <p id="runModeNote" class="lb-note">Available once the ranking job completes.</p>
+          </div>
+          <div class="lb-meta" id="launchMeta"><span>— customers</span><span>0 creatives ranked</span></div>
+          <button type="button" id="run1pBtn" class="lb-link" disabled>Set up 1P campaign <i class="fa-solid fa-arrow-right"></i></button>
+        </section>
+
+        <section class="glass-panel rounded-xl overflow-hidden">
+          <div class="p-4 border-b border-[#EAD9E0] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"><div><h3 class="text-xs font-bold uppercase tracking-wider text-[#3B2733]"><i class="fa-solid fa-table text-[#6B3A55] mr-2"></i>Segment ranking matrix</h3><p class="text-[10px] text-[#8A7480] mt-1">Same ranked SKUs as the cards above. Export to run the campaign on other platforms (3P).</p></div><button id="downloadButton" type="button" class="px-3 py-2 bg-[#6B3A55] hover:bg-[#552C43] rounded-lg text-xs font-bold text-white shadow-sm"><i class="fa-solid fa-file-csv mr-2"></i>Export for 3P (CSV)</button></div>
+          <div class="overflow-x-auto"><table class="w-full text-left text-xs whitespace-nowrap"><thead class="bg-[#F6EEF0] text-[#8A7480] font-mono text-[10px] uppercase"><tr><th class="px-4 py-3">Rank</th><th class="px-4 py-3">Creative</th><th class="px-4 py-3">Geo</th><th class="px-4 py-3">Age</th><th class="px-4 py-3">Gender</th><th class="px-4 py-3">RFM</th><th class="px-4 py-3">Extracted taste</th><th class="px-4 py-3 text-right">Segment fit</th></tr></thead><tbody id="matrixBody" class="divide-y divide-[#EAD9E0]"><tr><td colspan="8" class="px-4 py-8 text-center text-[#8A7480]">Upload images to populate the matrix.</td></tr></tbody></table></div>
+        </section>
+
       </div>
     </section>
   </main>
 
-  <div id="createdModal" class="fixed inset-0 z-[60] hidden items-center justify-center bg-[#292722]/40 backdrop-blur-sm p-4" role="dialog" aria-modal="true" aria-labelledby="createdTitle">
-    <div class="glass-panel bg-[#FAF8F4] max-w-md w-full p-6 space-y-4">
+  <div id="createdModal" class="fixed inset-0 z-[60] hidden items-center justify-center bg-[#3B2733]/40 backdrop-blur-sm p-4" role="dialog" aria-modal="true" aria-labelledby="createdTitle">
+    <div class="glass-panel bg-[#FAF6EE] max-w-md w-full p-6 space-y-4">
       <div class="flex items-start gap-3">
-        <div class="h-10 w-10 rounded-full bg-[#F7F1E7] border border-[#89765C] flex items-center justify-center flex-none"><i class="fa-solid fa-check text-[#89765C]"></i></div>
+        <div class="h-10 w-10 rounded-full bg-[#F6EEF0] border border-[#6B3A55] flex items-center justify-center flex-none"><i class="fa-solid fa-check text-[#6B3A55]"></i></div>
         <div>
-          <h2 id="createdTitle" class="text-base font-bold text-[#292722]">Your campaign has been created</h2>
-          <p id="createdSummary" class="text-xs text-[#777066] mt-1"></p>
+          <h2 id="createdTitle" class="text-base font-bold text-[#3B2733]">Your campaign has been created</h2>
+          <p id="createdSummary" class="text-xs text-[#8A7480] mt-1"></p>
         </div>
       </div>
       <div class="flex flex-col sm:flex-row gap-2 justify-end">
-        <button id="createdCloseBtn" type="button" class="px-3 py-2 border border-[#E4DED3] bg-white rounded-lg text-xs font-bold text-[#292722] hover:border-[#89765C]">View ranking</button>
-        <button id="created3pBtn" type="button" class="px-3 py-2 bg-[#89765C] hover:bg-[#66513B] rounded-lg text-xs font-bold text-white"><i class="fa-solid fa-file-csv mr-1"></i>Run on other platforms (3P)</button>
-        <button id="created1pBtn" type="button" class="px-3 py-2 bg-[#292722] hover:bg-[#4A4339] rounded-lg text-xs font-bold text-white"><i class="fa-solid fa-bullhorn mr-1 text-[#89765C]"></i>Run on SuffAI (1P)</button>
+        <button id="createdCloseBtn" type="button" class="px-3 py-2 border border-[#EAD9E0] bg-white rounded-lg text-xs font-bold text-[#3B2733] hover:border-[#6B3A55]">View ranking</button>
+        <button id="created3pBtn" type="button" class="px-3 py-2 bg-[#6B3A55] hover:bg-[#552C43] rounded-lg text-xs font-bold text-white"><i class="fa-solid fa-file-csv mr-1"></i>Run on other platforms (3P)</button>
+        <button id="created1pBtn" type="button" class="px-3 py-2 bg-[#6B3A55] hover:bg-[#552C43] rounded-lg text-xs font-bold text-white"><i class="fa-solid fa-bullhorn mr-1 text-[#6B3A55]"></i>Run on SuffAI (1P)</button>
       </div>
     </div>
   </div>
@@ -465,12 +622,30 @@
         f.rfm_segment || 'All RFM segments'
       ].join(' × ');
     }
+    function setSidebar(open, remember = true) {
+      $('sidebar').classList.toggle('collapsed', !open);
+      const b = $('btnToggle');
+      b.setAttribute('aria-expanded', String(open));
+      b.setAttribute('aria-label', open ? 'Hide brand and upload panel' : 'Show brand and upload panel');
+      b.title = open ? 'Hide brand & upload panel' : 'Show brand & upload panel';
+      if (remember) try { localStorage.setItem('suffai_ads_sidebar', open ? 'open' : 'closed'); } catch (_) {}
+    }
+    function showRunError(msg) {
+      if (msg && $('sidebar').classList.contains('collapsed')) setSidebar(true); // errors point at sidebar fields
+      const el = $('runError');
+      el.textContent = msg || '';
+      el.classList.toggle('hidden', !msg);
+    }
+    function updatePinCount() {
+      const n = selectedPinCodes().length;
+      $('pinCount').textContent = n ? `· ${n} selected` : '';
+    }
     function setApiStatus(ok, msg) {
       $('apiStatus').innerHTML = `<span class="w-1.5 h-1.5 rounded-full ${ok ? 'bg-emerald-600' : 'bg-red-600'}"></span>${esc(msg)}`;
     }
     function setLoading(show, text = 'Working…') {
       state.loading = show; $('loadingText').textContent = text;
-      $('loadingOverlay').classList.toggle('hidden', !show); $('loadingOverlay').classList.toggle('flex', show);$('runButton').disabled = show || state.assets.length === 0;
+      $('loadingOverlay').classList.toggle('hidden', !show); $('loadingOverlay').classList.toggle('flex', show);$('runButton').disabled = show || state.assets.length === 0; $('clearSkus').disabled = show || state.assets.length === 0;
     }
     function selectOptions(el, firstLabel, rows, selected = '') {
       const isMulti = el.multiple;
@@ -482,6 +657,33 @@
           : String(value) === String(selected);
         return `<option value="${esc(value)}" ${sel ? 'selected' : ''}>${esc(label)}</option>`;
       }).join('');
+    }
+    /* On first load, bring `target` to the top of the scroll `container`. Content above it may still grow
+       (late data), so keep it aligned until the user scrolls/clicks/types, or 25 s pass. */
+    function autoScrollTo(container, target, offset = 12) {
+      if (!container || !target) return;
+      const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const userEvents = ['wheel', 'touchstart', 'pointerdown', 'keydown'];
+      let active = true, first = true;
+      const go = (smooth) => {
+        if (!active || !target.offsetParent) return;
+        const top = container.scrollTop + target.getBoundingClientRect().top - container.getBoundingClientRect().top - offset;
+        container.scrollTo({ top: Math.max(0, top), behavior: smooth && !reduce ? 'smooth' : 'auto' });
+      };
+      const ro = new ResizeObserver(() => { if (first) { first = false; return; } go(false); });
+      const stop = () => { active = false; ro.disconnect(); userEvents.forEach(ev => window.removeEventListener(ev, stop, true)); };
+      userEvents.forEach(ev => window.addEventListener(ev, stop, { capture: true, passive: true }));
+      Array.from(container.children).forEach(c => ro.observe(c));
+      setTimeout(stop, 30000);
+      go(false);
+    }
+    let didAutoScroll = false;
+    function scrollToRanking() {
+      if (didAutoScroll) return;
+      didAutoScroll = true;
+      // The ranking section: its title, then the live demo (or the ranked deck)
+      // offset clears the sticky campaign-steps bar
+      autoScrollTo($('mainScroll'), $('emptyState').parentElement, $('wizardSteps').offsetHeight + 12);
     }
     async function loadMetrics() {
       try {
@@ -507,7 +709,8 @@
         selectOptions($('filterGender'), 'All genders', (f.genders || []).map(g => ({value:g, label:displayGender(g)})));
         selectOptions($('filterRfm'), 'All RFM segments', f.rfm_segments || []);
         applyBrandLock();
-        setApiStatus(true, `BigQuery metrics loaded · ${data.source || 'source not labelled'}`);
+        setApiStatus(true, 'Audience data loaded');
+        updatePinCount();
         if (state.pendingDraft) {
           const draft = state.pendingDraft;
           state.pendingDraft = null;
@@ -521,8 +724,8 @@
         refreshForFilters();
       } catch (e) {
         console.error('[ads_lab] unable to load metrics', e);
-        setApiStatus(false, 'Metrics unavailable');
-        $('profileNote').textContent = `Could not load the BigQuery profile: ${e.message}`;
+        setApiStatus(false, 'Audience data unavailable');
+        $('profileNote').textContent = `Could not load the audience profile: ${e.message}`;
         $('creativeGrid').innerHTML = '';
       }
     }
@@ -663,7 +866,7 @@
       const node = $(id); 
       const rows = topN(distribution, 10);
       if (!rows.length) {
-        node.innerHTML = '<span class="text-[11px] text-[#777066]">No observations for this profile</span>';
+        node.innerHTML = '<span class="text-[11px] text-[#8A7480]">No observations for this profile</span>';
         return;
       }
       const total = rows.reduce((sum, [, count]) => sum + Number(count), 0) || 1;
@@ -671,11 +874,11 @@
         const pct = Math.round((Number(count) / total) * 100);
         return `<div class="text-[11px] mb-2">
           <div class="flex justify-between items-center mb-1">
-            <span class="text-[#292722] truncate max-w-[140px]" title="${esc(name)}">${esc(name)}</span>
-            <span class="font-mono text-[#89765C] text-[10px] font-semibold">${pct}% <span class="text-[#777066]">(${count})</span></span>
+            <span class="text-[#3B2733] truncate max-w-[140px]" title="${esc(name)}">${esc(name)}</span>
+            <span class="font-mono text-[#6B3A55] text-[10px] font-semibold">${pct}% <span class="text-[#8A7480]">(${count})</span></span>
           </div>
-          <div class="w-full bg-[#F0ECE4] rounded-full h-1 overflow-hidden border border-[#E4DED3]">
-            <div class="bg-[#89765C] h-full rounded-full" style="width: ${pct}%"></div>
+          <div class="w-full bg-[#F6EEF0] rounded-full h-1 overflow-hidden border border-[#EAD9E0]">
+            <div class="bg-[#6B3A55] h-full rounded-full" style="width: ${pct}%"></div>
           </div>
         </div>`;
       }).join('');
@@ -698,7 +901,7 @@
           return {
             customers: 0, orders: 0, revenue: 0, source: 'Exact selected dimensions in customer_cells; no matching rows',
             coverage: 'empty-segment', coverageTitle: 'NO CUSTOMER RECORDS FOR THIS FILTER COMBINATION',
-            coverageDetail: `The selected audience (${filtersLabel(filters)}) has no matching customer-cell rows in BigQuery. Customer totals are shown as 0.`
+            coverageDetail: `The selected audience (${filtersLabel(filters)}) has no matching customers yet. Try widening one of the filters.`
           };
         }
         let coverage, coverageTitle, coverageDetail;
@@ -733,7 +936,7 @@
       const banner = $('audienceCoverage');
       const title = $('audienceCoverageTitle');
       const detail = $('audienceCoverageDetail');
-      banner.className = 'mt-4 rounded-lg border border-[#E4DED3] bg-[#F0ECE4] p-3';
+      banner.className = 'mt-4 rounded-lg border border-[#EAD9E0] bg-[#F6EEF0] p-3';
       title.textContent = stats.coverageTitle || 'DATA COVERAGE STATUS';
       detail.textContent = stats.coverageDetail || stats.source || '';
     }
@@ -768,7 +971,7 @@
         const used = selected.map(k => ({pin_code:'geo',age_group:'age',gender:'gender',rfm_segment:'RFM'}[k] || k)).join(' × ');
         explanation = `Preferences respect selected dimensions (${used || 'none'}). Matched cells: ${profile.cellCount}.`;
       }
-      banner.className = 'mt-3 rounded-lg border border-[#E4DED3] bg-[#F0ECE4] p-3';
+      banner.className = 'mt-3 rounded-lg border border-[#EAD9E0] bg-[#F6EEF0] p-3';
       title.textContent = heading;
       detail.textContent = explanation;
     }
@@ -787,11 +990,12 @@
       const filters = currentFilters();
       state.profile = createProfile(filters);
       $('segmentTitle').textContent = filtersLabel(filters);
+      $('staleNote').classList.toggle('hidden', !state.rankedKey || state.rankedKey === JSON.stringify(filters));
       const stats = audienceStats(filters);
       $('audienceCustomers').textContent = fmtNumber(stats.customers);
       renderCoverage(stats);
       renderTasteCoverage(state.profile, filters);
-      $('profileNote').textContent = `Audience totals source: ${stats.source}. Garment preference source: ${state.profile.label}; observed cells used: ${state.profile.cellCount}.`;
+      $('profileNote').textContent = `Taste profile: ${state.profile.label} · based on ${state.profile.cellCount} audience group${state.profile.cellCount === 1 ? '' : 's'}.`;
       
       renderTastePercentages('insightColors', state.profile.distributions.color);
       renderTastePercentages('insightPatterns', state.profile.distributions.pattern);
@@ -849,6 +1053,7 @@
       if ('rfm_segment' in filters && $('filterRfm')) {
         $('filterRfm').value = filters.rfm_segment == null ? '' : String(filters.rfm_segment);
       }
+      updatePinCount();
       applyBrandLock();
       if (state.metrics) refreshForFilters();
       else publishAdsContext();
@@ -860,6 +1065,7 @@
       if ($('filterAge')) $('filterAge').value = '';
       if ($('filterGender')) $('filterGender').value = '';
       if ($('filterRfm')) $('filterRfm').value = '';
+      updatePinCount();
       applyBrandLock();
       if (state.metrics) refreshForFilters();
       else publishAdsContext();
@@ -1013,6 +1219,7 @@
       const score = Math.round((weightedTotal / usedWeight) * 100);
       return { score, evidence: matchedDimensions, reason: `${matchedDimensions} attribute group(s) compared with observed preference counts` };
     }
+    const r2 = (v) => v === null || v === undefined || !Number.isFinite(Number(v)) ? '—' : String(Math.round(Number(v) * 100) / 100);
     function makeRankedAssets() {
       const usedResultIndexes = new Set();
       const campaignByName = {};
@@ -1045,13 +1252,13 @@
             score: Math.round(Number(camp.rank_score)),
             evidence: 3,
             reason: camp.sim_fit != null
-              ? `Campaign rank · sim ${camp.sim_fit} · attr ${camp.attr_fit ?? '—'} · freq ${camp.freq_coverage ?? '—'}`
+              ? `Campaign rank · similarity ${r2(camp.sim_fit)} · attribute fit ${r2(camp.attr_fit)} · frequency coverage ${r2(camp.freq_coverage)}`
               : 'Rank from the extract & rank job'
           };
         } else {
           fit = item?.ok ? matchScore(attrs, state.profile || createProfile(currentFilters())) : {score:null,evidence:0,reason:item?.error || camp?.error || 'Run campaign ranking to score'};
         }
-        return { asset, item: item || camp, attrs, fit, originalIndex:index, campaignRank: camp?.rank };
+        return { asset, item: item || camp, camp, attrs, fit, originalIndex:index, campaignRank: camp?.rank };
       });
       ranked.sort((a,b) => {
         if (a.campaignRank != null && b.campaignRank != null && a.campaignRank !== b.campaignRank) return a.campaignRank - b.campaignRank;
@@ -1065,52 +1272,334 @@
     function extractedTags(attrs) {
       return [attrs.color && `Color: ${attrs.color}`, attrs.pattern && `Pattern: ${attrs.pattern}`, attrs.commodity && `Type: ${attrs.commodity}`, attrs.material && `Material: ${attrs.material}`, attrs.size && `Size: ${attrs.size}`, attrs.brand && `Brand: ${attrs.brand}`].filter(Boolean);
     }
+    /* ---------- Ranking deck (shared by real results and the demo) ---------- */
+    function cardHTML(c) {
+      const p = c.score ?? 0;
+      return `<article class="cr-card ${c.top ? 'top' : ''}" role="listitem" aria-label="Rank ${c.rank}: ${esc(c.name)}, fit ${c.score === null ? 'not scored' : c.score + ' of 100'}">
+          <div class="cr-media" ${c.bg ? `style="--bg:${c.bg}"` : ''}>${c.media}
+            <span class="cr-rank"><b>#${c.rank}</b>${c.top ? '<em>Top fit</em>' : ''}</span>
+            <span class="cr-status ${c.bad ? 'bad' : ''}">${esc(c.status)}</span>
+            <span class="cr-ring ${c.score === null ? 'na' : ''}" style="--p:${p}"><b>${c.score === null ? 'N/A' : c.score}</b></span>
+          </div>
+          <div class="cr-body">
+            <div><h4 class="cr-name" title="${esc(c.name)}">${esc(c.name)}</h4><p class="cr-sub">Rank #${c.rank}${c.of ? ` of ${c.of}` : ''} · Segment fit${c.score === null ? '' : ` ${c.score}/100`}</p></div>
+            <div class="cr-bar" style="--p:${p}"><i></i></div>
+            <div class="cr-tags">${c.tags.length ? c.tags.map(t => `<span class="tag">${esc(t)}</span>`).join('') : '<span class="text-xs text-[#8A7480]">No normalized attributes returned</span>'}</div>
+            <p class="cr-scroll-hint">Scroll for details <i class="fa-solid fa-arrow-down"></i></p>
+            <div class="cr-sec"><h5>Why this rank</h5><p>${esc(c.reason)}</p></div>
+            ${c.breakdown && c.breakdown.length ? `<div class="cr-sec"><h5>Audience match by attribute</h5>${c.breakdown.map(b => `<div class="cr-row"><span>${esc(b.label)}</span><b title="${esc(b.value)}">${esc(b.value)}</b><em class="${b.rank && b.rank <= 3 ? 'hit' : ''}">${b.rank ? `#${b.rank} · ${b.share}%` : 'not seen'}</em><u style="--p:${b.fill}"></u>${b.rank !== 1 && b.top ? `<small>Audience favours ${esc(b.top)}</small>` : ''}</div>`).join('')}</div>` : ''}
+            ${c.signals && c.signals.length ? `<div class="cr-sec"><h5>Ranking signals</h5><div class="cr-kv">${c.signals.map(([k, v]) => `<div><span>${esc(k)}</span><b title="${esc(v)}">${esc(v)}</b></div>`).join('')}</div></div>` : ''}
+            ${c.rankedFor ? `<div class="cr-sec"><h5>Ranked for</h5><p>${esc(c.rankedFor)}</p></div>` : ''}
+            ${c.file && c.file.length ? `<div class="cr-sec"><h5>File</h5><div class="cr-kv">${c.file.map(([k, v]) => `<div><span>${esc(k)}</span><b title="${esc(v)}">${esc(v)}</b></div>`).join('')}</div></div>` : ''}
+          </div>
+        </article>`;
+    }
+
+    const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+    // Pose by distance from the centre card: x offset (% of card width), scale, opacity, z-index.
+    const POSES = [[0, 1, 1, 50], [64, .84, 1, 40], [112, .7, .92, 30], [150, .58, .6, 20], [176, .5, 0, 10]];
+    function makeDeck(root, { loop = false, autoplay = 0, label = 'creatives' } = {}) {
+      root.classList.add('deck');
+      root.tabIndex = 0;
+      root.setAttribute('role', 'region');
+      root.setAttribute('aria-roledescription', 'carousel');
+      root.setAttribute('aria-label', label);
+      root.innerHTML = `<div class="deck-glow" aria-hidden="true"></div><div class="deck-stage" role="list"></div>
+        <button type="button" class="deck-nav prev" aria-label="Previous"><i class="fa-solid fa-chevron-left"></i></button>
+        <button type="button" class="deck-nav next" aria-label="Next"><i class="fa-solid fa-chevron-right"></i></button>
+        <div class="deck-dots" aria-hidden="true"></div>`;
+      const stage = root.querySelector('.deck-stage'), dots = root.querySelector('.deck-dots');
+      const prevBtn = root.querySelector('.prev'), nextBtn = root.querySelector('.next');
+      const st = { cards: [], i: 0, timer: 0, hoverT: 0, px: 0, py: 0, lock: null, inside: false };
+
+      function layout() {
+        const n = st.cards.length;
+        st.cards.forEach((c, k) => {
+          let d = k - st.i;
+          if (loop && n > 2) { d = ((d % n) + n) % n; if (d > n / 2) d -= n; }
+          const [x, s, o, z] = POSES[Math.min(Math.abs(d), POSES.length - 1)];
+          c.style.setProperty('--x', `${Math.sign(d) * x}%`);
+          c.style.setProperty('--y', d ? '0px' : '-8px');
+          c.style.setProperty('--s', s);
+          c.style.setProperty('--o', o);
+          c.style.setProperty('--z', z);
+          c.classList.toggle('is-active', d === 0);
+          c.classList.toggle('is-gone', o === 0);
+          c.setAttribute('aria-current', d === 0 ? 'true' : 'false');
+        });
+        prevBtn.disabled = n < 2 || (!loop && st.i === 0);
+        nextBtn.disabled = n < 2 || (!loop && st.i === n - 1);
+        dots.innerHTML = n > 1 && n <= 20 ? st.cards.map((_, k) => `<i class="${k === st.i ? 'on' : ''}"></i>`).join('') : '';
+      }
+      function go(k, fromPointer = false) {
+        const n = st.cards.length;
+        if (!n) return;
+        st.i = loop ? ((k % n) + n) % n : Math.max(0, Math.min(n - 1, k));
+        // After a pointer-driven move the cards shift under the cursor: ignore hover until it really moves again.
+        st.lock = fromPointer ? { x: st.px, y: st.py } : null;
+        layout();
+      }
+      function play() {
+        clearInterval(st.timer); st.timer = 0;
+        if (autoplay && !st.inside && !reduceMotion.matches && st.cards.length > 1 && root.offsetParent) st.timer = setInterval(() => go(st.i + 1), autoplay);
+      }
+      function set(html) {
+        stage.innerHTML = html;
+        st.cards = Array.from(stage.children);
+        st.i = 0; st.lock = null;
+        layout(); play();
+      }
+
+      root.addEventListener('pointermove', (e) => {
+        if (e.pointerType !== 'mouse') return;
+        st.px = e.clientX; st.py = e.clientY;
+        if (st.lock && Math.hypot(st.px - st.lock.x, st.py - st.lock.y) < 40) return;
+        st.lock = null;
+        const card = e.target.closest('.cr-card');
+        clearTimeout(st.hoverT);
+        if (!card || card.classList.contains('is-active')) return;
+        // Hover intent: the pointer has to rest on a side card briefly before it comes to the centre.
+        st.hoverT = setTimeout(() => {
+          const under = document.elementFromPoint(st.px, st.py)?.closest('.cr-card');
+          if (under === card) go(st.cards.indexOf(card), true);
+        }, 170);
+      });
+      root.addEventListener('pointerenter', () => { st.inside = true; play(); });
+      root.addEventListener('pointerleave', () => { st.inside = false; clearTimeout(st.hoverT); play(); });
+      stage.addEventListener('click', (e) => {
+        const card = e.target.closest('.cr-card');
+        if (card && !card.classList.contains('is-active')) { clearTimeout(st.hoverT); go(st.cards.indexOf(card), true); }
+      });
+      prevBtn.addEventListener('click', () => go(st.i - 1));
+      nextBtn.addEventListener('click', () => go(st.i + 1));
+      root.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); go(st.i + (e.key === 'ArrowRight' ? 1 : -1)); }
+        if (e.key === 'Home') go(0);
+        if (e.key === 'End') go(st.cards.length - 1);
+      });
+      let swipeX = null;
+      root.addEventListener('pointerdown', (e) => { if (e.pointerType !== 'mouse') swipeX = e.clientX; });
+      root.addEventListener('pointerup', (e) => {
+        if (swipeX === null) return;
+        const dx = e.clientX - swipeX; swipeX = null;
+        if (Math.abs(dx) > 40) go(st.i + (dx < 0 ? 1 : -1));
+      });
+      return { set, play };
+    }
+
+    function renderRankStats(list) {
+      const scored = list.filter(r => r.fit.score !== null);
+      const el = $('rankStats');
+      el.classList.toggle('hidden', !list.length);
+      if (!list.length) return;
+      const best = scored[0];
+      const avg = scored.length ? Math.round(scored.reduce((a, r) => a + r.fit.score, 0) / scored.length) : null;
+      const stat = (ic, label, value) => `<div class="rank-stat"><i class="ic fa-solid ${ic}"></i><div class="min-w-0"><p>${label}</p><b title="${esc(value)}">${esc(value)}</b></div></div>`;
+      el.innerHTML = [
+        stat('fa-trophy', 'Best fit', best ? `${best.fit.score} · ${best.asset.file.name}` : 'Run ranking'),
+        stat('fa-chart-simple', 'Average fit', avg === null ? '—' : `${avg}/100`),
+        stat('fa-circle-check', 'Scored', `${scored.length} of ${list.length}`),
+        stat('fa-users', 'Audience', `${$('audienceCustomers').textContent} customers`),
+      ].join('');
+    }
+
+    // Per-attribute comparison with the audience profile: where this SKU's value ranks among what the audience wears.
+    function attrBreakdown(attrs, profile) {
+      const dist = profile?.distributions || {};
+      return [['color', 'Color'], ['pattern', 'Pattern'], ['commodity', 'Type'], ['material', 'Material'], ['size', 'Size'], ['brand', 'Brand']].map(([k, label]) => {
+        const pairs = topN(k === 'brand' ? maskBrandDistribution(dist[k]) : dist[k], 100);
+        const v = attrs[k];
+        if (!v) return null;
+        const total = pairs.reduce((a, [, n]) => a + Number(n), 0) || 1;
+        const idx = pairs.findIndex(([n]) => normal(n) === normal(v));
+        const hit = idx >= 0 ? pairs[idx] : null;
+        return { label, value: v, rank: hit ? idx + 1 : null, share: hit ? Math.round(hit[1] / total * 100) : 0,
+          fill: hit ? Math.round(hit[1] / pairs[0][1] * 100) : 0, top: pairs[0]?.[0] || '' };
+      }).filter(Boolean);
+    }
+    function fileInfo(a) {
+      if (!a?.file) return [];
+      const kb = a.file.size / 1024;
+      return [['Size', kb >= 1024 ? `${(kb / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(kb))} KB`],
+        ['Dimensions', a.w ? `${a.w} × ${a.h}px` : '—'], ['Format', (a.file.type || '').replace('image/', '').toUpperCase() || '—']];
+    }
+    function cardSignals(row) {
+      const c = row.camp || {}, fmt = (v) => v === null || v === undefined || v === '' ? '—' : (Number.isFinite(Number(v)) ? String(Math.round(Number(v) * 100) / 100) : String(v));
+      const out = [];
+      if (row.camp) out.push(['Similarity fit', fmt(c.sim_fit)], ['Attribute fit', fmt(c.attr_fit)], ['Freq. coverage', fmt(c.freq_coverage)], ['Rank score', fmt(c.rank_score)]);
+      if (row.attrs.confidence) out.push(['Extraction conf.', fmt(row.attrs.confidence)]);
+      return out;
+    }
+
+    const deck = makeDeck($('creativeGrid'), { loop: true, autoplay: 3200, label: 'Ranked creative cards' });
     function renderCreatives() {
       const list = makeRankedAssets();
       $('rankCount').textContent = `${list.length} creative${list.length === 1 ? '' : 's'}`;
-      $('emptyState').classList.toggle('hidden', list.length > 0);$('creativeGrid').innerHTML = list.map(row => {
-        const {asset,item,attrs,fit,rank} = row;
-        const status = item ? (item.ok ? (item.status || 'Extracted') : 'Extraction failed') : 'Awaiting extraction';
-        const scoreText = fit.score === null ? 'N/A' : `${fit.score}/100`;
-        const tags = extractedTags(attrs);
-        const reason = fit.score === null ? (fit.reason || 'No comparable segment profile') : `${fit.reason}. Relative preference score.`;
-        return `<article class="creative-card holo-card rank-${Math.min(rank, 5)} ${rank === 1 && fit.score !== null ? 'rank-1' : ''}" role="listitem" tabindex="0">
-          <div class="relative h-48 flex-none bg-[#F0ECE4] border-b border-[#E4DED3]">${asset.src ? `<img src="${asset.src}" alt="${esc(asset.file.name)}" class="w-full h-full object-contain" loading="lazy">` : '<div class="w-full h-full flex items-center justify-center"><i class="fa-solid fa-shirt text-5xl text-[#DED7CB]"></i></div>'}<div class="absolute top-3 left-3 tag ${rank === 1 && fit.score !== null ? 'border-[#89765C] text-[#89765C] font-bold' : ''}">#${rank} ${rank === 1 && fit.score !== null ? '· TOP FIT' : ''}</div><div class="absolute top-3 right-3 tag">${esc(status)}</div></div>
-          <div class="card-body p-4 space-y-3"><div class="flex items-start justify-between gap-3"><h4 class="font-semibold text-sm break-all text-[#292722]">${esc(asset.file.name)}</h4><div class="text-right shrink-0"><p class="text-[9px] uppercase tracking-wider text-[#777066]">Segment fit</p><p class="font-mono text-xl ${fit.score === null ? 'text-[#777066]' : rank === 1 ? 'text-[#89765C] font-bold' : 'text-[#292722]'}">${scoreText}</p></div></div>
-          <div class="flex flex-wrap gap-1.5">${tags.length ? tags.map(t => `<span class="tag">${esc(t)}</span>`).join('') : '<span class="text-xs text-[#777066]">No normalized attributes returned</span>'}</div>
-          <div class="border-t border-[#E4DED3] pt-2"><p class="text-[9px] uppercase tracking-wider text-[#777066] mb-1">Ranked for</p><p class="text-[10px] text-[#89765C] leading-relaxed font-medium">${esc(filtersLabel())}</p><p class="text-[10px] text-[#777066] mt-2 leading-relaxed">${esc(reason)}</p></div></div></article>`;
-      }).join('');
-      $('creativeGrid').scrollTo({ left: 0, behavior: 'smooth' });
+      $('emptyState').classList.toggle('hidden', list.length > 0);
+      $('creativeGrid').classList.toggle('hidden', !list.length);
+      demoDeck.play();
+      const ranked = filtersLabel();
+      deck.set(list.map((row) => {
+        const { asset, item, attrs, fit, rank } = row;
+        return cardHTML({
+          media: asset.src ? `<img src="${asset.src}" alt="${esc(asset.file.name)}" loading="lazy">` : '<div class="w-full h-full grid place-items-center"><i class="fa-solid fa-shirt text-5xl text-[#DCC3CE]"></i></div>',
+          rank, top: rank === 1 && fit.score !== null, score: fit.score, name: asset.file.name,
+          status: item ? (item.ok ? (item.status || 'Extracted') : 'Extraction failed') : 'Awaiting extraction',
+          bad: item && !item.ok, tags: extractedTags(attrs), of: list.length, rankedFor: ranked,
+          breakdown: attrBreakdown(attrs, state.profile), signals: cardSignals(row), file: fileInfo(asset),
+          reason: fit.score === null ? (fit.reason || 'No comparable segment profile') : `${fit.reason}. Relative preference score.`
+        });
+      }).join(''));
+      renderRankStats(list);
       renderMatrix(list);
+      const scored = list.filter(r => r.fit.score !== null).length;
+      $('launchMeta').innerHTML = `<span>${esc($('audienceCustomers').textContent)} customers</span><span>${scored} creative${scored === 1 ? '' : 's'} ranked</span>`;
     }
+
+    /* Hand the current audience + ranked creatives to the 1P campaign page (same origin → localStorage). */
+    function thumbOf(src, max = 320) {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+          const k = Math.min(1, max / Math.max(img.width, img.height));
+          const cv = document.createElement('canvas'); cv.width = Math.round(img.width * k); cv.height = Math.round(img.height * k);
+          const ctx = cv.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cv.width, cv.height); ctx.drawImage(img, 0, 0, cv.width, cv.height);
+          resolve(cv.toDataURL('image/jpeg', .82));
+        };
+        img.onerror = () => resolve('');
+        img.src = src;
+      });
+    }
+    async function stashCampaignThumbs() {
+      const f = currentFilters();
+      if (lockedBrand) f.brand_name = lockedBrand;
+      const list = makeRankedAssets().slice(0, 12);
+      const thumbs = await Promise.all(list.map(r => thumbOf(r.asset.src)));
+      const draft = {
+        v: 1, created_at: new Date().toISOString(), campaign_id: state.campaign?.campaign_id || null,
+        brand: f.brand_name || '', filters: f, filters_label: filtersLabel(f),
+        customers: audienceStats(f).customers,
+        creatives: list.map((r, i) => ({ name: r.asset.file.name, rank: r.rank, score: r.fit.score, attrs: r.attrs, reason: r.fit.reason || '', thumb: thumbs[i] }))
+      };
+      try { localStorage.setItem('suffai_1p_handoff', JSON.stringify(draft)); }
+      catch (_) { // storage full: hand off without images
+        try { localStorage.setItem('suffai_1p_handoff', JSON.stringify({ ...draft, creatives: draft.creatives.map(c => ({ ...c, thumb: '' })) })); } catch (__) { /* page still opens */ }
+      }
+    }
+
+    /* ---------- Demo deck: illustrated garments on wooden hangers, looping until real SKUs arrive ---------- */
+    const GARMENTS = {
+      shirt: { c: ['#F6EAD7', '#E0C9A8', '#8C7052'], bg: '#F8EEDF',
+        body: 'M72 50L48 62L34 150L50 155L62 98V206H138V98L150 155L166 150L152 62L128 50L112 50L100 70L88 50Z',
+        extra: (o) => `<path d="M86 46L100 70L114 46L121 53L100 80L79 53Z" fill="#FFF8EE" stroke="${o}" stroke-width="1.4"/><path d="M100 72V206" stroke="${o}" stroke-opacity=".5"/>${[94, 118, 142, 166, 190].map(y => `<circle cx="104" cy="${y}" r="2.3" fill="${o}"/>`).join('')}<path d="M110 96h18v20h-18z" fill="none" stroke="${o}" stroke-opacity=".55"/><path d="M37 140l14 4M163 140l-14 4" stroke="${o}" stroke-opacity=".6" stroke-width="1.6"/>` },
+      skirt: { c: ['#E8BC5A', '#B9852A', '#6E4C10'], bg: '#FBF1DC',
+        body: 'M70 70H130L164 206Q100 222 36 206Z',
+        extra: (o) => `<path d="M70 58H130V70H70Z" fill="#C9962F" stroke="${o}" stroke-width="1.4"/><path d="M84 70L64 210M100 70V216M116 70L136 210M92 70L82 214M108 70L118 214" stroke="${o}" stroke-opacity=".35"/><rect x="74" y="46" width="8" height="14" rx="2" fill="#9C8B94"/><rect x="118" y="46" width="8" height="14" rx="2" fill="#9C8B94"/>` },
+      tee: { c: ['#EDC3CF', '#C98FA2', '#8E5368'], bg: '#FBEEF2',
+        body: 'M76 50L44 66L56 98L70 90V202H130V90L144 98L156 66L124 50Q100 68 76 50Z',
+        extra: (o) => `<path d="M76 50Q100 68 124 50" fill="none" stroke="#F8DCE4" stroke-width="5"/><path d="M76 50Q100 68 124 50" fill="none" stroke="${o}" stroke-width="1.2"/><path d="M70 194H130M48 88l10-4M152 88l-10-4" stroke="${o}" stroke-opacity=".5" stroke-dasharray="3 3"/><circle cx="100" cy="128" r="16" fill="none" stroke="#FFF" stroke-opacity=".7" stroke-width="3"/><path d="M93 128l5 5 9-10" fill="none" stroke="#FFF" stroke-opacity=".8" stroke-width="3"/>` },
+      dress: { c: ['#9A3657', '#5E1A33', '#3D0F21'], bg: '#F7E6EC',
+        body: 'M82 50Q100 62 118 50L124 104L160 210Q100 224 40 210L76 104Z',
+        extra: (o) => `<path d="M82 50L78 38M118 50L122 38" stroke="${o}" stroke-width="2"/><path d="M76 104Q100 113 124 104" fill="none" stroke="#E0B654" stroke-width="4"/><path d="M88 120L72 208M112 120L128 208M100 118V216" stroke="#000" stroke-opacity=".18"/>` },
+      hoodie: { c: ['#A9C0A5', '#6F8C6C', '#435940'], bg: '#ECF3EA',
+        body: 'M72 54Q100 30 128 54L154 68L166 160L150 164L140 108V204H60V108L50 164L34 160L46 68Z',
+        extra: (o) => `<path d="M80 54Q100 80 120 54" fill="#58714F" stroke="${o}" stroke-width="1.4"/><path d="M94 70V100M106 70V100" stroke="#F4F1E6" stroke-width="2" stroke-linecap="round"/><path d="M74 150H126L120 182H80Z" fill="none" stroke="${o}" stroke-opacity=".6"/><path d="M60 196H140M36 152l14 4M164 152l-14 4" stroke="${o}" stroke-opacity=".6" stroke-width="2"/>` },
+      jacket: { c: ['#7797C6', '#45628E', '#2C4166'], bg: '#E9EFF8',
+        body: 'M72 50L46 62L32 160L48 165L60 104V206H140V104L152 165L168 160L154 62L128 50Z',
+        extra: (o) => `<path d="M72 50H88L96 70L82 78ZM128 50H112L104 70L118 78Z" fill="#5A7AAA" stroke="${o}" stroke-width="1.3"/><path d="M100 76V206M60 100Q100 110 140 100M70 114h22v18h-22zM108 114h22v18h-22zM60 194H140" fill="none" stroke="#E8C27A" stroke-dasharray="3 3" stroke-width="1.3"/>${[120, 150, 180].map(y => `<circle cx="104" cy="${y}" r="2.6" fill="#C9A24A"/>`).join('')}` },
+      sweater: { c: ['#CDBBE6', '#9C86C2', '#5E4A85'], bg: '#F2EDFA',
+        body: 'M74 52L46 64L36 170L54 174L62 104V204H138V104L146 174L164 170L154 64L126 52Q100 68 74 52Z',
+        extra: (o) => `<path d="M74 52Q100 68 126 52" fill="none" stroke="#E6DCF4" stroke-width="6"/><path d="M62 196H138M38 162l16 4M162 162l-16 4" stroke="${o}" stroke-width="3" stroke-opacity=".5"/>${[84, 116].map(x => `<path d="M${x} 86q7 9 0 18q-7 9 0 18q7 9 0 18q-7 9 0 18q7 9 0 18" fill="none" stroke="${o}" stroke-opacity=".55" stroke-width="1.6"/>`).join('')}<path d="M100 84V190" stroke="${o}" stroke-opacity=".35" stroke-dasharray="1 4" stroke-width="2" stroke-linecap="round"/>` },
+      trousers: { c: ['#4A4246', '#1F1B1D', '#0F0D0E'], bg: '#F0ECEA',
+        body: 'M66 66H134L140 212H108L100 104L92 212H60Z',
+        extra: (o) => `<path d="M66 54H134V66H66Z" fill="#2E282B" stroke="${o}"/><path d="M80 66V54M100 66V54M120 66V54" stroke="#6B6266"/><path d="M80 74L76 210M120 74L124 210" stroke="#FFF" stroke-opacity=".12"/><path d="M70 68Q78 88 90 76M130 68Q122 88 110 76" fill="none" stroke="#FFF" stroke-opacity=".2"/><rect x="73" y="44" width="8" height="12" rx="2" fill="#9C8B94"/><rect x="119" y="44" width="8" height="12" rx="2" fill="#9C8B94"/>` },
+    };
+    function garmentSVG(key, uid) {
+      const g = GARMENTS[key], [c1, c2, o] = g.c, id = `gm${uid}`;
+      return `<svg viewBox="0 0 200 230" aria-hidden="true">
+        <defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/></linearGradient>
+          <linearGradient id="${id}h" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity=".38"/><stop offset=".45" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".12"/></linearGradient></defs>
+        <path d="M100 40v-9a8 8 0 1 1 8-8" fill="none" stroke="#9C8B94" stroke-width="3" stroke-linecap="round"/>
+        <path d="M56 56Q100 34 144 56" fill="none" stroke="#9A6534" stroke-width="7" stroke-linecap="round"/>
+        <path d="M60 54Q100 35 140 54" fill="none" stroke="#D9A86C" stroke-width="2" stroke-linecap="round"/>
+        <g stroke-linejoin="round" stroke-linecap="round">
+          <path d="${g.body}" fill="url(#${id})" stroke="${o}" stroke-width="1.6"/>
+          <path d="${g.body}" fill="url(#${id}h)"/>
+          ${g.extra(o)}
+        </g></svg>`;
+    }
+    const DEMO = [
+      ['shirt', 'linen-shirt-beige.jpg', 94, ['Color: Beige', 'Pattern: Striped', 'Type: Shirt', 'Material: Linen'], 'Matches the top colour, pattern and garment type for this audience.'],
+      ['skirt', 'pleated-skirt-mustard.jpg', 90, ['Color: Mustard', 'Pattern: Pleated', 'Type: Skirt', 'Material: Polyester'], 'Trending colour with a strong garment-type match.'],
+      ['tee', 'graphic-tee-rose.jpg', 86, ['Color: Rose', 'Pattern: Graphic Print', 'Type: T-Shirt', 'Material: Cotton'], 'Strong pattern and material match; colour is a secondary preference.'],
+      ['dress', 'wrap-dress-burgundy.jpg', 81, ['Color: Burgundy', 'Pattern: Solid', 'Type: Dress', 'Material: Silk'], 'Colour is a top-3 preference; garment type less common here.'],
+      ['hoodie', 'hoodie-sage.jpg', 76, ['Color: Sage', 'Pattern: Solid', 'Type: Hoodie', 'Material: Fleece'], 'Popular silhouette, but the colour is rarely seen in this audience.'],
+      ['jacket', 'denim-jacket.jpg', 71, ['Color: Blue', 'Pattern: Plain', 'Type: Denim Jacket', 'Material: Denim'], 'Garment type matches; material is a weaker preference.'],
+      ['sweater', 'cable-sweater-lilac.jpg', 66, ['Color: Lilac', 'Pattern: Cable Knit', 'Type: Sweater', 'Material: Wool'], 'Seasonal piece — fewer matching observations in this segment.'],
+      ['trousers', 'slim-trousers-black.jpg', 60, ['Color: Black', 'Pattern: Solid', 'Type: Trousers', 'Material: Polyester'], 'Few attribute overlaps with this audience’s wardrobe.'],
+    ];
+    const demoDeck = makeDeck($('demoRail'), { loop: true, autoplay: 2800, label: 'Demo ranking' });
+    demoDeck.set(DEMO.map(([g, name, score, tags, reason], i) => cardHTML({
+      media: garmentSVG(g, i), rank: i + 1, of: DEMO.length, top: i === 0, score, name, status: 'Demo', tags, reason,
+      rankedFor: 'Your brand × your PINs × age × gender × RFM',
+      breakdown: tags.map((t, j) => {
+        const [label, value] = t.split(': '), seen = score - j * 9 > 55;
+        const rank = seen ? 1 + j + Math.round((94 - score) / 12) : null, share = seen ? Math.max(4, Math.round(score / 5) - j * 3) : 0;
+        return { label, value, rank, share, fill: seen ? Math.max(12, score - j * 14) : 0, top: ['Beige', 'Striped', 'Shirt', 'Cotton'][j] };
+      }),
+      signals: [['Similarity fit', (score / 100 - .04).toFixed(2)], ['Attribute fit', (score / 100 - .09).toFixed(2)], ['Freq. coverage', (score / 100 - .15).toFixed(2)], ['Rank score', String(score)]]
+    })).join(''));
     function renderMatrix(list) {
       const f = currentFilters();
       $('matrixBody').innerHTML = list.length ? list.map(row => {
         const a = row.attrs; const taste = extractedTags(a).join(' · ') || '—';
         const pins = f.pin_codes || (f.pin_code ? [f.pin_code] : []);
         const pinLabel = !pins.length ? 'No PIN' : (pins.length <= 2 ? pins.map(labelForPin).join(', ') : pins.length + ' PINs');
-        return `<tr><td class="px-4 py-3 font-mono ${row.rank === 1 ? 'text-[#89765C] font-bold' : 'text-[#777066]'}">#${row.rank}</td><td class="px-4 py-3 text-[#292722] font-medium">${esc(row.asset.file.name)}</td><td class="px-4 py-3">${esc(pinLabel)}</td><td class="px-4 py-3">${esc(f.age_group || 'All ages')}</td><td class="px-4 py-3">${esc(displayGender(f.gender))}</td><td class="px-4 py-3">${esc(f.rfm_segment || 'All RFM')}</td><td class="px-4 py-3 whitespace-normal min-w-[220px]">${esc(taste)}</td><td class="px-4 py-3 text-right font-mono ${row.fit.score === null ? 'text-[#777066]' : 'text-[#89765C] font-bold'}">${row.fit.score === null ? 'N/A' : row.fit.score + '/100'}</td></tr>`;
-      }).join('') : '<tr><td colspan="8" class="px-4 py-8 text-center text-[#777066]">Upload images to populate the matrix.</td></tr>';
+        return `<tr><td class="px-4 py-3 font-mono ${row.rank === 1 ? 'text-[#6B3A55] font-bold' : 'text-[#8A7480]'}">#${row.rank}</td><td class="px-4 py-3 text-[#3B2733] font-medium">${esc(row.asset.file.name)}</td><td class="px-4 py-3">${esc(pinLabel)}</td><td class="px-4 py-3">${esc(f.age_group || 'All ages')}</td><td class="px-4 py-3">${esc(displayGender(f.gender))}</td><td class="px-4 py-3">${esc(f.rfm_segment || 'All RFM')}</td><td class="px-4 py-3 whitespace-normal min-w-[220px]">${esc(taste)}</td><td class="px-4 py-3 text-right font-mono ${row.fit.score === null ? 'text-[#8A7480]' : 'text-[#6B3A55] font-bold'}">${row.fit.score === null ? 'N/A' : row.fit.score + '/100'}</td></tr>`;
+      }).join('') : '<tr><td colspan="8" class="px-4 py-8 text-center text-[#8A7480]">Upload images to populate the matrix.</td></tr>';
     }
 
     function readAsDataUrl(file) {
-      return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve({file, src:reader.result}); reader.onerror = () => reject(new Error(`Could not read ${file.name}`)); reader.readAsDataURL(file); });
+      return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => { const img = new Image(); img.onload = () => resolve({file, src:reader.result, w:img.naturalWidth, h:img.naturalHeight}); img.onerror = () => resolve({file, src:reader.result}); img.src = reader.result; }; reader.onerror = () => reject(new Error(`Could not read ${file.name}`)); reader.readAsDataURL(file); });
+    }
+    function assetsChanged() {
+      state.results = []; state.campaignItems = []; state.campaign = null; state.rankedKey = null; // old ranks don't apply to a changed set
+      const n = state.assets.length;
+      $('thumbs').innerHTML = state.assets.map((x, i) => `<div class="thumb"><div class="ph"><img src="${x.src}" alt="${esc(x.file.name)}"></div>
+        <small title="${esc(x.file.name)}">${esc(x.file.name)}</small>
+        <button type="button" class="rm" data-rm="${i}" aria-label="Remove ${esc(x.file.name)}"><i class="fa-solid fa-xmark"></i></button></div>`).join('');
+      $('uploadSummary').textContent = n ? `${n} SKU image${n === 1 ? '' : 's'} selected · run Extract & rank to score ${n === 1 ? 'it' : 'them'}.` : 'No creatives uploaded.';
+      $('runButton').disabled = state.loading || !n;
+      $('clearSkus').disabled = state.loading || !n;
+      refreshForFilters();
+      if (!state.metrics) renderCreatives();
     }
     async function processFiles(fileList) {
       const chosen = Array.from(fileList || []).filter(f => f.type && f.type.startsWith('image/'));
-      if (!chosen.length) return;
+      if (!chosen.length) { showRunError('Please choose image files (JPG or PNG).'); return; }
       try {
-        state.assets = await Promise.all(chosen.map(readAsDataUrl));
-        state.results = [];
-        $('uploadSummary').textContent = `${state.assets.length} file(s) selected.`;
-        $('runButton').disabled = false;
-        renderCreatives();
-        if (agentAutoRunAfterFiles) {
+        const known = new Set(state.assets.map(a => a.file.name + '|' + a.file.size));
+        const fresh = chosen.filter(f => !known.has(f.name + '|' + f.size));
+        state.assets = state.assets.concat(await Promise.all(fresh.map(readAsDataUrl))); // add to the set, skip duplicates
+        showRunError(fresh.length < chosen.length ? `${chosen.length - fresh.length} duplicate image(s) skipped.` : '');
+        assetsChanged();
+        if (agentAutoRunAfterFiles && state.assets.length) {
           agentAutoRunAfterFiles = false;
           await runAnalysis();
         }
-      } catch (e) { alert(e.message); }
+      } catch (e) { showRunError(e.message); }
     }
+    $('thumbs').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-rm]'); if (!b || state.loading) return;
+      state.assets.splice(Number(b.dataset.rm), 1);
+      showRunError('');
+      assetsChanged();
+    });
+    $('clearSkus').addEventListener('click', () => {
+      if (state.loading || !state.assets.length) return;
+      state.assets = []; showRunError('');
+      assetsChanged();
+    });
     const dropzone = $('dropzone'); const fileInput =$('fileInput');
     dropzone.addEventListener('click', () => fileInput.click());
     dropzone.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click(); } });
@@ -1120,8 +1609,21 @@
     fileInput.addEventListener('change', e => { processFiles(e.target.files); fileInput.value = ''; });
     ['filterArea','filterAge','filterGender','filterRfm','filterBrand'].forEach(id => $(id).addEventListener('change', refreshForFilters));
     $('filterBrand').addEventListener('input', refreshForFilters);
+    // Toggle PINs with a plain click (no Cmd/Ctrl needed)
+    $('filterArea').addEventListener('mousedown', (e) => {
+      if (e.target.tagName !== 'OPTION') return;
+      e.preventDefault();
+      const scroll = $('filterArea').scrollTop;
+      e.target.selected = !e.target.selected;
+      $('filterArea').focus();
+      $('filterArea').scrollTop = scroll;
+      $('filterArea').dispatchEvent(new Event('change'));
+    });
+    $('filterArea').addEventListener('change', updatePinCount);
     $('runButton').addEventListener('click', runAnalysis);
     applyBrandLock();
+    $('btnToggle').addEventListener('click', () => setSidebar($('sidebar').classList.contains('collapsed')));
+    try { if (localStorage.getItem('suffai_ads_sidebar') === 'closed') setSidebar(false, false); } catch (_) {}
 
     const JOB_KEY = 'suffai_rank_job';
     const JOB_POLL_MS = 5000;
@@ -1151,8 +1653,9 @@
       if (lockedBrand) applyBrandLock();
       const f = currentFilters();
       if (lockedBrand) f.brand_name = lockedBrand;
-      if (!f.brand_name) { alert('Enter a brand name.'); return; }
-      if (!f.pin_codes.length) { alert('Select at least one PIN code.'); return; }
+      if (!f.brand_name) { showRunError('Enter a brand name to run the campaign.'); $('filterBrand').focus(); return; }
+      if (!f.pin_codes.length) { showRunError('Select at least one PIN code.'); $('filterArea').focus(); return; }
+      showRunError('');
       setLoading(true, 'Uploading SKU images · scheduling ranking job…');
       try {
         const fd = new FormData();
@@ -1172,6 +1675,7 @@
         state.campaign = null;
         state.campaignItems = [];
         state.results = [];
+        state.rankedKey = JSON.stringify(f);
         rememberJob(data.job.job_id);
         renderJob(data.job);
         $('uploadSummary').textContent = `Ranking job submitted for ${data.job.total_images} image(s).`;
@@ -1180,6 +1684,7 @@
       } catch (e) {
         console.error('[ads_lab] job submit failed', e);
         $('uploadSummary').textContent = `Job not submitted: ${e.message}`;
+        showRunError(e.message);
       } finally { setLoading(false); }
     }
 
@@ -1316,7 +1821,6 @@
         if (num) num.innerHTML = s[k] ? '<i class="fa-solid fa-check text-[9px]"></i>' : String(order.indexOf(k) + 1);
       });
       const ready = campaignReady();
-      $('run3pBtn').disabled = !ready;
       $('run1pBtn').disabled = !(ready || (state.campaign && state.campaign.status === 'launched'));
       const c = state.campaign;
       $('runModeNote').textContent = !c
@@ -1374,9 +1878,11 @@
         location.href = './campaigns.html?campaign_id=' + encodeURIComponent(campaignId);
       }
     }
-    function run1p() {
+    async function run1p() {
       const id = state.campaign && state.campaign.campaign_id;
-      if (id) openCampaigns(id);
+      if (!id) return;
+      await stashCampaignThumbs();
+      openCampaigns(id);
     }
 
     function csvDownload(rows, filename) {
@@ -1424,7 +1930,6 @@
 
     document.querySelectorAll('.wiz-step').forEach(btn => btn.addEventListener('click', () => scrollToStep(btn.dataset.target)));
     $('clearGeoContextBtn').addEventListener('click', clearGeoContext);
-    $('run3pBtn').addEventListener('click', run3p);
     $('run1pBtn').addEventListener('click', run1p);
     $('created3pBtn').addEventListener('click', run3p);
     $('created1pBtn').addEventListener('click', run1p);
@@ -1437,13 +1942,9 @@
     } catch (e) {
       console.error('[ads_lab] draft restore failed', e);
     }
-    $('creativePrev').addEventListener('click', () => $('creativeGrid').scrollBy({left: -360, behavior: 'smooth'}));
-    $('creativeNext').addEventListener('click', () => $('creativeGrid').scrollBy({left: 360, behavior: 'smooth'}));
-    $('creativeGrid').addEventListener('keydown', (event) => {
-      if (event.key === 'ArrowRight') $('creativeGrid').scrollBy({left: 360, behavior: 'smooth'});
-      if (event.key === 'ArrowLeft') $('creativeGrid').scrollBy({left: -360, behavior: 'smooth'});
-    });
+    $('downloadButton').addEventListener('click', run3p);
     updateWizard();
+    scrollToRanking(); // now, not after the data fetch
     loadMetrics();
     resumeJob();
   </script>

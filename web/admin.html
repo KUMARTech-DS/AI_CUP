@@ -10,77 +10,82 @@
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Outfit:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --ink: #0a0c0f;
-      --panel: #12161c;
-      --line: #2a3340;
-      --muted: #8a94a3;
-      --soft: #d2d8e0;
-      --accent: #c4a574;
+      --cream: #faf6ee;
+      --panel: #ffffff;
+      --raised: #f6eef0;
+      --line: #ead9e0;
+      --muted: #8a7480;
+      --ink: #3b2733;
+      --plum: #6b3a55;
+      --plum-dk: #552c43;
+      --mauve: #c59fb0;
     }
     body {
       margin: 0;
       min-height: 100vh;
       font-family: Outfit, system-ui, sans-serif;
-      color: var(--soft);
-      background: radial-gradient(ellipse at top, #141a22 0%, var(--ink) 55%);
+      color: var(--ink);
+      background:
+        radial-gradient(ellipse 70% 40% at 0% 0%, rgba(197, 159, 176, 0.18), transparent 60%),
+        var(--cream);
     }
-    h1 {
-      font-family: 'Cormorant Garamond', Georgia, serif;
-      font-weight: 700;
-      color: #fff;
-    }
+    h1 { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 700; color: var(--plum); }
+    h2 { color: var(--ink); }
+    :focus-visible { outline: 3px solid rgba(197, 159, 176, 0.7); outline-offset: 2px; }
     .card {
       border: 1px solid var(--line);
-      background: rgba(18, 22, 28, 0.92);
-      border-radius: 14px;
+      background: var(--panel);
+      border-radius: 16px;
       padding: 1.1rem 1.25rem;
+      box-shadow: 0 8px 24px rgba(107, 58, 85, 0.06);
     }
-    .kpi-val {
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 1.75rem;
-      color: #fff;
-      font-weight: 500;
-    }
-    .kpi-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
-    input, button {
-      font-family: inherit;
-    }
+    .kpi-val { font-family: 'IBM Plex Mono', monospace; font-size: 1.75rem; color: var(--plum); font-weight: 500; }
+    .kpi-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
+    input, button { font-family: inherit; }
+    .lbl { display: flex; flex-direction: column; gap: 0.3rem; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 600; color: var(--muted); }
     input {
-      background: #0e1218;
-      border: 1px solid var(--line);
-      color: var(--soft);
-      border-radius: 8px;
-      padding: 0.5rem 0.75rem;
+      background: var(--panel);
+      border: 1.5px solid var(--line);
+      color: var(--ink);
+      border-radius: 10px;
+      padding: 0.55rem 0.8rem;
       font-size: 13px;
+      outline: 0;
+      text-transform: none;
+      letter-spacing: normal;
     }
+    input:focus { border-color: var(--plum); box-shadow: 0 0 0 3px rgba(197, 159, 176, 0.35); }
     button.primary {
-      background: rgba(196, 165, 116, 0.2);
-      border: 1px solid rgba(196, 165, 116, 0.45);
+      background: var(--plum);
+      border: none;
       color: #fff;
       font-weight: 600;
       font-size: 13px;
-      padding: 0.5rem 1rem;
-      border-radius: 8px;
+      padding: 0.6rem 1.1rem;
+      border-radius: 10px;
       cursor: pointer;
     }
-    button.primary:hover { background: rgba(196, 165, 116, 0.32); }
+    button.primary:hover { background: var(--plum-dk); }
+    button.primary:disabled { opacity: 0.6; cursor: wait; }
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
     th {
       text-align: left;
       color: var(--muted);
       font-size: 10px;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.06em;
       padding: 0.65rem 0.5rem;
       border-bottom: 1px solid var(--line);
+      background: var(--raised);
     }
-    td {
-      padding: 0.7rem 0.5rem;
-      border-bottom: 1px solid rgba(42, 51, 64, 0.6);
-      color: var(--soft);
+    td { padding: 0.7rem 0.5rem; border-bottom: 1px solid var(--line); color: var(--ink); }
+    tbody tr:hover td { background: rgba(246, 238, 240, 0.6); }
+    .num { text-align: right; font-family: 'IBM Plex Mono', monospace; }
+    .mono { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--plum); }
+    .err {
+      padding: 0.65rem 0.8rem; border-radius: 10px; font-size: 13px;
+      background: rgba(180, 60, 60, 0.08); border: 1px solid rgba(180, 60, 60, 0.3); color: #a03a3a;
     }
-    .mono { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #9fd4ff; }
-    .err { color: #f87171; font-size: 13px; }
     .muted { color: var(--muted); font-size: 12px; }
   </style>
 </head>
@@ -92,23 +97,23 @@
   <div class="max-w-6xl mx-auto px-5 py-8">
     <div class="mb-6">
       <h1 class="text-3xl m-0">Unique garments</h1>
-      <p class="muted mt-1 mb-0">Aggregates from the similarity service (per-user unique wardrobe + PIN / brand counters). Recommendations not enabled yet.</p>
+      <p class="muted mt-1 mb-0">Distinct garments seen across customer wardrobes, by PIN and brand.</p>
     </div>
 
-    <div class="card mb-5 flex flex-wrap gap-3 items-end">
-      <label class="flex flex-col gap-1 text-xs text-gray-400">
+    <form class="card mb-5 flex flex-wrap gap-3 items-end" id="filters">
+      <label class="lbl">
         PIN code
-        <input id="pin" placeholder="e.g. 560038" maxlength="6" />
+        <input id="pin" placeholder="e.g. 560038" maxlength="6" inputmode="numeric" />
       </label>
-      <label class="flex flex-col gap-1 text-xs text-gray-400">
+      <label class="lbl">
         Brand
-        <input id="brand" placeholder="optional" />
+        <input id="brand" placeholder="Any brand" />
       </label>
-      <button type="button" class="primary" id="btnLoad">Refresh</button>
-      <span id="status" class="muted self-center"></span>
-    </div>
+      <button type="submit" class="primary" id="btnLoad">Apply</button>
+      <span id="status" class="muted self-center" aria-live="polite"></span>
+    </form>
 
-    <div id="error" class="err mb-4 hidden"></div>
+    <div id="error" class="err mb-4 hidden" role="alert"></div>
 
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
       <div class="card">
@@ -127,19 +132,19 @@
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
       <div class="card">
-        <h2 class="text-white text-base font-semibold m-0 mb-3">By PIN</h2>
+        <h2 class="text-base font-semibold m-0 mb-3">By PIN</h2>
         <div class="overflow-x-auto">
           <table>
-            <thead><tr><th>PIN</th><th>Unique</th><th>Observations</th></tr></thead>
+            <thead><tr><th>PIN</th><th class="num">Unique</th><th class="num">Observations</th></tr></thead>
             <tbody id="byPin"></tbody>
           </table>
         </div>
       </div>
       <div class="card">
-        <h2 class="text-white text-base font-semibold m-0 mb-3">By brand</h2>
+        <h2 class="text-base font-semibold m-0 mb-3">By brand</h2>
         <div class="overflow-x-auto">
           <table>
-            <thead><tr><th>Brand</th><th>Unique</th><th>Observations</th></tr></thead>
+            <thead><tr><th>Brand</th><th class="num">Unique</th><th class="num">Observations</th></tr></thead>
             <tbody id="byBrand"></tbody>
           </table>
         </div>
@@ -147,7 +152,7 @@
     </div>
 
     <div class="card">
-      <h2 class="text-white text-base font-semibold m-0 mb-3">Recent unique garments</h2>
+      <h2 class="text-base font-semibold m-0 mb-3">Recent unique garments</h2>
       <div class="overflow-x-auto">
         <table>
           <thead>
@@ -155,7 +160,7 @@
               <th>Garment ID</th>
               <th>Brand</th>
               <th>GCS key</th>
-              <th>Obs total</th>
+              <th class="num">Observations</th>
               <th>Created</th>
             </tr>
           </thead>
@@ -229,17 +234,27 @@
       console.error('[admin]', msg);
     }
 
+    const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const fmt = (n) => (n == null || n === '' ? '—' : Number.isFinite(Number(n)) ? Number(n).toLocaleString() : esc(n));
+
+    // cols: [cell fn returning plain text, optional 'num' | 'mono' | 'title']
     function rows(tbody, data, cols) {
       if (!data.length) {
-        tbody.innerHTML = '<tr><td colspan="8" class="muted">No rows</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="' + cols.length + '" class="muted">No data for these filters</td></tr>';
         return;
       }
-      tbody.innerHTML = data.map(r => '<tr>' + cols.map(c => '<td>' + c(r) + '</td>').join('') + '</tr>').join('');
+      tbody.innerHTML = data.map(r => '<tr>' + cols.map(([fn, kind]) => {
+        const v = fn(r);
+        if (kind === 'num') return '<td class="num">' + fmt(v) + '</td>';
+        if (kind === 'mono') return '<td><span class="mono" title="' + esc(v.full) + '">' + esc(v.text) + '</span></td>';
+        return '<td>' + esc(v ?? '—') + '</td>';
+      }).join('') + '</tr>').join('');
     }
 
     async function load() {
       const status = document.getElementById('status');
       status.textContent = 'Loading…';
+      document.getElementById('btnLoad').disabled = true;
       showErr('');
       const q = qs();
       try {
@@ -250,46 +265,45 @@
         if (!sumRes.ok) {
           let detail = '';
           try { detail = (await sumRes.json()).detail || ''; } catch (_) {}
-          throw new Error('Summary HTTP ' + sumRes.status + (detail ? ': ' + detail : ' — set SIMILARITY_URL / check suffai-similarity'));
+          console.error('[admin] summary HTTP', sumRes.status, detail);
+          throw new Error('Could not load garment stats (HTTP ' + sumRes.status + ')' + (detail ? ': ' + SuffaiSession.formatApiDetail(detail) : '. The similarity service may be unavailable.'));
         }
         const summary = await sumRes.json();
         const k = summary.kpis || {};
-        document.getElementById('kpiUnique').textContent = k.unique_garments ?? '—';
-        document.getElementById('kpiObs').textContent = k.total_observations ?? '—';
-        document.getElementById('kpiUsers').textContent = k.unique_users ?? '—';
+        document.getElementById('kpiUnique').textContent = fmt(k.unique_garments);
+        document.getElementById('kpiObs').textContent = fmt(k.total_observations);
+        document.getElementById('kpiUsers').textContent = fmt(k.unique_users);
 
         rows(document.getElementById('byPin'), summary.by_pin || [], [
-          r => r.pin_code,
-          r => r.unique_garments,
-          r => r.observations,
+          [r => r.pin_code],
+          [r => r.unique_garments, 'num'],
+          [r => r.observations, 'num'],
         ]);
         rows(document.getElementById('byBrand'), summary.by_brand || [], [
-          r => r.brand,
-          r => r.unique_garments,
-          r => r.observations,
+          [r => r.brand],
+          [r => r.unique_garments, 'num'],
+          [r => r.observations, 'num'],
         ]);
 
         if (listRes.ok) {
           const list = await listRes.json();
           rows(document.getElementById('listBody'), list.items || [], [
-            r => '<span class="mono">' + (r.garment_id || '').slice(0, 8) + '…</span>',
-            r => r.brand_name || '—',
-            r => '<span class="mono">' + (r.gcs_object_key || '') + '</span>',
-            r => r.observation_count_total,
-            r => (r.created_at || '—').toString().slice(0, 19),
+            [r => ({ text: (r.garment_id || '').slice(0, 8) + '…', full: r.garment_id || '' }), 'mono'],
+            [r => r.brand_name || '—'],
+            [r => ({ text: r.gcs_object_key || '—', full: r.gcs_object_key || '' }), 'mono'],
+            [r => r.observation_count_total, 'num'],
+            [r => (r.created_at || '—').toString().slice(0, 19).replace('T', ' ')],
           ]);
         } else {
-          document.getElementById('listBody').innerHTML = '<tr><td colspan="5" class="muted">List unavailable</td></tr>';
+          document.getElementById('listBody').innerHTML = '<tr><td colspan="5" class="muted">Recent garments are unavailable right now.</td></tr>';
         }
-        status.textContent = 'Updated';
+        status.textContent = 'Updated ' + new Date().toLocaleTimeString();
       } catch (err) {
         showErr(err.message || String(err));
-        status.textContent = 'Failed';
+        status.textContent = '';
+      } finally {
+        document.getElementById('btnLoad').disabled = false;
       }
-    }
-
-    function esc(v) {
-      return String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
     }
 
     function fmtImpactNum(v) {
@@ -368,8 +382,8 @@
       }
     }
 
-    document.getElementById('btnLoad').addEventListener('click', load);
     document.getElementById('btnCampaigns').addEventListener('click', loadCampaigns);
+    document.getElementById('filters').addEventListener('submit', (e) => { e.preventDefault(); load(); });
     load();
     loadCampaigns();
   </script>

@@ -940,7 +940,7 @@ def build_llm_outfits(
 def _call_vertex_text(prompt: str) -> str:
     project = os.getenv("GOOGLE_CLOUD_PROJECT") or os.getenv("GCP_PROJECT") or ""
     location = os.getenv("VERTEX_LOCATION", "asia-south1")
-    model_name = os.getenv("VERTEX_CHAT_MODEL", "gemini-2.0-flash")
+    model_name = os.getenv("VERTEX_CHAT_MODEL", "gemini-2.5-flash")
     if not project:
         raise RuntimeError("GOOGLE_CLOUD_PROJECT is not set")
 
