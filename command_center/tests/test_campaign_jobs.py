@@ -3,6 +3,7 @@ import pytest
 import brand_campaign as bc
 import campaign_jobs as jobs
 import campaign_service as svc
+import style_assistant as style_asst
 
 JOB = "33333333-3333-4333-8333-333333333333"
 CID = "44444444-4444-4444-8444-444444444444"
@@ -47,6 +48,9 @@ def test_job_view_progress_and_public_error():
         "created_at": None, "started_at": None, "finished_at": None,
     }
     v = jobs.job_view(job, {"avg_seconds": 10.0})
+    assert v["stage"] == "ranking"
+    assert jobs.job_view({**job, "processed_images": 4})["stage"] == "personalising"
+    assert jobs.job_view({**job, "status": "succeeded", "processed_images": 4})["stage"] == "succeeded"
     assert v["progress_pct"] == 25.0
     assert v["eta_seconds"] == 30
     assert v["error"] is None
@@ -221,7 +225,7 @@ def test_internal_worker_route_requires_oidc(monkeypatch):
 @pytest.fixture
 def worker(monkeypatch):
     skus = {f"sku-{i}": "pending" for i in range(7)}
-    state = {"lease": True, "finished": None, "released": 0, "enqueued": 0, "status": [], "processed": []}
+    state = {"lease": True, "finished": None, "released": 0, "enqueued": 0, "status": [], "processed": [], "personalised": []}
     fail = set()
     monkeypatch.setenv("CAMPAIGN_JOB_CHUNK", "3")
     monkeypatch.setattr(jobs, "_lease", lambda jid: {"job_id": jid, "campaign_id": CID} if state["lease"] else None)
@@ -251,6 +255,13 @@ def worker(monkeypatch):
     monkeypatch.setattr(jobs, "_release", lambda jid, p=None: state.__setitem__("released", state["released"] + 1))
     monkeypatch.setattr(jobs, "_finish", lambda jid, st, **kw: state.__setitem__("finished", (st, kw.get("error_code"))))
     monkeypatch.setattr(jobs, "_enqueue_override", lambda jid: state.__setitem__("enqueued", state["enqueued"] + 1))
+    monkeypatch.setattr(jobs, "_mark_personalising", lambda jid, p: None)
+
+    def personalise(cid):
+        state["personalised"].append((cid, list(state["status"])))
+        return {"recommendations_computed": 1}
+
+    monkeypatch.setattr(style_asst, "personalise_campaign", personalise)
     return skus, state, fail
 
 
@@ -266,6 +277,19 @@ def test_run_chunk_processes_in_chunks_then_succeeds(worker):
     assert state["status"] == ["ranked"]
     assert sorted(state["processed"]) == sorted(skus)
     assert state["enqueued"] == 2
+    assert state["personalised"] == [(CID, [])]
+
+
+def test_personalise_failure_still_ranks(worker, monkeypatch):
+    _, state, _ = worker
+
+    def boom(cid):
+        raise RuntimeError("wardrobe db down")
+
+    monkeypatch.setattr(style_asst, "personalise_campaign", boom)
+    for _ in range(3):
+        jobs.run_chunk(JOB)
+    assert state["status"] == ["ranked"] and state["finished"] == ("succeeded", None)
 
 
 def test_run_chunk_is_idempotent_after_completion(worker):

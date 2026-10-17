@@ -405,6 +405,64 @@
     }
     .chat-confirm button:hover { background: var(--plum-dk); }
     .chat-confirm button.secondary { background: var(--panel); border: 1px solid var(--line); color: var(--muted); }
+    .chat-form-card {
+      border: 1px solid var(--line);
+      background: var(--raised);
+      border-radius: 12px;
+      padding: 0.65rem 0.75rem;
+      font-size: 12px;
+      color: var(--ink);
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .chat-form-card .cf-title { font-weight: 700; color: var(--plum); font-size: 12.5px; }
+    .chat-form-card .cf-note { color: var(--muted); font-size: 11px; }
+    .cf-field { display: flex; flex-direction: column; gap: 0.2rem; }
+    .cf-field[hidden] { display: none !important; }
+    .cf-field > label, .cf-field .cf-label { font-weight: 600; font-size: 11px; color: var(--muted); }
+    .cf-field select, .cf-field input[type="text"], .cf-field input[type="number"], .cf-multi > summary {
+      width: 100%;
+      box-sizing: border-box;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--ink);
+      font: inherit;
+      font-size: 12px;
+      padding: 0.35rem 0.5rem;
+    }
+    .cf-multi { position: relative; }
+    .cf-multi > summary { cursor: pointer; list-style: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .cf-multi > summary::-webkit-details-marker { display: none; }
+    .cf-multi > summary::after { content: '▾'; float: right; color: var(--muted); }
+    .cf-multi .cf-opts {
+      max-height: 160px;
+      overflow-y: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      margin-top: 0.2rem;
+      padding: 0.25rem 0.4rem;
+    }
+    .cf-multi .cf-opts label.cf-all { font-weight: 600; border-bottom: 1px solid var(--line); margin-bottom: 0.15rem; }
+    .cf-multi .cf-opts label { display: flex; gap: 0.4rem; align-items: center; padding: 0.15rem 0; font-weight: 400; color: var(--ink); cursor: pointer; }
+    .cf-field.cf-invalid select, .cf-field.cf-invalid input, .cf-field.cf-invalid summary { border-color: #c0392b; }
+    .cf-error { color: #c0392b; font-size: 11px; }
+    .cf-actions { display: flex; gap: 0.5rem; }
+    .cf-actions button {
+      flex: 1;
+      border: 0;
+      border-radius: 8px;
+      background: var(--plum);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 0.4rem 0.5rem;
+      cursor: pointer;
+    }
+    .cf-actions button:hover { background: var(--plum-dk); }
+    .cf-actions button.secondary { background: var(--panel); border: 1px solid var(--line); color: var(--muted); }
     .chat-chips { display: flex; flex-wrap: wrap; gap: 0.35rem; padding: 0 0.7rem; }
     .chat-chips:empty { display: none; }
     .chat-chips .chip {
@@ -657,7 +715,7 @@
           return;
         }
         if (t === 'load_campaign') {
-          openCampaignsTab(cmd.campaign_id, null, window.__CC_CONTEXT__.active_tab === 'style');
+          openCampaignsTab(cmd.campaign_id, null, false, cmd.focus || null);
           return;
         }
         if (t === 'refresh_campaigns') {
@@ -764,6 +822,199 @@
       log.scrollTop = log.scrollHeight;
     }
 
+    let activeFormCard = null;
+
+    function appendFormCard(form) {
+      if (!form || !form.form_id || !Array.isArray(form.fields)) return;
+      if (activeFormCard) activeFormCard.remove();
+      const log = document.getElementById('chatLog');
+      const card = document.createElement('div');
+      card.className = 'chat-form-card';
+      activeFormCard = card;
+      if (form.title) {
+        const t = document.createElement('div');
+        t.className = 'cf-title';
+        t.textContent = form.title;
+        card.appendChild(t);
+      }
+      const getters = {};
+      const rows = {};
+      const optLabel = {};
+
+      form.fields.forEach((f, i) => {
+        const row = document.createElement('div');
+        row.className = 'cf-field';
+        const inputId = 'cf_' + form.form_id.slice(0, 8) + '_' + i;
+        const opts = Array.isArray(f.options) ? f.options : [];
+        optLabel[f.id] = {};
+        opts.forEach((o) => { optLabel[f.id][String(o.value)] = String(o.label); });
+        if (f.type === 'multiselect') {
+          const cap = document.createElement('span');
+          cap.className = 'cf-label';
+          cap.textContent = f.label;
+          row.appendChild(cap);
+          const det = document.createElement('details');
+          det.className = 'cf-multi';
+          const sum = document.createElement('summary');
+          const list = document.createElement('div');
+          list.className = 'cf-opts';
+          const chosen = new Set((Array.isArray(f.default) ? f.default : []).map(String));
+          const boxes = [];
+          let allBox = null;
+          if (opts.length > 1) {
+            const allLab = document.createElement('label');
+            allLab.className = 'cf-all';
+            allBox = document.createElement('input');
+            allBox.type = 'checkbox';
+            allLab.appendChild(allBox);
+            allLab.appendChild(document.createTextNode('Select all'));
+            list.appendChild(allLab);
+          }
+          opts.forEach((o) => {
+            const lab = document.createElement('label');
+            const cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.value = String(o.value);
+            cb.checked = chosen.has(cb.value);
+            lab.appendChild(cb);
+            lab.appendChild(document.createTextNode(String(o.label)));
+            list.appendChild(lab);
+            boxes.push(cb);
+          });
+          const refreshSummary = () => {
+            const picked = boxes.filter((b) => b.checked).map((b) => optLabel[f.id][b.value]);
+            if (allBox) {
+              allBox.checked = picked.length === boxes.length;
+              allBox.indeterminate = picked.length > 0 && picked.length < boxes.length;
+            }
+            sum.textContent = !picked.length ? 'Select…'
+              : (boxes.length > 1 && picked.length === boxes.length) ? 'All selected (' + boxes.length + ')'
+              : (picked.length <= 2 ? picked.join(', ') : picked.length + ' selected');
+          };
+          if (allBox) allBox.addEventListener('change', () => { boxes.forEach((b) => { b.checked = allBox.checked; }); });
+          list.addEventListener('change', () => { refreshSummary(); updateVisibility(); });
+          refreshSummary();
+          det.appendChild(sum);
+          det.appendChild(list);
+          row.appendChild(det);
+          getters[f.id] = () => boxes.filter((b) => b.checked).map((b) => b.value);
+        } else {
+          const lab = document.createElement('label');
+          lab.htmlFor = inputId;
+          lab.textContent = f.label;
+          row.appendChild(lab);
+          let el;
+          if (f.type === 'select') {
+            el = document.createElement('select');
+            opts.forEach((o) => {
+              const op = document.createElement('option');
+              op.value = String(o.value);
+              op.textContent = String(o.label);
+              el.appendChild(op);
+            });
+            if (f.default != null) el.value = String(f.default);
+            el.addEventListener('change', updateVisibility);
+          } else {
+            el = document.createElement('input');
+            el.type = f.type === 'number' ? 'number' : 'text';
+            if (f.type === 'number') {
+              if (f.min != null) el.min = String(f.min);
+              if (f.max != null) el.max = String(f.max);
+              el.step = 'any';
+            } else if (f.max_length) {
+              el.maxLength = f.max_length;
+            }
+            if (f.default != null) el.value = String(f.default);
+          }
+          el.id = inputId;
+          row.appendChild(el);
+          getters[f.id] = () => el.value;
+        }
+        rows[f.id] = row;
+        card.appendChild(row);
+      });
+
+      function isShown(f) {
+        const c = f.show_if;
+        if (!c || !getters[c.field]) return true;
+        const v = getters[c.field]();
+        if ('equals' in c) return v === c.equals;
+        if ('includes' in c) return Array.isArray(v) && v.includes(c.includes);
+        return true;
+      }
+
+      function updateVisibility() {
+        form.fields.forEach((f) => { rows[f.id].hidden = !isShown(f); });
+      }
+      updateVisibility();
+
+      if (form.note) {
+        const n = document.createElement('div');
+        n.className = 'cf-note';
+        n.textContent = form.note;
+        card.appendChild(n);
+      }
+      const err = document.createElement('div');
+      err.className = 'cf-error';
+      err.hidden = true;
+      card.appendChild(err);
+
+      const actions = document.createElement('div');
+      actions.className = 'cf-actions';
+      const submit = document.createElement('button');
+      submit.type = 'button';
+      submit.textContent = form.submit_label || 'Continue';
+      const cancel = document.createElement('button');
+      cancel.type = 'button';
+      cancel.className = 'secondary';
+      cancel.textContent = 'Cancel';
+      actions.appendChild(submit);
+      actions.appendChild(cancel);
+      card.appendChild(actions);
+
+      submit.addEventListener('click', () => {
+        const values = {};
+        const echo = [];
+        let missing = null;
+        form.fields.forEach((f) => {
+          rows[f.id].classList.remove('cf-invalid');
+          if (!isShown(f)) return;
+          const v = getters[f.id]();
+          const empty = Array.isArray(v) ? v.length === 0 : String(v).trim() === '';
+          if (f.required && empty) {
+            rows[f.id].classList.add('cf-invalid');
+            if (!missing) missing = f.label;
+          }
+          if (f.type === 'number') {
+            values[f.id] = String(v).trim() === '' ? null : Number(v);
+          } else {
+            values[f.id] = Array.isArray(v) ? v : String(v).trim();
+          }
+          if (empty) return;
+          const shown = Array.isArray(v)
+            ? (v.length <= 3 ? v.map((x) => optLabel[f.id][x] || x).join(', ') : v.length + ' selected')
+            : (optLabel[f.id][v] || String(v).trim());
+          echo.push(f.label + ': ' + (shown.length > 60 ? shown.slice(0, 57) + '…' : shown));
+        });
+        if (missing) {
+          err.textContent = 'Please fill in: ' + missing;
+          err.hidden = false;
+          return;
+        }
+        card.remove();
+        if (activeFormCard === card) activeFormCard = null;
+        sendAuraRequest({ message: '', form_response: { form_id: form.form_id, values } }, echo.join(' · ') || 'Submitted');
+      });
+      cancel.addEventListener('click', () => {
+        card.remove();
+        if (activeFormCard === card) activeFormCard = null;
+        appendBubble('assistant', 'Cancelled. Nothing was changed.');
+      });
+
+      log.appendChild(card);
+      log.scrollTop = log.scrollHeight;
+    }
+
     async function sendAuraRequest(payload, userEcho) {
       const input = document.getElementById('chatInput');
       const sendBtn = document.getElementById('chatSend');
@@ -797,6 +1048,7 @@
         appendBubble('assistant', data.answer || 'Done.');
         pendingAction = data.pending_action || null;
         if (pendingAction) appendConfirmBar(pendingAction);
+        else if (data.input_form) appendFormCard(data.input_form);
         if (data.attached_images === 0 && stagedFiles.length) {
           stagedFiles = [];
           renderStagedChips();
@@ -918,20 +1170,17 @@
       sendAgentCommand('ads', { type: 'prefill_campaign', context: ctx });
     }
 
-    function openCampaignsTab(campaignId, sourceContext, background) {
+    function openCampaignsTab(campaignId, sourceContext, background, focus) {
       if (allowed.indexOf('campaigns') < 0) return;
       if (!background) activateTab('campaigns');
       if (campaignId) {
-        sendAgentCommand('campaigns', { type: 'load_campaign', campaign_id: campaignId, source_context: sourceContext || null });
+        sendAgentCommand('campaigns', { type: 'load_campaign', campaign_id: campaignId, source_context: sourceContext || null, focus: focus || null });
       }
     }
 
     function openCampaignMonitor(campaignId) {
-      if (allowed.indexOf('style') < 0 || !campaignId) return;
-      const frame = tabs.style;
-      const url = './style_assistant.html?mode=campaign_preview&campaign_id=' + encodeURIComponent(campaignId);
-      frame.src = url;
-      activateTab('style');
+      if (!campaignId) return;
+      openCampaignsTab(campaignId, null, false, 'analysis');
     }
 
     window.addEventListener('message', (ev) => {
@@ -1271,9 +1520,10 @@
       const start = allowed.indexOf(want) >= 0 ? want : allowed[0];
       document.getElementById('shellTop').style.visibility = 'visible';
       if (start === 'style' && params.get('campaign_id')) {
-        openCampaignMonitor(params.get('campaign_id'));
+        tabs.style.src = './style_assistant.html?mode=campaign_preview&campaign_id=' + encodeURIComponent(params.get('campaign_id'));
+        activateTab('style');
       } else if (start === 'campaigns' && params.get('campaign_id')) {
-        openCampaignsTab(params.get('campaign_id'));
+        openCampaignsTab(params.get('campaign_id'), null, false, params.get('focus'));
       } else {
         activateTab(start);
       }

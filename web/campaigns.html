@@ -6,6 +6,7 @@
   <title>SuffAI · Campaigns</title>
   <script src="./config.js"></script>
   <script src="./session.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Outfit:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
@@ -332,6 +333,22 @@
     .sub-h em { font-style: normal; text-transform: none; letter-spacing: 0; font-weight: 400; }
     .sim { display: inline-flex; align-items: center; gap: .3rem; padding: .12rem .5rem; border-radius: 999px; font-size: 10px; font-weight: 600; text-transform: none; letter-spacing: 0; background: #FBF1DC; color: #8C6A22; border: 1px solid #E8C27A; }
     .mini { width: 100%; font-size: 11.5px; margin-top: 8px; }
+    .an { padding: 18px 20px; margin-bottom: 22px; scroll-margin-top: 12px; }
+    .an-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+    .an-head h2 { font-size: 16px; font-weight: 700; color: var(--ink); display: flex; align-items: center; gap: 8px; }
+    .an-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 14px; }
+    @media (max-width: 900px) { .an-grid { grid-template-columns: 1fr; } }
+    .an-box { border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; background: #fff; min-width: 0; }
+    .an-box h3 { font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; display: flex; gap: 6px; align-items: center; }
+    .an-chart { position: relative; height: 220px; }
+    .an-err { margin-top: 10px; font-size: 12px; color: var(--bad); }
+    .pace-row { display: flex; justify-content: space-between; font-size: 11.5px; margin: 8px 0 4px; }
+    .pace-track { height: 8px; border-radius: 8px; background: var(--raised); overflow: hidden; }
+    .pace-track i { display: block; height: 100%; background: var(--plum); border-radius: 8px; }
+    .an-ins { list-style: none; padding: 0; margin: 0; font-size: 12px; color: #552C43; display: grid; gap: 8px; }
+    .an-ins li { display: flex; gap: 8px; } .an-ins i { color: var(--plum); margin-top: 2px; }
+    .details-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; margin-bottom: 16px; }
+    .details-bar p { font-size: 12px; color: var(--muted); }
     .mini th { padding: 6px 10px; }
     .mini td { padding: 7px 10px; font-family: 'IBM Plex Mono', monospace; }
     .mini td:first-child { font-family: inherit; font-weight: 600; }
@@ -372,22 +389,44 @@
       <button type="button" class="btn" id="goAds">Open Ads Lab <i class="fa-solid fa-arrow-right"></i></button>
     </section>
 
+    <section class="card an" id="analysisSection" hidden aria-labelledby="anTitle">
+      <div class="an-head">
+        <div>
+          <h2 id="anTitle"><i class="fa-solid fa-chart-line" style="color:var(--plum)"></i> Impact &amp; campaign analysis <span class="sim">Simulated</span></h2>
+          <p class="hint" id="trackingNote"></p>
+        </div>
+        <button type="button" class="btn" id="anRefreshBtn"><i class="fa-solid fa-rotate"></i> Refresh</button>
+      </div>
+      <div class="tiles" id="impactGrid"></div>
+      <p class="an-err" id="anErr" hidden></p>
+      <div class="an-grid">
+        <div class="an-box"><h3>Daily delivery · impressions &amp; clicks <span class="sim">Simulated</span></h3><div class="an-chart"><canvas id="anDelivery"></canvas></div></div>
+        <div class="an-box"><h3>Revenue vs spend (₹) <span class="sim">Simulated</span></h3><div class="an-chart"><canvas id="anRevenue"></canvas></div></div>
+        <div class="an-box"><h3>Conversions by channel <span class="sim">Simulated</span></h3><div class="an-chart"><canvas id="anChannels"></canvas></div></div>
+        <div class="an-box"><h3>Budget pacing <span class="sim">Simulated</span></h3>
+          <div class="pace-row"><span>Spend</span><span class="mono" id="anSpendLabel">—</span></div>
+          <div class="pace-track"><i id="anSpendBar" style="width:0%"></i></div>
+          <div class="pace-row"><span>Schedule</span><span class="mono" id="anScheduleLabel">—</span></div>
+          <div class="pace-track"><i id="anTimeBar" style="width:0%;background:var(--gold)"></i></div>
+          <div class="pace-row" style="color:var(--muted)"><span id="anStart"></span><span id="anEnd"></span></div>
+          <h3 style="margin-top:14px">Insights</h3>
+          <ul class="an-ins" id="anInsights"></ul>
+        </div>
+        <div class="an-box" style="grid-column:1/-1"><h3>Product fit for this audience</h3><div class="an-chart" style="height:200px"><canvas id="anSkus"></canvas></div></div>
+      </div>
+      <div class="tbl-wrap"><table class="mini">
+        <thead><tr><th>Channel</th><th>Spend</th><th>Sent</th><th>Delivered</th><th>Reach</th><th>Clicks</th><th>CTR</th><th>Conv.</th><th>Revenue</th><th>ROAS</th></tr></thead>
+        <tbody id="channelTrackBody"></tbody>
+      </table></div>
+    </section>
+
+    <section class="card details-bar" id="detailsBar" hidden>
+      <p>This campaign is running. Its setup is locked.</p>
+      <button type="button" class="btn" id="detailsToggle" aria-expanded="false" aria-controls="studio"><i class="fa-solid fa-sliders"></i> Show campaign details</button>
+    </section>
+
     <div class="grid" id="studio">
       <div>
-        <section class="card step" id="trackingSection" hidden>
-          <div class="track-head">
-            <div>
-              <div class="step-head" style="margin-bottom:4px"><span class="num"><i class="fa-solid fa-chart-line"></i></span><h2>Campaign tracking</h2><span class="sim" style="margin-left:8px">Simulated</span></div>
-              <p class="hint" id="trackingNote"></p>
-            </div>
-            <button type="button" class="btn" id="openMonitorBtn"><i class="fa-solid fa-display"></i> Open monitor</button>
-          </div>
-          <div class="tiles" id="impactGrid"></div>
-          <div class="tbl-wrap"><table class="mini">
-            <thead><tr><th>Channel</th><th>Spend</th><th>Sent</th><th>Delivered</th><th>Reach</th><th>Clicks</th><th>CTR</th><th>Conv.</th><th>Revenue</th><th>ROAS</th></tr></thead>
-            <tbody id="channelTrackBody"></tbody>
-          </table></div>
-        </section>
 
         <form id="form" novalidate>
           <fieldset id="configFields">
@@ -476,11 +515,11 @@
           <dl id="sumList"></dl>
           <ul class="errs" id="errs" hidden></ul>
           <div class="actions" id="actionBar">
-            <button type="button" class="btn primary" id="launchBtn"><i class="fa-solid fa-rocket"></i> Launch (simulated)</button>
-            <button type="button" class="btn" id="saveBtn"><i class="fa-regular fa-floppy-disk"></i> Save</button>
+            <button type="button" class="btn primary" id="launchBtn"><i class="fa-solid fa-rocket"></i> Confirm &amp; start campaign</button>
+            <button type="button" class="btn" id="saveBtn"><i class="fa-regular fa-floppy-disk"></i> Save draft</button>
             <button type="button" class="btn" id="discardBtn"><i class="fa-regular fa-trash-can"></i> Discard</button>
           </div>
-          <p class="note">Launching is simulated: no messages or ads are sent to customers. Delivery, cost and outcome metrics are generated for tracking.</p>
+          <p class="note">The campaign stays a draft until you confirm. Running is simulated: no messages or ads are sent to customers. Delivery, cost and outcome metrics are generated for tracking.</p>
         </section>
       </aside>
     </div>
@@ -508,7 +547,7 @@
         <h2>Your 1P campaigns <span class="chip" id="histCount">0</span></h2>
         <div class="filters" id="statusFilter" role="group" aria-label="Filter by status">
           <button type="button" data-filter="" aria-pressed="true">All</button>
-          <button type="button" data-filter="ready" aria-pressed="false">Ready</button>
+          <button type="button" data-filter="ready" aria-pressed="false">Draft</button>
           <button type="button" data-filter="processing" aria-pressed="false">Ranking</button>
           <button type="button" data-filter="launched" aria-pressed="false">Running</button>
           <button type="button" data-filter="exported" aria-pressed="false">Exported</button>
@@ -550,7 +589,7 @@
     const MAX_CREATIVES = 6;
     const state = {
       campaigns: [], filter: '', current: null, skus: [], thumbs: {}, rec: null, estimate: null,
-      sourceContext: null, busy: false, pollTimer: null,
+      sourceContext: null, busy: false, pollTimer: null, showDetails: false,
       picked: [], focus: null, mode: 'best', channels: ['in_app'], preview: 'in_app',
     };
 
@@ -587,7 +626,7 @@
       return `${c.brand_name || 'Brand'} · ${pins.length <= 2 ? pins.join(', ') : pins.length + ' PINs'}${c.rfm_segment ? ' · ' + c.rfm_segment : ''}`;
     }
     const campaignTitle = (c) => c.campaign_name || defaultName(c);
-    const statusLabel = (s) => ({ processing: 'Ranking…', ranked: 'Ready', configured: 'Saved', launched: 'Running', exported: 'Exported (3P)', ignored: 'Discarded', error: 'Error' }[s] || s);
+    const statusLabel = (s) => ({ processing: 'Ranking…', ranked: 'Draft · needs setup', configured: 'Draft · needs setup', launched: 'Running', exported: 'Exported · draft for 1P', ignored: 'Discarded', error: 'Error' }[s] || s);
     function todayIso() {
       const d = new Date();
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -694,11 +733,14 @@
     }
     $('histBody').addEventListener('click', (e) => {
       const b = e.target.closest('[data-load]');
-      if (b) { loadCampaign(b.dataset.load); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+      if (!b) return;
+      const row = state.campaigns.find(c => c.campaign_id === b.dataset.load);
+      if (row && row.status === 'launched') loadCampaign(b.dataset.load, null, { focus: 'analysis' });
+      else { loadCampaign(b.dataset.load); window.scrollTo({ top: 0, behavior: 'smooth' }); }
     });
 
     /* ---------- Load + fill ---------- */
-    async function loadCampaign(id, sourceContext) {
+    async function loadCampaign(id, sourceContext, opts) {
       if (!id) return;
       if (sourceContext && typeof sourceContext === 'object') state.sourceContext = sourceContext;
       try {
@@ -715,6 +757,7 @@
         fillStudio(c);
         renderHistory();
         publishContext();
+        if (opts && opts.focus === 'analysis') requestAnimationFrame(focusAnalysis);
       } catch (e) {
         toast(e.message, 'fa-triangle-exclamation');
       }
@@ -725,6 +768,7 @@
 
     function showSample() {
       state.current = null;
+      state.showDetails = false;
       state.skus = SAMPLE_SKUS;
       state.thumbs = {};
       state.rec = null; state.estimate = null; state.sourceContext = null;
@@ -743,7 +787,7 @@
 
     function fillStudio(c) {
       $('noDraft').hidden = c.status !== 'sample';
-      $('launchBtn').innerHTML = '<i class="fa-solid fa-rocket"></i> Launch (simulated)';
+      $('launchBtn').innerHTML = '<i class="fa-solid fa-rocket"></i> Confirm &amp; start campaign';
       ['saveBtn', 'discardBtn'].forEach(id => { $(id).disabled = false; $(id).title = ''; });
       const brand = c.brand_name || brandName();
       const icons = ['fa-location-dot', 'fa-cake-candles', 'fa-venus-mars', 'fa-gem'];
@@ -788,7 +832,12 @@
       const canEdit = editable();
       $('configFields').disabled = !canEdit;
       $('actionBar').hidden = !canEdit;
-      renderTracking(c);
+      const running = c.status === 'launched';
+      $('detailsBar').hidden = !running;
+      if (!running) state.showDetails = false;
+      $('studio').hidden = running && !state.showDetails;
+      syncDetailsToggle();
+      renderAnalysis(c);
       renderCreatives(); renderChannels(); renderAll();
       if (canEdit) fetchRecommendation(c.budget_inr == null);
       else { renderRecommendation(null); $('estimateGrid').innerHTML = ''; $('estimateChannels').innerHTML = ''; $('estimateStatus').textContent = ''; }
@@ -1036,14 +1085,15 @@
         <tbody>${rows.map(([, r]) => `<tr><td>${esc(r.label)}</td><td>${esc(inr(r.budget))}</td><td>${esc(r.expected.messages != null ? num(r.expected.messages) : num(r.expected.impressions) + ' impr.')}</td><td>${esc(num(r.expected.reach))}</td><td>${esc(num(r.expected.clicks))}</td><td>${esc(num(r.expected.conversions))}</td><td>${esc(roas(r.expected.roas))}</td></tr>`).join('')}</tbody></table>` : '';
     }
 
-    /* ---------- Tracking (launched) ---------- */
-    function renderTracking(c) {
-      const show = c.status === 'launched';
-      $('trackingSection').hidden = !show;
-      if (!show) return;
+    /* ---------- Impact & campaign analysis (launched) ---------- */
+    const anCharts = {};
+    function anChart(key, config) {
+      if (anCharts[key]) { anCharts[key].destroy(); delete anCharts[key]; }
+      if (!window.Chart || !config) return;
+      anCharts[key] = new Chart($(key), config);
+    }
+    function renderImpactTiles(c) {
       const i = c.impact || {};
-      $('trackingNote').textContent = `Launched ${String(c.launched_at || '').slice(0, 10)} · ${c.duration_days || '—'} days from ${c.start_date || '—'} · ${inr(c.budget_inr)} budget`
-        + (c.budget_recommended ? ` (recommended ${inr(c.budget_recommended)})` : '') + '. Nothing is delivered to customers; all figures are simulated.';
       const tiles = [['Spend', inr(i.spend)], ['Reach', num(i.reach)], ['Impressions', num(i.impressions)], ['Clicks', num(i.clicks)],
         ['CTR', pct(i.ctr)], ['Conversions', num(i.conversions)], ['Revenue', inr(i.revenue)], ['ROAS', roas(i.roas)]];
       $('impactGrid').innerHTML = tiles.map(([l, v]) => `<div class="tile"><span>${esc(l)}</span><b>${esc(v)}</b></div>`).join('');
@@ -1054,6 +1104,109 @@
         <td>${esc(r.messages != null ? num(r.messages) : '—')}</td><td>${esc(r.delivered != null ? num(r.delivered) : '—')}</td>
         <td>${esc(num(r.reach))}</td><td>${esc(num(r.clicks))}</td><td>${esc(pct(r.ctr))}</td>
         <td>${esc(num(r.conversions))}</td><td>${esc(inr(r.revenue))}</td><td>${esc(roas(r.roas))}</td></tr>`).join('');
+    }
+    function renderAnalysis(c) {
+      const show = c.status === 'launched';
+      $('analysisSection').hidden = !show;
+      if (!show) { Object.keys(anCharts).forEach(k => anChart(k, null)); return; }
+      $('trackingNote').textContent = `Started ${String(c.launched_at || '').slice(0, 10)} · ${c.duration_days || '—'} days from ${c.start_date || '—'} · ${inr(c.budget_inr)} budget`
+        + (c.budget_recommended ? ` (recommended ${inr(c.budget_recommended)})` : '') + '. Nothing is delivered to customers; all figures are simulated.';
+      renderImpactTiles(c);
+      loadAnalysis(c.campaign_id);
+    }
+    function splitSeries(delivered, projected, field) {
+      const all = delivered.concat(projected), n = delivered.length;
+      return {
+        solid: all.map((d, i) => (i < n ? d[field] : null)),
+        dashed: all.map((d, i) => (i >= n || (n && i === n - 1) ? d[field] : null)),
+      };
+    }
+    async function loadAnalysis(id) {
+      $('anErr').hidden = true;
+      let data;
+      try {
+        data = await api('/v1/ads-lab/campaigns/' + encodeURIComponent(id) + '/monitor');
+      } catch (e) {
+        $('anErr').textContent = 'Trend charts are unavailable right now: ' + e.message;
+        $('anErr').hidden = false;
+        return;
+      }
+      if (!state.current || state.current.campaign_id !== id) return;
+      const c = data.campaign || state.current;
+      renderImpactTiles(c);
+      const daily = data.daily || {};
+      const delivered = daily.delivered || [], projected = daily.projected || [];
+      const all = delivered.concat(projected), n = delivered.length;
+      const labels = all.map(d => String(d.day).slice(5));
+      const base = {
+        responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+        plugins: { legend: { labels: { boxWidth: 10, font: { size: 10 } } } },
+        scales: { x: { ticks: { font: { size: 9 } }, grid: { display: false } }, y: { ticks: { font: { size: 9 } } } },
+      };
+      const impr = splitSeries(delivered, projected, 'impressions'), clicks = splitSeries(delivered, projected, 'clicks');
+      anChart('anDelivery', all.length ? {
+        type: 'line',
+        data: { labels, datasets: [
+          { label: 'Impressions', data: impr.solid, borderColor: '#6B3A55', backgroundColor: 'rgba(107,58,85,.15)', fill: true, tension: .3, pointRadius: 0, yAxisID: 'y' },
+          { label: 'Impressions (projected)', data: impr.dashed, borderColor: '#6B3A55', borderDash: [5, 4], pointRadius: 0, tension: .3, yAxisID: 'y' },
+          { label: 'Clicks', data: clicks.solid, borderColor: '#C9A24A', tension: .3, pointRadius: 0, yAxisID: 'y1' },
+          { label: 'Clicks (projected)', data: clicks.dashed, borderColor: '#C9A24A', borderDash: [5, 4], pointRadius: 0, tension: .3, yAxisID: 'y1' },
+        ] },
+        options: { ...base, scales: { ...base.scales, y1: { position: 'right', grid: { display: false }, ticks: { font: { size: 9 } } } } },
+      } : null);
+      anChart('anRevenue', all.length ? {
+        type: 'bar',
+        data: { labels, datasets: [
+          { label: 'Revenue', data: all.map(d => d.revenue), backgroundColor: all.map((_, i) => (i < n ? '#6B3A55' : 'rgba(107,58,85,.3)')) },
+          { label: 'Spend', data: all.map(d => d.spend), backgroundColor: all.map((_, i) => (i < n ? '#C9A24A' : 'rgba(201,162,74,.3)')) },
+        ] },
+        options: base,
+      } : null);
+      const chDaily = data.channel_daily || [];
+      const chKeys = [...new Set(chDaily.map(r => r.channel))];
+      const days = [...new Set(chDaily.map(r => r.day))].sort();
+      const palette = ['#6B3A55', '#25D366', '#C9A24A', '#7D8FB3'];
+      anChart('anChannels', chKeys.length ? {
+        type: 'line',
+        data: { labels: days.map(d => String(d).slice(5)), datasets: chKeys.map((ch, k) => ({
+          label: CHANNELS[ch]?.name || ch, tension: .3, pointRadius: 0, borderColor: palette[k % palette.length],
+          data: days.map(d => { const r = chDaily.find(x => x.day === d && x.channel === ch); return r ? r.conversions : 0; }),
+        })) },
+        options: base,
+      } : null);
+      const total = all.length;
+      const spent = delivered.reduce((t, d) => t + Number(d.spend || 0), 0);
+      const budget = Number(c.budget_inr || 0);
+      const spentPct = budget ? Math.min(100, spent / budget * 100) : 0;
+      const timePct = total ? n / total * 100 : 0;
+      $('anSpendLabel').textContent = `${inr(spent)} / ${inr(budget)} (${spentPct.toFixed(0)}%)`;
+      $('anSpendBar').style.width = spentPct + '%';
+      $('anScheduleLabel').textContent = `Day ${n} of ${total || '—'}`;
+      $('anTimeBar').style.width = timePct + '%';
+      $('anStart').textContent = c.start_date || '';
+      $('anEnd').textContent = c.end_date || '';
+      const ins = data.insights || [];
+      $('anInsights').innerHTML = ins.length
+        ? ins.map(t => `<li><i class="fa-solid fa-lightbulb"></i><span>${esc(t)}</span></li>`).join('')
+        : '<li style="color:var(--muted)">No insights yet.</li>';
+      const skus = (data.skus || []).slice(0, 8);
+      anChart('anSkus', skus.length ? {
+        type: 'bar',
+        data: { labels: skus.map(s => String((s.attributes || {}).name || s.original_filename || 'SKU').slice(0, 24)),
+          datasets: [{ label: 'Avg PIN fit', data: skus.map(s => Math.round((s.pin_fit || 0) * 100)), backgroundColor: '#6B3A55', borderRadius: 4 }] },
+        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+          scales: { x: { min: 0, max: 100, ticks: { font: { size: 9 } } }, y: { ticks: { font: { size: 10 } } } } },
+      } : null);
+    }
+    function focusAnalysis() {
+      const el = $('analysisSection');
+      if (el.hidden) return;
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    function syncDetailsToggle() {
+      const open = !$('studio').hidden;
+      $('detailsToggle').setAttribute('aria-expanded', String(open));
+      $('detailsToggle').innerHTML = open ? '<i class="fa-solid fa-chevron-up"></i> Hide campaign details' : '<i class="fa-solid fa-sliders"></i> Show campaign details';
     }
 
     /* ---------- Summary + validation ---------- */
@@ -1166,13 +1319,14 @@
       if (state.busy || !editable()) return;
       const body = checked(); if (!body) return;
       const chans = body.channels.map(c => CHANNELS[c].name).join(', ');
-      if (!confirm(`Launch "${body.campaign_name}" on ${chans} with ${inr(body.budget_inr)}?\n\nThis is a simulated launch: no messages or ads are sent. Simulated performance is generated for tracking.`)) return;
+      const obj = (OBJECTIVES.find(o => o[0] === body.objective) || [])[1] || body.objective;
+      if (!confirm(`Confirm and start this campaign?\n\nName: ${body.campaign_name}\nObjective: ${obj}\nChannels: ${chans}\nBudget: ${inr(body.budget_inr)}\nSchedule: ${body.start_date || todayIso()} for ${body.duration_days} days\n\nRunning is simulated: no messages or ads are sent. Simulated performance is generated for tracking.`)) return;
       state.busy = true;
       try {
         const c = await saveConfig(body);
         await api('/v1/ads-lab/campaigns/' + encodeURIComponent(c.campaign_id) + '/launch', { method: 'POST' });
         toast(`“${body.campaign_name}” is running (simulated)`, 'fa-rocket');
-        await loadCampaign(c.campaign_id); loadCampaigns();
+        await loadCampaign(c.campaign_id, null, { focus: 'analysis' }); loadCampaigns();
       } catch (e) { toast(e.message, 'fa-triangle-exclamation'); }
       finally { state.busy = false; }
     }
@@ -1189,13 +1343,6 @@
       } catch (e) { toast(e.message, 'fa-triangle-exclamation'); }
       finally { state.busy = false; }
     }
-    function openMonitor() {
-      const id = state.current && state.current.campaign_id;
-      if (!id) return;
-      if (window.parent && window.parent !== window) window.parent.postMessage({ type: 'cc-open-monitor', campaign_id: id }, '*');
-      else location.href = './style_assistant.html?mode=campaign_preview&campaign_id=' + encodeURIComponent(id);
-    }
-
     /* ---------- Shell messaging ---------- */
     function publishContext() {
       if (!window.parent || window.parent === window) return;
@@ -1214,7 +1361,7 @@
       if (data.type !== 'cc-agent-command') return;
       const cmd = data.command || {};
       const t = String(cmd.type || '');
-      if (t === 'load_campaign') { loadCampaign(String(cmd.campaign_id || ''), cmd.source_context); loadCampaigns(); }
+      if (t === 'load_campaign') { loadCampaign(String(cmd.campaign_id || ''), cmd.source_context, { focus: cmd.focus }); loadCampaigns(); }
       else if (t === 'refresh_campaigns') { loadCampaigns(); if (state.current) loadCampaign(state.current.campaign_id); }
       else return;
       try { window.parent.postMessage({ type: 'cc-agent-ack', source: 'campaigns', command: t, ok: true }, '*'); } catch (_) { /* ignore */ }
@@ -1226,15 +1373,17 @@
     $('saveBtn').addEventListener('click', onSave);
     $('launchBtn').addEventListener('click', onLaunch);
     $('discardBtn').addEventListener('click', onDiscard);
-    $('openMonitorBtn').addEventListener('click', openMonitor);
+    $('anRefreshBtn').addEventListener('click', () => { if (state.current) loadCampaign(state.current.campaign_id); });
+    $('detailsToggle').addEventListener('click', () => { state.showDetails = $('studio').hidden; $('studio').hidden = !state.showDetails; syncDetailsToggle(); });
     $('refreshBtn').addEventListener('click', loadCampaigns);
     document.querySelectorAll('#statusFilter [data-filter]').forEach(b => b.addEventListener('click', () => { state.filter = b.dataset.filter; renderHistory(); }));
     $('tzNote').textContent = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
 
     showSample();
     loadCampaigns();
-    const initialId = new URLSearchParams(location.search).get('campaign_id');
-    if (initialId) loadCampaign(initialId);
+    const initialParams = new URLSearchParams(location.search);
+    const initialId = initialParams.get('campaign_id');
+    if (initialId) loadCampaign(initialId, null, { focus: initialParams.get('focus') });
   </script>
 </body>
 </html>

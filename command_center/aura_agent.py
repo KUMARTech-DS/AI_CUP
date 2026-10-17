@@ -15,10 +15,12 @@ Safety model (see aura_guard):
 
 from __future__ import annotations
 
+import datetime as _dt
 import hashlib
 import json
 import logging
 import os
+import secrets
 import threading
 import time
 import uuid
@@ -34,6 +36,7 @@ import campaign_jobs
 import campaign_service as camp_svc
 import chatbot
 import geo_analysis
+import geo_proximity
 
 log = logging.getLogger("command_center.aura_agent")
 
@@ -68,30 +71,50 @@ DATA HANDLING
 
 CAMPAIGN JOURNEY (take action with tools wherever it helps; do not just explain)
 1. Explore Geo: analyze_geo / run_geo_brief / set_filters / focus_pin.
+   Store rule: Champions & Loyalists drive store scoring. A PIN within 4 km of an existing store of
+   the brand is always "No" - "Service via Existing Store" (optimisation mode): use
+   stock_routing_guide to say what that store should stock. Only PINs more than 4 km away are new
+   store candidates (Yes / Consider). If store proximity is unverified, never say Yes. Always state
+   the nearest-store distance and the 4 km threshold when explaining a store decision.
+   If the audience (PINs, age, gender, RFM) is not given and not on the dashboard, call
+   request_inputs kind=audience purpose=analyze_geo instead of asking.
 2. Identify the opportunity, then start_campaign_from_geo to carry the audience into Ads Lab.
 3. SKUs: the brand attaches product images in this chat (paperclip). Use list_uploaded_images,
-   then rank_uploaded_skus. If nothing is attached, ask the brand to attach images.
+   then rank_uploaded_skus. If nothing is attached, ask the brand to attach images. If the
+   ranking audience is unclear, call request_inputs kind=audience purpose=rank_skus.
    Ranking runs as a background job: report the job size (customers, images, comparisons) and the
    estimated completion time, then check progress with get_ranking_job. Do not configure until
    the job has completed.
-4. Choose how to run it:
+4. A finished ranking is a draft, not a running campaign. Ask how to run it with
+   request_inputs kind=run_mode (one dropdown: SuffAI 1P or other platforms 3P). If the brand
+   already said which:
    - 3P (other platforms): export_campaign_3p downloads the ranking as CSV.
-   - 1P (SuffAI): configure on the Campaigns tab. Channels are in_app, whatsapp and sms (one or
-     more). WhatsApp and SMS need a short message (SMS max 160 characters); placeholders
-     {{first_name}}, {{brand}} and {{link}} are allowed.
-5. Budget: use recommend_budget for a recommended amount with min / max and reasons; offer it
-   before asking the brand for a number. Ask for any missing campaign name, objective
-   (awareness, consideration or conversion), duration in days and channels before calling
-   configure_campaign. Products are chosen by rank number from get_campaign.
+   - 1P (SuffAI): call open_campaign_setup. It opens the Campaigns tab with the campaign as a
+     draft and shows ONE setup form with every detail at once (name, objective, channels,
+     duration, budget with the simulated recommendation, start date, products, hero product,
+     button text, headline, WhatsApp / SMS messages). Nothing starts.
+5. When the brand submits that form, the draft is saved, the simulated estimate is shown and the
+   launch Confirm card appears. Only if the brand gives every detail in chat instead, call
+   configure_campaign directly (channels in_app, whatsapp, sms; SMS max 160 characters;
+   placeholders {{first_name}}, {{brand}} and {{link}}). configure_campaign only saves the draft;
+   it never starts the campaign. Use recommend_budget when the brand asks about budget.
 6. estimate_campaign to show simulated outcome ranges (per channel when several are chosen).
-7. Launch with launch_campaign; discarding uses discard_campaign. Both ALWAYS require the brand
-   to click Confirm. Never claim a launch or discard happened until a tool result says so.
-8. Monitor with get_campaign_monitor / open_campaign_monitor.
+7. The campaign starts running only through launch_campaign after the brand reviews the details
+   and clicks Confirm. discard_campaign also needs Confirm. Never claim a launch or discard
+   happened until a tool result says so.
+8. After launch the impact and campaign analysis opens on the Campaigns tab (never the Style
+   tab). Use get_campaign_monitor / open_campaign_monitor for it later.
 
 SIMULATION
 - All campaign impact metrics (reach, impressions, CTR, conversions, revenue, lift, ROAS, spend),
   budget recommendations and WhatsApp / SMS delivery figures are SIMULATED. Say so every time you
   quote them. A launch delivers nothing to customers and sends no messages.
+
+ASKING FOR INPUT
+- Never ask questions one at a time and never list questions in text. Whenever you need input
+  from the brand, call request_inputs ONCE with the right kind so every input appears together
+  as dropdowns. For a question outside the standard forms use kind=choices with the question
+  and 2-6 short options. After showing a form, reply with one short line only.
 
 STYLE
 - Be concise and business-focused. After acting, summarise what you did and what the data shows,
@@ -106,6 +129,17 @@ class AgentChatRequest(BaseModel):
     context: dict[str, Any] = Field(default_factory=dict)
     filter_context: Optional[dict[str, Any]] = None
     confirm_token: Optional[str] = Field(default=None, max_length=200)
+    form_response: Optional["FormResponse"] = None
+
+
+class FormResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    form_id: str = Field(..., min_length=8, max_length=64)
+    values: dict[str, Any] = Field(default_factory=dict)
+
+
+AgentChatRequest.model_rebuild()
 
 
 # ---------------------------------------------------------------------------
@@ -137,6 +171,7 @@ class AgentState:
     draft_audience: Optional[dict[str, Any]] = None
     source_context: Optional[dict[str, Any]] = None
     history: list[tuple[str, str]] = field(default_factory=list)
+    forms: dict[str, dict[str, Any]] = field(default_factory=dict)
     touched: float = 0.0
 
 
@@ -192,6 +227,7 @@ class ToolOutput:
     result: dict[str, Any]
     ui_commands: list[dict[str, Any]] = field(default_factory=list)
     pending: Optional[dict[str, Any]] = None
+    form: Optional[dict[str, Any]] = None
 
 
 @dataclass
@@ -250,6 +286,11 @@ class FocusPinArgs(_Args):
     pin: PinCode
 
 
+class RoutingArgs(_Args):
+    pin: PinCode
+    analysis_brand: Optional[ShortText] = None
+
+
 class AnalyzeArgs(AudienceArgs):
     use_current_filters: bool = True
     apply_to_dashboard: bool = True
@@ -300,6 +341,13 @@ class BudgetArgs(CampaignRefArgs):
     objective: Optional[Literal["awareness", "consideration", "conversion"]] = None
     duration_days: int = Field(default=14, ge=1, le=365)
     channels: list[Channel] = Field(default_factory=list, max_length=3)
+
+
+class InputsArgs(CampaignRefArgs):
+    kind: Literal["audience", "run_mode", "campaign_setup", "choices"]
+    purpose: Optional[Literal["analyze_geo", "rank_skus"]] = None
+    question: Optional[Annotated[str, StringConstraints(strip_whitespace=True, min_length=3, max_length=200)]] = None
+    options: list[Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=60)]] = Field(default_factory=list, max_length=6)
 
 
 class ListArgs(_Args):
@@ -532,18 +580,30 @@ def _t_session(ctx: ToolContext, _: NoArgs) -> ToolOutput:
     )
 
 
+def _geo_stores(ctx: ToolContext, metrics: dict[str, Any], requested: Optional[str] = None) -> dict[str, Any]:
+    """Existing stores of the analysed brand (cached Gemini + Google Search lookup); never raises."""
+    brand = geo_analysis.resolve_analysis_brand(
+        [g for g in metrics.get("garment_cells") or [] if isinstance(g, dict)],
+        role=ctx.role, session_brand=ctx.brand, requested=requested if ctx.role == "admin" else None,
+    )
+    return geo_proximity.locate_brand_stores(brand, pin_geo=metrics.get("pin_geo") or {}, request_id=ctx.request_id)
+
+
+_PIN_KEYS = ("pin", "area_label", "demand", "hv_demand", "score", "expansion_decision", "decision",
+             "decision_label", "proximity_zone", "nearest_store_km", "brand_share")
+
+
 def _t_metrics_summary(ctx: ToolContext, _: NoArgs) -> ToolOutput:
     metrics = _brand_metrics(ctx)
-    analysis = geo_analysis.analyze(metrics, role=ctx.role, session_brand=ctx.brand, top_n=5)
+    analysis = geo_analysis.analyze(metrics, role=ctx.role, session_brand=ctx.brand, top_n=5,
+                                    stores_lookup=_geo_stores(ctx, metrics))
     filters = metrics.get("filters") if isinstance(metrics.get("filters"), dict) else {}
     pin_geo = metrics.get("pin_geo") if isinstance(metrics.get("pin_geo"), dict) else {}
     out = {
         "kpis": analysis["kpis"],
         "brand_share_overall": analysis["brand_share_overall"],
-        "top_pins": [
-            {k: r.get(k) for k in ("pin", "area_label", "demand", "score", "heuristic_decision", "brand_share")}
-            for r in analysis["pins"]
-        ],
+        "top_pins": [{k: r.get(k) for k in _PIN_KEYS} for r in analysis["pins"]],
+        "proximity": analysis.get("proximity"),
         "filter_options": {
             "pins": [{"pin": p, "area": (pin_geo.get(p) or {}).get("area_label")} for p in (filters.get("pin_codes") or [])][:30],
             "age_groups": filters.get("age_groups") or [],
@@ -639,6 +699,7 @@ def _t_analyze_geo(ctx: ToolContext, args: AnalyzeArgs) -> ToolOutput:
         genders=aud["genders"],
         rfms=aud["rfm_segments"],
         analysis_brand=args.analysis_brand if ctx.role == "admin" else None,
+        stores_lookup=_geo_stores(ctx, metrics, args.analysis_brand),
     )
     cmds: list[dict[str, Any]] = []
     if args.apply_to_dashboard and any(aud.values()):
@@ -662,6 +723,7 @@ def _t_geo_brief(ctx: ToolContext, args: BriefArgs) -> ToolOutput:
         genders=aud["genders"],
         rfms=aud["rfm_segments"],
         analysis_brand=args.analysis_brand if ctx.role == "admin" else None,
+        stores_lookup=_geo_stores(ctx, metrics, args.analysis_brand),
     )
     if not analysis["pins"]:
         raise ToolError("not_found", "no PIN data for this audience")
@@ -682,14 +744,52 @@ def _t_geo_brief(ctx: ToolContext, args: BriefArgs) -> ToolOutput:
     return ToolOutput(
         {
             "ok": True,
-            "focus_pin": {k: focus.get(k) for k in ("pin", "area_label", "score", "est_footfall", "demand", "brand_share")},
+            "focus_pin": {k: focus.get(k) for k in ("pin", "area_label", "score", "est_footfall", "demand",
+                                                    "hv_demand", "brand_share")},
             "decision": brief.get("decision"),
+            "decision_label": brief.get("decision_label"),
+            "mode": brief.get("mode"),
+            "proximity": brief.get("proximity"),
+            "decision_logic": brief.get("decision_logic") or [],
+            "stock_mix": brief.get("stock_mix"),
             "confidence": brief.get("confidence"),
             "brief": brief.get("brief"),
             "key_factors": brief.get("key_factors") or [],
             "estimated_only": bool(brief.get("fallback")),
+            "footfall_note": "est_footfall is simulated",
         },
         cmds,
+    )
+
+
+def _t_routing_guide(ctx: ToolContext, args: RoutingArgs) -> ToolOutput:
+    metrics = _brand_metrics(ctx)
+    lookup = _geo_stores(ctx, metrics, args.analysis_brand)
+    if lookup.get("status") == "unavailable":
+        raise ToolError("unavailable")
+    pin_geo = metrics.get("pin_geo") or {}
+    c = geo_proximity.pin_centroid(pin_geo, args.pin)
+    if not c:
+        raise ToolError("not_found", "unknown PIN")
+    store, km = geo_proximity.nearest_store(*c, lookup.get("stores") or [])
+    if store is None or km is None or not geo_proximity.within_threshold(km):
+        return ToolOutput({
+            "ok": False,
+            "pin": args.pin,
+            "proximity_zone": "whitespace",
+            "nearest_store_km": round(km, 2) if km is not None else None,
+            "message": f"PIN is more than {geo_proximity.PROXIMITY_KM:g} km from an existing store; it is an "
+                       "expansion (whitespace) area, so use run_geo_brief instead.",
+        })
+    catchment = geo_proximity.catchment_pins(store, pin_geo)
+    guide = geo_analysis.routing_guide(
+        metrics, pins=[p for p, _ in catchment], role=ctx.role, session_brand=ctx.brand,
+        analysis_brand=args.analysis_brand if ctx.role == "admin" else None,
+    )
+    return ToolOutput(
+        {"ok": True, "mode": "optimize", "decision_label": geo_proximity.SERVICE_LABEL,
+         "threshold_km": geo_proximity.PROXIMITY_KM, "store": geo_proximity.store_public(store, km), **guide},
+        [{"type": "switch_tab", "tab": "geo"}, {"type": "focus_pin", "pin": args.pin}],
     )
 
 
@@ -783,7 +883,7 @@ def _t_rank_skus(ctx: ToolContext, args: RankArgs) -> ToolOutput:
             "job_triggered": True,
             **_job_view(job),
             "next": "Tell the brand the job is running with its size and estimated time; a popup "
-                    "appears in Ads Lab when the campaign is created. Check with get_ranking_job.",
+                    "appears in Ads Lab when ranking completes. Check with get_ranking_job.",
         },
         [{"type": "track_job", "job_id": job["job_id"]}],
     )
@@ -806,10 +906,18 @@ def _t_ranking_job(ctx: ToolContext, _: NoArgs) -> ToolOutput:
         ctx.state.ranked = []
         rows = _sku_ranks(ctx, cid)
         ctx.state.ranked = rows
-        out["campaign_created"] = True
+        out["ranking_ready"] = True
+        out["campaign_status"] = "draft"
         out["skus"] = _sku_view(rows)
-        out["next"] = "Ask whether to run on other platforms (3P export) or on SuffAI (1P: channels, budget, launch)."
+        out["next"] = "The run-mode dropdown (SuffAI 1P or other platforms 3P) is shown to the brand. Summarise the ranking in one or two lines; nothing is running yet."
         cmds.append({"type": "refresh_campaigns"})
+        form = None
+        try:
+            form = _store_form(ctx, _run_mode_form(_svc(camp_svc.load_campaign, ctx.sess, cid)))
+            out["form_shown"] = "run_mode"
+        except ToolError:
+            out["next"] = "Call request_inputs kind=run_mode so the brand picks 1P setup or 3P export. Nothing is running yet."
+        return ToolOutput(out, cmds, form=form)
     elif job.get("status") == "failed":
         ctx.state.active_job_id = None
     return ToolOutput(out, cmds)
@@ -902,7 +1010,7 @@ def _t_configure(ctx: ToolContext, args: ConfigureArgs) -> ToolOutput:
             "used_recommended_budget": rec is not None,
             "estimate_simulated": {k: est.get(k) for k in ("expected", "low", "high", "audience")},
             "by_channel_simulated": {ch: {"budget": r.get("budget"), "expected": r.get("expected")} for ch, r in (est.get("by_channel") or {}).items()},
-            "next": "Offer to launch; launching needs the brand to click Confirm.",
+            "next": "Draft saved. Ask the brand to review, then launch_campaign (needs Confirm).",
         },
         [{"type": "load_campaign", "campaign_id": cid}, {"type": "refresh_campaigns"}],
     )
@@ -1053,13 +1161,437 @@ def _t_monitor(ctx: ToolContext, args: CampaignRefArgs) -> ToolOutput:
 def _t_open_monitor(ctx: ToolContext, args: CampaignRefArgs) -> ToolOutput:
     c = _resolve_campaign(ctx, args.campaign or "latest", statuses={"launched"})
     return ToolOutput(
-        {"ok": True, "opened": _campaign_label(c)},
-        [{"type": "open_monitor", "campaign_id": c["campaign_id"]}],
+        {"ok": True, "opened": _campaign_label(c), "view": "impact and campaign analysis on the Campaigns tab"},
+        [{"type": "load_campaign", "campaign_id": c["campaign_id"], "focus": "analysis"}],
+    )
+
+
+def _t_open_setup(ctx: ToolContext, args: CampaignRefArgs) -> ToolOutput:
+    c = _resolve_campaign(ctx, args.campaign, statuses=CONFIGURABLE)
+    ctx.state.active_campaign_id = c["campaign_id"]
+    form = _store_form(ctx, _campaign_setup_form(ctx, c))
+    return ToolOutput(
+        {
+            "ok": True,
+            "opened": _campaign_label(c),
+            "status": "draft",
+            "form_shown": "campaign_setup",
+            "next": "The setup form with every campaign detail is shown to the brand. Reply with one short line; do not ask the questions in text.",
+        },
+        [{"type": "switch_tab", "tab": "campaigns"}, {"type": "load_campaign", "campaign_id": c["campaign_id"]}],
+        form=form,
     )
 
 
 def _t_export_csv(ctx: ToolContext, _: NoArgs) -> ToolOutput:
     return ToolOutput({"ok": True, "queued": True}, [{"type": "switch_tab", "tab": "ads"}, {"type": "export_csv"}])
+
+
+
+# ---------------------------------------------------------------------------
+# Input forms: every input the next step needs, asked at once
+# ---------------------------------------------------------------------------
+
+FORM_TTL_SEC = 1800
+MAX_FORMS_PER_SESSION = 5
+DURATION_CHOICES = (7, 14, 21, 30)
+CHANNEL_LABELS = {"in_app": "In-app (Style feed)", "whatsapp": "WhatsApp", "sms": "SMS"}
+OBJECTIVE_LABELS = {"awareness": "Awareness · reach most of the audience",
+                    "consideration": "Consideration · drive views and clicks",
+                    "conversion": "Conversion · fewer, higher-intent customers"}
+
+
+def _opt(value: Any, label: Optional[str] = None) -> dict[str, str]:
+    return {"value": str(value), "label": str(label if label is not None else value)}
+
+
+def _field(fid: str, label: str, ftype: str, *, options: Optional[list[dict[str, str]]] = None,
+           default: Any = None, required: bool = True, max_length: Optional[int] = None,
+           show_if: Optional[dict[str, str]] = None, min_value: Optional[float] = None,
+           max_value: Optional[float] = None) -> dict[str, Any]:
+    f: dict[str, Any] = {"id": fid, "label": label, "type": ftype, "required": required}
+    if options is not None:
+        f["options"] = options
+    if default is not None:
+        f["default"] = default
+    if max_length is not None:
+        f["max_length"] = max_length
+    if show_if is not None:
+        f["show_if"] = show_if
+    if min_value is not None:
+        f["min"] = min_value
+    if max_value is not None:
+        f["max"] = max_value
+    return f
+
+
+def _store_form(ctx: ToolContext, spec: dict[str, Any]) -> dict[str, Any]:
+    """Keep the full spec (with server-only meta) in session state; return the public part."""
+    now = time.time()
+    forms = ctx.state.forms
+    for fid in [k for k, v in forms.items() if now - v["at"] > FORM_TTL_SEC]:
+        forms.pop(fid, None)
+    while len(forms) >= MAX_FORMS_PER_SESSION:
+        forms.pop(min(forms, key=lambda k: forms[k]["at"]), None)
+    form_id = secrets.token_urlsafe(12)
+    forms[form_id] = {**spec, "at": now}
+    return {"form_id": form_id, **{k: v for k, v in spec.items() if k != "meta"}}
+
+
+def _audience_form(ctx: ToolContext, purpose: str) -> dict[str, Any]:
+    metrics = _brand_metrics(ctx)
+    filters = metrics.get("filters") if isinstance(metrics.get("filters"), dict) else {}
+    pin_geo = metrics.get("pin_geo") if isinstance(metrics.get("pin_geo"), dict) else {}
+    current = ctx.state.draft_audience if ctx.state.draft_audience and any(ctx.state.draft_audience.values()) else _current_audience(ctx)
+
+    def opts(key: str) -> list[str]:
+        return [str(v) for v in (filters.get(key) or []) if str(v).strip()][:60]
+
+    pins = opts("pin_codes")
+    pin_opts = [_opt(p, f"{p} · {(pin_geo.get(p) or {}).get('area_label')}" if (pin_geo.get(p) or {}).get("area_label") else p) for p in pins]
+    single = purpose == "rank_skus"
+    kind = "select" if single else "multiselect"
+
+    def dflt(key: str, allowed: list[str]) -> Any:
+        vals = [v for v in current.get(key, []) if v in allowed]
+        if single:
+            return vals[0] if vals else ""
+        return vals
+
+    gender_opts = [_opt(g, {"M": "Male", "F": "Female"}.get(g, g)) for g in opts("genders")]
+    any_opt = [_opt("", "All")] if single else []
+    return {
+        "kind": "audience",
+        "title": "Choose the audience" if purpose == "analyze_geo" else "Audience to rank your SKUs for",
+        "submit_label": "Analyse" if purpose == "analyze_geo" else "Start ranking",
+        "fields": [
+            _field("pin_codes", "PIN codes", "multiselect", options=pin_opts,
+                   default=[p for p in current.get("pin_codes", []) if p in pins]),
+            _field("age_groups", "Age group", kind, options=any_opt + [_opt(a) for a in opts("age_groups")],
+                   default=dflt("age_groups", opts("age_groups")), required=False),
+            _field("genders", "Gender", kind, options=any_opt + gender_opts,
+                   default=dflt("genders", opts("genders")), required=False),
+            _field("rfm_segments", "RFM segment", kind, options=any_opt + [_opt(r) for r in opts("rfm_segments")],
+                   default=dflt("rfm_segments", opts("rfm_segments")), required=False),
+        ],
+        "meta": {"purpose": purpose},
+    }
+
+
+def _run_mode_form(c: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "kind": "run_mode",
+        "title": f"How do you want to run \"{_campaign_label(c)}\"?",
+        "submit_label": "Continue",
+        "fields": [
+            _field("run_mode", "Run on", "select", default="1p", options=[
+                _opt("1p", "SuffAI (1P) · set up, then confirm on the Campaigns tab"),
+                _opt("3p", "Other platforms (3P) · download the ranking CSV"),
+            ]),
+        ],
+        "meta": {"campaign_id": c["campaign_id"]},
+    }
+
+
+def _sku_option_label(r: dict[str, Any]) -> str:
+    a = r.get("attributes") or {}
+    bits = [f"#{r.get('rank')}", a.get("name") or a.get("commodity") or r.get("filename") or "Product"]
+    if a.get("color"):
+        bits.append(str(a["color"]))
+    if r.get("fit") is not None:
+        bits.append(f"fit {r['fit']}")
+    return " · ".join(str(b) for b in bits)[:80]
+
+
+def _campaign_setup_form(ctx: ToolContext, c: dict[str, Any]) -> dict[str, Any]:
+    cid = c["campaign_id"]
+    rows = [r for r in _sku_ranks(ctx, cid) if r.get("ok") and r.get("rank") is not None]
+    sku_opts = [_opt(r["rank"], _sku_option_label(r)) for r in rows[:20]]
+    by_uuid = {r["sku_uuid"]: str(r["rank"]) for r in rows}
+    chosen = [by_uuid[u] for u in (c.get("selected_sku_ids") or []) if u in by_uuid] or [o["value"] for o in sku_opts[:3]]
+    creative = c.get("creative") if isinstance(c.get("creative"), dict) else {}
+    hero = by_uuid.get(creative.get("hero_sku_id") or "") or (chosen[0] if chosen else None)
+    objective = c.get("objective") if c.get("objective") in OBJECTIVES else "consideration"
+    channels = [ch for ch in (c.get("channels") or ["in_app"]) if ch in CHANNELS] or ["in_app"]
+    duration = int(c.get("duration_days") or 14)
+    durations = sorted(set(DURATION_CHOICES) | {duration})
+
+    rec = None
+    try:
+        rec = _svc(camp_svc.budget_recommendation, ctx.sess, cid, objective=objective, duration_days=duration, channels=channels)
+    except Exception:
+        log.info("request_id=%s aura setup form: budget recommendation unavailable", ctx.request_id)
+    budget_opts: list[dict[str, str]] = []
+    budget_default = "custom"
+    if rec:
+        for key, label in (("min", "Minimum"), ("recommended", "Recommended"), ("max", "Maximum")):
+            if rec.get(key):
+                amount = int(round(float(rec[key])))
+                budget_opts.append(_opt(amount, f"{label} · {_money(amount)} (simulated)"))
+                if key == "recommended":
+                    budget_default = str(amount)
+    if c.get("budget_inr"):
+        current = str(int(round(float(c["budget_inr"]))))
+        if current not in {o["value"] for o in budget_opts}:
+            budget_opts.insert(0, _opt(current, f"Saved · {_money(current)}"))
+        budget_default = current
+    budget_opts.append(_opt("custom", "Custom amount"))
+
+    today = _dt.date.today()
+    monday = today + _dt.timedelta(days=(7 - today.weekday()) % 7 or 7)
+    starts = [_opt(today.isoformat(), f"Today · {today:%d %b}"),
+              _opt((today + _dt.timedelta(days=1)).isoformat(), f"Tomorrow · {today + _dt.timedelta(days=1):%d %b}"),
+              _opt(monday.isoformat(), f"Next Monday · {monday:%d %b}")]
+    saved_start = str(c.get("start_date") or "")[:10]
+    if saved_start and saved_start not in {o["value"] for o in starts} and saved_start >= today.isoformat():
+        starts.insert(0, _opt(saved_start, f"Saved · {saved_start}"))
+
+    brand = c.get("brand_name") or ctx.brand or "Your brand"
+    pins = c.get("pin_codes") or []
+    default_name = c.get("campaign_name") or " · ".join(
+        [brand] + ([", ".join(pins[:2]) if len(pins) <= 2 else f"{len(pins)} PINs"] if pins else []) + ([c["rfm_segment"]] if c.get("rfm_segment") else [])
+    )
+    tpl = c.get("message_template") if isinstance(c.get("message_template"), dict) else {}
+    top_garment = ((rows[0].get("attributes") or {}).get("name") if rows else None) or "styles"
+    return {
+        "kind": "campaign_setup",
+        "title": f"Set up \"{_campaign_label(c)}\" (draft)",
+        "note": "Saving keeps it as a draft. It starts only after you click Confirm.",
+        "submit_label": "Save draft & review",
+        "fields": [
+            _field("campaign_name", "Campaign name", "text", default=default_name[:120], max_length=120),
+            _field("objective", "Objective", "select", default=objective,
+                   options=[_opt(o, OBJECTIVE_LABELS[o]) for o in OBJECTIVES]),
+            _field("channels", "Channels", "multiselect", default=channels,
+                   options=[_opt(ch, CHANNEL_LABELS[ch]) for ch in CHANNELS]),
+            _field("duration_days", "Duration", "select", default=str(duration),
+                   options=[_opt(d, f"{d} days") for d in durations]),
+            _field("budget_choice", "Budget", "select", default=budget_default, options=budget_opts),
+            _field("budget_custom", "Custom budget (₹)", "number", show_if={"field": "budget_choice", "equals": "custom"},
+                   min_value=500, max_value=100_000_000),
+            _field("start_date", "Start date", "select", default=starts[0]["value"], options=starts),
+            _field("sku_ranks", "Products", "multiselect", default=chosen, options=sku_opts),
+            _field("hero_rank", "Hero product", "select", default=hero, options=sku_opts),
+            _field("cta", "Button text", "select", default=creative.get("cta") if creative.get("cta") in CTAS else "Shop now",
+                   options=[_opt(x) for x in CTAS]),
+            _field("headline", "Headline", "text", default=(creative.get("headline") or f"New {top_garment} picked for you")[:90], max_length=90),
+            _field("whatsapp_message", "WhatsApp message", "text", max_length=1000,
+                   show_if={"field": "channels", "includes": "whatsapp"},
+                   default=tpl.get("whatsapp") or f"Hi {{first_name}}! {brand} picked styles that match your wardrobe. See your picks: {{link}}"),
+            _field("sms_message", "SMS message", "text", max_length=160,
+                   show_if={"field": "channels", "includes": "sms"},
+                   default=tpl.get("sms") or f"{brand}: styles picked for you. See them: {{link}}"),
+        ],
+        "meta": {"campaign_id": cid},
+    }
+
+
+def _choices_form(question: str, options: list[str]) -> dict[str, Any]:
+    return {
+        "kind": "choices",
+        "title": question,
+        "submit_label": "Continue",
+        "fields": [_field("choice", "Choose one", "select", default="0",
+                          options=[_opt(i, o) for i, o in enumerate(options)])],
+        "meta": {"question": question, "options": options},
+    }
+
+
+def _t_request_inputs(ctx: ToolContext, args: InputsArgs) -> ToolOutput:
+    _check_text(args.campaign, args.question, *args.options)
+    if args.kind == "audience":
+        spec = _audience_form(ctx, args.purpose or "analyze_geo")
+    elif args.kind == "run_mode":
+        spec = _run_mode_form(_resolve_campaign(ctx, args.campaign, statuses=CONFIGURABLE))
+    elif args.kind == "campaign_setup":
+        c = _resolve_campaign(ctx, args.campaign, statuses=CONFIGURABLE)
+        ctx.state.active_campaign_id = c["campaign_id"]
+        spec = _campaign_setup_form(ctx, c)
+    else:
+        options = list(dict.fromkeys(args.options))
+        if not args.question or len(options) < 2:
+            raise ToolError("invalid_input", "choices needs a question and 2 to 6 options")
+        spec = _choices_form(args.question, options)
+    form = _store_form(ctx, spec)
+    return ToolOutput(
+        {
+            "ok": True,
+            "form_shown": args.kind,
+            "fields": [f["label"] for f in form["fields"]],
+            "next": "The form is shown to the brand. Reply with one short line; do not ask the questions in text.",
+        },
+        form=form,
+    )
+
+
+def _with_defaults(spec: dict[str, Any], values: dict[str, Any]) -> dict[str, Any]:
+    """Copy of a spec whose defaults are the brand's last entries (re-validated on the next submit)."""
+    fields = []
+    for f in spec["fields"]:
+        v = values.get(f["id"])
+        if isinstance(v, (str, int, float)) and not isinstance(v, bool):
+            f = {**f, "default": str(v)[: int(f.get("max_length") or 200)]}
+        elif isinstance(v, list) and f["type"] == "multiselect":
+            f = {**f, "default": [str(x)[:64] for x in v[:60]]}
+        fields.append(f)
+    return {**{k: v for k, v in spec.items() if k != "at"}, "fields": fields}
+
+
+def _shown(f: dict[str, Any], clean: dict[str, Any]) -> bool:
+    cond = f.get("show_if")
+    if not cond:
+        return True
+    v = clean.get(cond.get("field"))
+    if "equals" in cond:
+        return v == cond["equals"]
+    if "includes" in cond:
+        return isinstance(v, list) and cond["includes"] in v
+    return True
+
+
+def _validate_form(spec: dict[str, Any], values: dict[str, Any]) -> dict[str, Any]:
+    """Every value must come from the stored spec's options or limits."""
+    clean: dict[str, Any] = {}
+    for f in spec["fields"]:
+        if not _shown(f, clean):
+            continue
+        fid, ftype = f["id"], f["type"]
+        raw = values.get(fid)
+        allowed = {o["value"] for o in f.get("options") or []}
+        if ftype == "select":
+            v = "" if raw is None else str(raw)
+            if v and v not in allowed:
+                raise ToolError("invalid_input", f"{f['label']}: choose one of the listed options")
+            if not v and f["required"]:
+                raise ToolError("invalid_input", f"{f['label']} is required")
+            clean[fid] = v
+        elif ftype == "multiselect":
+            vals = raw if isinstance(raw, list) else ([] if raw in (None, "") else [raw])
+            vals = list(dict.fromkeys(str(x) for x in vals))
+            if len(vals) > 60 or any(x not in allowed for x in vals):
+                raise ToolError("invalid_input", f"{f['label']}: choose from the listed options")
+            if not vals and f["required"]:
+                raise ToolError("invalid_input", f"Choose at least one {f['label'].lower()}")
+            clean[fid] = vals
+        elif ftype == "number":
+            try:
+                n = float(raw)
+            except (TypeError, ValueError):
+                raise ToolError("invalid_input", f"{f['label']} must be a number") from None
+            if n != n or ("min" in f and n < f["min"]) or ("max" in f and n > f["max"]):
+                raise ToolError("invalid_input", f"{f['label']} is out of range")
+            clean[fid] = n
+        else:
+            v = str(raw or "").strip()
+            if len(v) > int(f.get("max_length") or 200):
+                raise ToolError("invalid_input", f"{f['label']} is too long")
+            if not v and f["required"]:
+                raise ToolError("invalid_input", f"{f['label']} is required")
+            _check_text(v)
+            clean[fid] = v
+    return clean
+
+
+def _form_echo(spec: dict[str, Any], clean: dict[str, Any]) -> str:
+    parts = []
+    for f in spec["fields"]:
+        if f["id"] not in clean or f["type"] == "text" and len(str(clean[f["id"]])) > 40:
+            continue
+        labels = {o["value"]: o["label"] for o in f.get("options") or []}
+        v = clean[f["id"]]
+        shown = ", ".join(labels.get(x, x).split(" · ")[0] for x in v) if isinstance(v, list) else labels.get(str(v), str(v)).split(" · ")[0]
+        if shown:
+            parts.append(f"{f['label']}: {shown}")
+    return "; ".join(parts)[:400]
+
+
+def _analysis_answer(res: dict[str, Any]) -> str:
+    kpis = res.get("kpis") or {}
+    pins = res.get("pins") or []
+    msg = (f"Analysed {res.get('pin_count', len(pins))} PIN(s) for this audience: "
+           f"{int(kpis.get('customers') or 0):,} customers, {int(kpis.get('high_value_customers') or 0):,} Champions & Loyalists.")
+    if pins:
+        top = pins[0]
+        area = f" ({top.get('area_label')})" if top.get("area_label") else ""
+        score = f", score {top.get('score')}" if top.get("score") is not None else ""
+        msg += f" Strongest PIN: {top.get('pin')}{area}{score}."
+    return msg + " The Geo tab now shows this audience. Ask for a store brief or start a campaign from here."
+
+
+def _estimate_line(res: dict[str, Any]) -> str:
+    exp = (res.get("estimate_simulated") or {}).get("expected") or {}
+    if not exp:
+        return ""
+    return (f" Simulated estimate: reach {int(exp.get('reach') or 0):,}, conversions {int(exp.get('conversions') or 0):,}, "
+            f"revenue {_money(exp.get('revenue'))}, ROAS {float(exp.get('roas') or 0):.1f}x.")
+
+
+FormResult = tuple[str, list[dict[str, Any]], Optional[dict[str, Any]], Optional[dict[str, Any]], Optional[str]]
+
+
+def _submit_form(ctx: ToolContext, spec: dict[str, Any], clean: dict[str, Any]) -> FormResult:
+    """Returns (answer, ui_commands, pending, next_form, relay_message)."""
+    kind, meta = spec["kind"], spec.get("meta") or {}
+    if kind == "choices":
+        idx = int(clean.get("choice") or 0)
+        return "", [], None, None, f"For \"{meta['question']}\" I choose: {meta['options'][idx]}"
+
+    if kind == "audience":
+        aud = {k: (v if isinstance(v, list) else ([v] if v else [])) for k, v in clean.items()}
+        ctx.state.draft_audience = aud
+        tool = "analyze_geo" if meta.get("purpose") == "analyze_geo" else "rank_uploaded_skus"
+        out = execute_tool(tool, {**aud, "use_current_filters": False}, ctx)
+        res = out.result
+        if res.get("ok") is False:
+            if res.get("needs_upload"):
+                return "Attach your SKU images with the paperclip, then ask me to rank them.", out.ui_commands, None, None, None
+            raise ToolError(res.get("error_code") or "action_failed", res.get("hint"))
+        if tool == "analyze_geo":
+            return _analysis_answer(res), out.ui_commands, None, None, None
+        eta = res.get("eta_minutes")
+        msg = (f"Ranking started for {int(res.get('total_customers') or 0):,} customers"
+               f"{f' (about {eta} min)' if eta is not None else ''}. I'll show the run options once it finishes; ask me for progress any time.")
+        return msg, out.ui_commands, None, None, None
+
+    ctx.state.active_campaign_id = meta.get("campaign_id")
+    if kind == "run_mode":
+        if clean.get("run_mode") == "3p":
+            out = execute_tool("export_campaign_3p", {"campaign": "current"}, ctx)
+            if out.result.get("ok") is False:
+                raise ToolError(out.result.get("error_code") or "action_failed", out.result.get("hint"))
+            return ("The ranking CSV is downloading in Ads Lab for other platforms. You can still run it on SuffAI later.",
+                    out.ui_commands, None, None, None)
+        out = execute_tool("open_campaign_setup", {"campaign": "current"}, ctx)
+        if out.result.get("ok") is False:
+            raise ToolError(out.result.get("error_code") or "action_failed", out.result.get("hint"))
+        return ("Your campaign is open as a draft on the Campaigns tab. Pick every detail below; nothing starts until you confirm.",
+                out.ui_commands, None, out.form, None)
+
+    budget = clean.get("budget_custom") if clean.get("budget_choice") == "custom" else float(clean["budget_choice"])
+    args: dict[str, Any] = {
+        "campaign": "current",
+        "campaign_name": clean["campaign_name"],
+        "objective": clean["objective"],
+        "budget_inr": budget,
+        "duration_days": int(clean["duration_days"]),
+        "channels": clean["channels"],
+        "start_date": clean.get("start_date") or None,
+        "sku_ranks": [int(x) for x in clean["sku_ranks"]],
+        "hero_rank": int(clean["hero_rank"]) if clean.get("hero_rank") else None,
+        "cta": clean.get("cta") or None,
+        "headline": clean.get("headline") or None,
+        "whatsapp_message": clean.get("whatsapp_message") or None,
+        "sms_message": clean.get("sms_message") or None,
+    }
+    if args["hero_rank"] is not None and str(args["hero_rank"]) not in clean["sku_ranks"]:
+        raise ToolError("invalid_input", "the hero product must be one of the selected products")
+    out = execute_tool("configure_campaign", args, ctx)
+    if out.result.get("ok") is False:
+        raise ToolError(out.result.get("error_code") or "action_failed", out.result.get("hint"))
+    launch = execute_tool("launch_campaign", {"campaign": "current"}, ctx)
+    msg = "Draft saved and filled in on the Campaigns tab." + _estimate_line(out.result)
+    msg += " Review the summary and click Confirm to start the campaign (simulated)." if launch.pending else ""
+    return msg, out.ui_commands + launch.ui_commands, launch.pending, None, None
 
 
 # ---------------------------------------------------------------------------
@@ -1073,19 +1605,18 @@ def _do_launch(ctx: ToolContext, args: dict[str, Any]) -> tuple[str, list[dict[s
     cid = c["campaign_id"]
     ctx.state.active_campaign_id = cid
     if result.get("already_launched"):
-        msg = f"\"{_campaign_label(c)}\" was already launched. Opening the monitor."
+        msg = f"\"{_campaign_label(c)}\" was already running. Opening the impact and campaign analysis on the Campaigns tab."
     else:
         imp = result.get("impact") or c.get("impact") or {}
         msg = (
             f"Launched \"{_campaign_label(c)}\" (simulated). Projected outcome, all simulated: "
             f"reach {int(imp.get('reach') or 0):,}, conversions {int(imp.get('conversions') or 0):,}, "
             f"revenue {_money(imp.get('revenue'))}, ROAS {float(imp.get('roas') or 0):.1f}x. "
-            "Nothing is delivered to customers. Opening the campaign monitor."
+            "Nothing is delivered to customers. Opening the impact and campaign analysis on the Campaigns tab."
         )
     return msg, [
-        {"type": "load_campaign", "campaign_id": cid},
+        {"type": "load_campaign", "campaign_id": cid, "focus": "analysis"},
         {"type": "refresh_campaigns"},
-        {"type": "open_monitor", "campaign_id": cid},
     ]
 
 
@@ -1132,14 +1663,17 @@ TOOLS: dict[str, ToolSpec] = {
         ToolSpec("set_filters", "Applied filters", "Apply audience filters on Geo (multi-select) or Ads Lab (first value of age/gender/RFM).", _obj({"tab": {"type": "string", "enum": ["geo", "ads"]}, **_AUDIENCE_PROPS, "brands": {**_STR_LIST, "description": "Geo only: own brand and/or Competitors"}, "reset": {"type": "boolean"}}), FilterArgs, _t_set_filters),
         ToolSpec("reset_filters", "Reset filters", "Clear filters on Geo or Ads Lab.", _obj({"tab": {"type": "string", "enum": ["geo", "ads"]}}), ResetArgs, _t_reset_filters),
         ToolSpec("focus_pin", "Focused PIN", "Focus a PIN hub on the Geo map.", _obj({"pin": {"type": "string", "description": "6-digit PIN"}}, ["pin"]), FocusPinArgs, _t_focus_pin),
-        ToolSpec("analyze_geo", "Analysed Geo", "Score PIN opportunities for an audience: demand, footfall, brand vs Competitors share, store decision, top segments and products. Also applies the audience on the Geo tab.", _obj({**_AUDIENCE_PROPS, "use_current_filters": _USE_CURRENT, "apply_to_dashboard": {"type": "boolean"}, "analysis_brand": {"type": "string", "description": "Admin only"}}), AnalyzeArgs, _t_analyze_geo),
+        ToolSpec("stock_routing_guide", "Built routing guide", "Regional stock & assortment routing guide for a PIN within 4 km of an existing store: aggregated personas, demographics, commodity / colour / pattern mix and size curve for that store's catchment.", _obj({"pin": {"type": "string", "description": "6-digit PIN"}, "analysis_brand": {"type": "string", "description": "Admin only"}}, ["pin"]), RoutingArgs, _t_routing_guide),
+        ToolSpec("analyze_geo", "Analysed Geo", "Score PIN opportunities for an audience: Champions & Loyalists demand, footfall, brand vs Competitors share, distance to the nearest existing store (4 km rule), store decision, top segments and products. Also applies the audience on the Geo tab.", _obj({**_AUDIENCE_PROPS, "use_current_filters": _USE_CURRENT, "apply_to_dashboard": {"type": "boolean"}, "analysis_brand": {"type": "string", "description": "Admin only"}}), AnalyzeArgs, _t_analyze_geo),
         ToolSpec("run_geo_brief", "Ran store brief", "Generate the store-opening decision (Yes / Consider / No) and market brief for a focus PIN under an audience.", _obj({"pin": {"type": "string"}, **_AUDIENCE_PROPS, "use_current_filters": _USE_CURRENT, "apply_to_dashboard": {"type": "boolean"}, "analysis_brand": {"type": "string", "description": "Admin only"}}), BriefArgs, _t_geo_brief),
         ToolSpec("start_campaign_from_geo", "Started campaign", "Open Ads Lab with the Geo audience and insight carried over, ready for SKU ranking.", _obj({**_AUDIENCE_PROPS, "use_current_filters": _USE_CURRENT, "insight": {"type": "string", "description": "One-line opportunity insight"}}), StartArgs, _t_start_from_geo, writes=True),
         ToolSpec("list_uploaded_images", "Checked images", "List SKU images the brand attached in this chat.", _obj({}), NoArgs, _t_list_uploads),
         ToolSpec("rank_uploaded_skus", "Started ranking job", "Create a campaign from the attached SKU images and start the background extract & rank job. Returns job size and estimated completion time.", _obj({**_AUDIENCE_PROPS, "use_current_filters": _USE_CURRENT, "brand_name": {"type": "string", "description": "Admin only"}}), RankArgs, _t_rank_skus, writes=True),
         ToolSpec("get_ranking_job", "Checked ranking job", "Progress, estimated time remaining and, once complete, the ranked products of the latest extract & rank job.", _obj({}), NoArgs, _t_ranking_job),
         ToolSpec("get_campaign", "Read campaign", "Campaign details and its ranked products (by rank number).", _obj({"campaign": _CAMPAIGN_REF}), CampaignRefArgs, _t_get_campaign),
-        ToolSpec("configure_campaign", "Configured campaign", "Save a SuffAI (1P) campaign: name, objective, channels, WhatsApp/SMS messages, products (rank numbers), creative, budget and schedule. Omit budget_inr to use the recommended budget. Returns a simulated estimate.", _obj({"campaign": _CAMPAIGN_REF, "campaign_name": {"type": "string"}, "objective": {"type": "string", "enum": list(OBJECTIVES)}, "budget_inr": {"type": "number", "description": "INR; omit to use the recommended budget"}, "duration_days": {"type": "integer"}, "channels": _CHANNELS_PROP, "whatsapp_message": {"type": "string", "description": "Required with whatsapp; max 1000 chars"}, "sms_message": {"type": "string", "description": "Required with sms; max 160 chars"}, "start_date": {"type": "string", "description": "YYYY-MM-DD, default today"}, "sku_ranks": {"type": "array", "items": {"type": "integer"}, "description": "Product rank numbers; default top 3"}, "headline": {"type": "string"}, "cta": {"type": "string", "enum": list(CTAS)}, "hero_rank": {"type": "integer"}}, ["campaign_name", "objective", "duration_days"]), ConfigureArgs, _t_configure, writes=True),
+        ToolSpec("request_inputs", "Asked for details", "Show ONE form with every input the next step needs (dropdowns built from allowed values). kind=audience (purpose analyze_geo or rank_skus) before analysis or ranking when the audience is not given; run_mode after ranking completes; campaign_setup for the 1P setup; choices (question + 2-6 short options) for any other question. Never ask questions one by one in text.", _obj({"kind": {"type": "string", "enum": ["audience", "run_mode", "campaign_setup", "choices"]}, "purpose": {"type": "string", "enum": ["analyze_geo", "rank_skus"]}, "campaign": _CAMPAIGN_REF, "question": {"type": "string"}, "options": {"type": "array", "items": {"type": "string"}, "description": "2-6 short options, choices only"}}, ["kind"]), InputsArgs, _t_request_inputs),
+        ToolSpec("open_campaign_setup", "Opened campaign setup", "Brand chose SuffAI (1P): open the Campaigns tab with this ranked campaign as a draft to fill in. Does not start it.", _obj({"campaign": _CAMPAIGN_REF}), CampaignRefArgs, _t_open_setup),
+        ToolSpec("configure_campaign", "Saved campaign draft", "Save a SuffAI (1P) campaign draft (does not start it): name, objective, channels, WhatsApp/SMS messages, products (rank numbers), creative, budget and schedule. Omit budget_inr to use the recommended budget. Returns a simulated estimate.", _obj({"campaign": _CAMPAIGN_REF, "campaign_name": {"type": "string"}, "objective": {"type": "string", "enum": list(OBJECTIVES)}, "budget_inr": {"type": "number", "description": "INR; omit to use the recommended budget"}, "duration_days": {"type": "integer"}, "channels": _CHANNELS_PROP, "whatsapp_message": {"type": "string", "description": "Required with whatsapp; max 1000 chars"}, "sms_message": {"type": "string", "description": "Required with sms; max 160 chars"}, "start_date": {"type": "string", "description": "YYYY-MM-DD, default today"}, "sku_ranks": {"type": "array", "items": {"type": "integer"}, "description": "Product rank numbers; default top 3"}, "headline": {"type": "string"}, "cta": {"type": "string", "enum": list(CTAS)}, "hero_rank": {"type": "integer"}}, ["campaign_name", "objective", "duration_days"]), ConfigureArgs, _t_configure, writes=True),
         ToolSpec("recommend_budget", "Recommended budget", "Simulated recommended budget (min / recommended / max, per-channel split, daily budget, expected ROAS and reasons) for an objective, duration and channels.", _obj({"campaign": _CAMPAIGN_REF, "objective": {"type": "string", "enum": list(OBJECTIVES)}, "duration_days": {"type": "integer"}, "channels": _CHANNELS_PROP}), BudgetArgs, _t_recommend_budget),
         ToolSpec("export_campaign_3p", "Exported for 3P", "Run on other platforms: export the campaign ranking as CSV (downloads in Ads Lab).", _obj({"campaign": _CAMPAIGN_REF}), CampaignRefArgs, _t_export_3p, writes=True),
         ToolSpec("estimate_campaign", "Estimated outcomes", "Simulated outcome ranges (reach, impressions, CTR, conversions, revenue, lift, ROAS) for a budget, duration and channels.", _obj({"campaign": _CAMPAIGN_REF, "objective": {"type": "string", "enum": list(OBJECTIVES)}, "budget_inr": {"type": "number"}, "duration_days": {"type": "integer"}, "channels": _CHANNELS_PROP}, ["budget_inr", "duration_days"]), EstimateArgs, _t_estimate),
@@ -1147,7 +1681,7 @@ TOOLS: dict[str, ToolSpec] = {
         ToolSpec("discard_campaign", "Prepared discard", "Prepare discarding a campaign that is not launched. The brand must click Confirm.", _obj({"campaign": _CAMPAIGN_REF}), CampaignRefArgs, _t_discard, writes=True, confirm=True),
         ToolSpec("list_campaigns", "Listed campaigns", "List campaigns with status, budget and simulated KPIs.", _obj({"status": {"type": "string", "enum": list(STATUSES)}, "limit": {"type": "integer"}}), ListArgs, _t_list_campaigns),
         ToolSpec("get_campaign_monitor", "Read monitor", "Simulated performance, pacing and insights of a launched campaign (default: latest).", _obj({"campaign": _CAMPAIGN_REF}), CampaignRefArgs, _t_monitor),
-        ToolSpec("open_campaign_monitor", "Opened monitor", "Open the simulated campaign monitor view (default: latest launched).", _obj({"campaign": _CAMPAIGN_REF}), CampaignRefArgs, _t_open_monitor),
+        ToolSpec("open_campaign_monitor", "Opened monitor", "Open the impact and campaign analysis of a running campaign on the Campaigns tab (default: latest launched).", _obj({"campaign": _CAMPAIGN_REF}), CampaignRefArgs, _t_open_monitor),
         ToolSpec("export_ads_csv", "Exported CSV", "Download the current Ads Lab ranking as CSV.", _obj({}), NoArgs, _t_export_csv),
     ]
 }
@@ -1394,8 +1928,37 @@ def run_agent(
         _remember(state, "[confirmed]", answer)
         return _ok(request_id, answer, cmds, attached_images=_staging.count(token))
 
+    relay: Optional[str] = None
+    if body.form_response is not None:
+        spec = state.forms.pop(body.form_response.form_id, None)
+        if spec is None or time.time() - spec["at"] > FORM_TTL_SEC:
+            log.info("request_id=%s aura form rejected (unknown or expired)", request_id)
+            return _err("expired", request_id)
+        values = body.form_response.values if isinstance(body.form_response.values, dict) else {}
+        try:
+            clean = _validate_form(spec, values)
+            answer_text, cmds, form_pending, next_form, relay = _submit_form(ctx, spec, clean)
+        except ToolError as exc:
+            retry = _store_form(ctx, _with_defaults(spec, values))
+            hint = exc.hint or guard.ERROR_CATALOG.get(exc.code, guard.ERROR_CATALOG["action_failed"])
+            log.info("request_id=%s aura form %s invalid code=%s", request_id, spec["kind"], exc.code)
+            return _ok(request_id, _finalize_answer(f"{hint} Please check the form and try again.", ctx), [],
+                       input_form=retry, attached_images=_staging.count(token))
+        except Exception:
+            log.exception("request_id=%s aura form %s crashed", request_id, spec["kind"])
+            return _err("action_failed", request_id)
+        log.info("request_id=%s aura form=%s submitted relay=%s", request_id, spec["kind"], relay is not None)
+        if relay is None:
+            answer = _finalize_answer(answer_text, ctx)
+            _remember(state, f"[form {spec['kind']}] {_form_echo(spec, clean)}", answer)
+            public_pending = (
+                {"token": form_pending["token"], "label": form_pending["label"], "summary": _finalize_answer(form_pending["summary"], ctx)}
+                if form_pending else None
+            )
+            return _ok(request_id, answer, cmds, public_pending, input_form=next_form, attached_images=_staging.count(token))
+
     screened = guard.screen_input(
-        body.message,
+        relay or body.message,
         role=role,
         own_brand=brand,
         known_brands=camp_svc.known_brands() if role == "brand" else (),
@@ -1441,6 +2004,7 @@ def run_agent(
 
     all_cmds: list[dict[str, Any]] = []
     pending: Optional[dict[str, Any]] = None
+    form: Optional[dict[str, Any]] = None
     labels: list[str] = []
     write_keys: set[str] = set()
     calls_made = 0
@@ -1484,6 +2048,8 @@ def run_agent(
                 all_cmds.extend(out.ui_commands)
                 if out.pending and pending is None:
                     pending = out.pending
+                if out.form and form is None:
+                    form = out.form
                 if spec is not None and out.result.get("ok", True) is not False:
                     labels.append(spec.label)
                 log.info(
@@ -1493,7 +2059,7 @@ def run_agent(
                 safe = guard.scrub_obj(out.result, own_brand=brand, competitor_names=_competitors(ctx))
                 parts.append(Part.from_function_response(name=fname, response={"content": safe}))
             contents.append(Content(role="user", parts=parts))
-            if pending is not None:
+            if pending is not None or form is not None:
                 break
         else:
             wrap = model.generate_content(
@@ -1507,6 +2073,9 @@ def run_agent(
 
     if pending is not None:
         final_answer = f"{pending['summary']} Please review and click Confirm to continue."
+        form = None
+    elif form is not None:
+        final_answer = form.get("note") or "Pick the details below and press " + str(form.get("submit_label") or "Continue") + "."
     elif not final_answer.strip():
         final_answer = (
             "Done: " + ", ".join(dict.fromkeys(labels)) + "." if labels
@@ -1520,4 +2089,4 @@ def run_agent(
         request_id, role, calls_made, len(all_cmds), bool(pending), len(answer),
     )
     public_pending = {"token": pending["token"], "label": pending["label"], "summary": _finalize_answer(pending["summary"], ctx)} if pending else None
-    return _ok(request_id, answer, all_cmds, public_pending, attached_images=_staging.count(token))
+    return _ok(request_id, answer, all_cmds, public_pending, input_form=form, attached_images=_staging.count(token))

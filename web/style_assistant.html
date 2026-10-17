@@ -234,6 +234,19 @@
     .timeline .track { position: absolute; top: 14px; left: 0; right: 0; height: 6px; border-radius: 999px; background: var(--sand); border: 1px solid var(--line); }
     .timeline .done { position: absolute; top: 14px; left: 0; height: 6px; border-radius: 999px; background: var(--accent); }
     .timeline .today { position: absolute; top: 4px; width: 2px; height: 26px; background: #3B2733; }
+    [hidden] { display: none !important; }
+    .tab-bar { display: flex; gap: .4rem; flex-wrap: wrap; border-bottom: 1px solid var(--line); padding-bottom: .5rem; }
+    .tab-btn {
+      display: inline-flex; align-items: center; gap: .4rem;
+      border: 1px solid var(--line); background: #fff; color: var(--ink);
+      border-radius: 999px; padding: .45rem .9rem; font-size: 13px; font-weight: 600; cursor: pointer;
+    }
+    .tab-btn .count { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); }
+    .tab-btn[aria-selected="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .tab-btn[aria-selected="true"] .count { color: #F6EEF0; }
+    .looks-grid { display: flex; flex-wrap: wrap; gap: 1rem; padding: .5rem .25rem 1rem; }
+    .ward-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: .75rem; padding: .5rem .25rem 1rem; }
+    .ward-grid .ward-card { width: auto; }
     .chip { display: inline-flex; align-items: center; gap: .3rem; border: 1px solid var(--line); background: var(--sand); border-radius: 999px; padding: .2rem .6rem; font-size: 11px; }
   </style>
 </head>
@@ -245,7 +258,7 @@
   <header class="glass z-20 border-b border-[#EAD9E0] px-4 py-3 flex-none flex items-center justify-between gap-4">
     <div class="min-w-0">
       <h1 id="pageTitle" class="display text-2xl m-0 tracking-wide">Style Assistant</h1>
-      <p id="pageSubtitle" class="muted m-0 mt-0.5">Complete outfits · similar picks · your wardrobe</p>
+      <p id="pageSubtitle" class="muted m-0 mt-0.5">Complete your outfit · recommended for you · your wardrobe</p>
     </div>
     <div class="flex items-center gap-2">
       <span id="simBadge" class="sim-badge hidden" title="SuffAI is not connected to ad delivery or conversion tracking. All performance figures are simulated."><i class="fa-solid fa-flask"></i> Simulated campaign</span>
@@ -350,28 +363,18 @@
   </main>
 
   <main id="assistantMain" class="flex-1 flex flex-col md:flex-row min-h-0 overflow-hidden">
-    <aside class="w-full md:w-80 md:max-w-[45vw] max-h-[45vh] md:max-h-none flex-none border-b md:border-b-0 md:border-r border-[#EAD9E0] bg-[#F6EEF0]/80 flex flex-col p-4 gap-5 overflow-y-auto">
+    <aside class="w-full md:w-72 md:max-w-[40vw] max-h-[40vh] md:max-h-none flex-none border-b md:border-b-0 md:border-r border-[#EAD9E0] bg-[#F6EEF0]/80 flex flex-col p-4 gap-4 overflow-y-auto">
       <section class="space-y-3">
-        <h2 class="text-xs font-bold uppercase tracking-wider flex items-center gap-2">
-          <span class="w-5 h-5 rounded bg-[#EAD9E0] text-[#3B2733] flex items-center justify-center text-[10px] border border-[#DCC3CE]">1</span>
-          Customer &amp; brand
-        </h2>
-        <label class="block text-[10px] text-[#8A7480] uppercase tracking-wider font-semibold">
+        <label id="userField" class="block text-[10px] text-[#8A7480] uppercase tracking-wider font-semibold">
           Customer
           <select id="userSelect" class="field mt-1"><option value="">Loading customers…</option></select>
         </label>
         <label class="block text-[10px] text-[#8A7480] uppercase tracking-wider font-semibold">
-          Advertising brand
-          <select id="brandSelect" class="field mt-1"><option value="">Loading brands…</option></select>
+          Brand
+          <select id="brandSelect" class="field mt-1" disabled><option value="">All brands</option></select>
         </label>
-        <p class="muted leading-relaxed">We suggest pieces that complete outfits, similar alternatives, and show the current wardrobe.</p>
-      </section>
-
-      <section class="mt-auto space-y-2">
-        <button id="runBtn" type="button" class="btn-primary" disabled>
-          <i class="fa-solid fa-wand-magic-sparkles text-[#C59FB0] mr-2"></i>Generate suggestions
-        </button>
-        <p id="runHint" class="muted" aria-live="polite">Select a customer and brand to continue.</p>
+        <p class="muted leading-relaxed">Picks are prepared when brands rank their products for your area, so they are ready as soon as you open this page.</p>
+        <p id="runHint" class="muted" aria-live="polite"></p>
         <p id="errorBox" class="err hidden" role="alert"></p>
       </section>
     </aside>
@@ -380,54 +383,33 @@
       <div id="loadingOverlay" role="status" class="absolute inset-0 z-40 hidden items-center justify-center bg-[#FAF6EE]/85 backdrop-blur-sm">
         <div class="text-center">
           <i class="fa-solid fa-circle-notch text-4xl text-[#6B3A55] animate-spin mb-4"></i>
-          <p class="mono text-sm">Building outfits · finding similar picks…</p>
+          <p class="mono text-sm">Loading your picks…</p>
         </div>
       </div>
 
-      <div class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
-        <!-- 1. Complete your outfit -->
-        <section class="glass p-4 sm:p-5">
-          <div class="flex items-end justify-between gap-3 mb-2">
-            <div>
-              <p class="section-kicker">1 · Outfit completion</p>
-              <h2 class="display text-xl m-0 mt-1">Complete your outfit</h2>
-              <p class="muted m-0 mt-1">Pair what you own with a complementary brand piece to buy.</p>
-            </div>
-            <p id="completeMeta" class="muted mono"></p>
-          </div>
-          <div id="completeRail" class="looks-rail">
-            <p class="muted px-1">Complementary looks appear here after you generate.</p>
-          </div>
+      <div class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+        <div class="tab-bar" role="tablist" aria-label="Style Assistant">
+          <button type="button" class="tab-btn" role="tab" id="tab-complete" data-tab="complete" aria-controls="panel-complete" aria-selected="true">Complete your outfit <span id="completeCount" class="count"></span></button>
+          <button type="button" class="tab-btn" role="tab" id="tab-recommended" data-tab="recommended" aria-controls="panel-recommended" aria-selected="false">Recommended <span id="recommendedCount" class="count"></span></button>
+          <button type="button" class="tab-btn" role="tab" id="tab-wardrobe" data-tab="wardrobe" aria-controls="panel-wardrobe" aria-selected="false">Your wardrobe <span id="wardrobeCount" class="count"></span></button>
+        </div>
+
+        <section id="panel-complete" role="tabpanel" aria-labelledby="tab-complete" class="glass p-4 sm:p-5">
+          <h2 class="display text-xl m-0">Complete your outfit</h2>
+          <p class="muted m-0 mt-1">A piece you own plus a brand piece of a different type that goes with it.</p>
+          <div id="completeRail" class="looks-grid"></div>
         </section>
 
-        <!-- 2. Similar likes -->
-        <section class="glass p-4 sm:p-5">
-          <div class="flex items-end justify-between gap-3 mb-2">
-            <div>
-              <p class="section-kicker">2 · Similar taste</p>
-              <h2 class="display text-xl m-0 mt-1">Since you have these, you may like similar ones</h2>
-              <p class="muted m-0 mt-1">Same category as pieces you already own — alternatives from the brand.</p>
-            </div>
-            <p id="similarMeta" class="muted mono"></p>
-          </div>
-          <div id="similarRail" class="looks-rail">
-            <p class="muted px-1">Similar-item suggestions appear here after you generate.</p>
-          </div>
+        <section id="panel-recommended" role="tabpanel" aria-labelledby="tab-recommended" class="glass p-4 sm:p-5" hidden>
+          <h2 class="display text-xl m-0">Since you have this, you may like this</h2>
+          <p class="muted m-0 mt-1">Brand pieces closest to what you already own, in any category.</p>
+          <div id="recommendedRail" class="looks-grid"></div>
         </section>
 
-        <!-- 3. Current wardrobe -->
-        <section class="glass p-4 sm:p-5">
-          <div class="flex items-end justify-between gap-3 mb-2">
-            <div>
-              <p class="section-kicker">3 · Closet</p>
-              <h2 id="wardrobeTitle" class="display text-xl m-0 mt-1">Here is your current wardrobe</h2>
-              <p class="muted m-0 mt-1">Everything we know for this customer from wardrobe ingest.</p>
-            </div>
-            <p id="wardrobeMeta" class="muted mono"></p>
-          </div>
-          <div id="wardrobeRail" class="wardrobe-rail">
-            <p class="muted px-1">Wardrobe pieces appear here after you generate.</p>
-          </div>
+        <section id="panel-wardrobe" role="tabpanel" aria-labelledby="tab-wardrobe" class="glass p-4 sm:p-5" hidden>
+          <h2 class="display text-xl m-0">Your wardrobe</h2>
+          <p class="muted m-0 mt-1">Every garment we have for this customer.</p>
+          <div id="wardrobeRail" class="ward-grid"></div>
         </section>
       </div>
     </section>
@@ -442,25 +424,12 @@
       return base + path;
     };
 
-    const state = { users: [], brands: [], loading: false, result: null };
+    const state = { loading: false, result: null, tab: 'complete' };
     const session = SuffaiSession.getSession() || {};
     const lockedCustomerId = (session.role === 'customer' && session.customer_id)
       ? String(session.customer_id)
       : '';
-
-    function applyCustomerLock() {
-      const uSel = $('userSelect');
-      if (!uSel || !lockedCustomerId) return;
-      const label = session.display_name || session.username || 'You';
-      uSel.innerHTML = `<option value="${escapeHtml(lockedCustomerId)}" selected>${escapeHtml(label)}</option>`;
-      uSel.disabled = true;
-      uSel.title = 'Your account';
-      // Brand picker optional for customers — feed loads automatically
-      const brandLabel = $('brandSelect') && $('brandSelect').closest('label');
-      if (brandLabel) brandLabel.classList.add('opacity-70');
-      $('runHint').textContent = 'Loading looks for you…';
-      updateRunEnabled();
-    }
+    const EMPTY_PICKS = 'No picks yet. They appear after a brand ranks products for your area.';
 
     function setError(msg) {
       const el = $('errorBox');
@@ -482,16 +451,6 @@
       const ov = $('loadingOverlay');
       ov.classList.toggle('hidden', !on);
       ov.classList.toggle('flex', on);
-      $('runBtn').disabled = on || !$('userSelect').value || !$('brandSelect').value;
-    }
-
-    function updateRunEnabled() {
-      $('runBtn').disabled = state.loading || !$('userSelect').value || !$('brandSelect').value;
-      if ($('userSelect').value && $('brandSelect').value) {
-        $('runHint').textContent = 'Ready — generate complete outfits and similar picks.';
-      } else {
-        $('runHint').textContent = 'Select a customer and brand to continue.';
-      }
     }
 
     function imgOrPh(url, label) {
@@ -520,99 +479,78 @@
       </button>`;
     }
 
+    function selectTab(tab) {
+      state.tab = tab;
+      document.querySelectorAll('.tab-btn').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === tab)));
+      ['complete', 'recommended', 'wardrobe'].forEach((t) => { $('panel-' + t).hidden = t !== tab; });
+    }
+
     function renderWardrobe(items) {
       const rail = $('wardrobeRail');
       if (!items || !items.length) {
-        rail.innerHTML = '<p class="muted px-1">No wardrobe items for this customer.</p>';
+        rail.innerHTML = '<p class="muted px-1">No wardrobe items yet.</p>';
         return;
       }
       rail.innerHTML = items.map((w, i) => `
-        <article class="ward-card" style="animation-delay:${i * 40}ms">
+        <article class="ward-card" style="animation-delay:${Math.min(i, 20) * 30}ms">
           ${imgOrPh(w.image_url, w.label)}
           <div class="p-2">
             <p class="text-[11px] font-semibold truncate m-0">${escapeHtml(w.label || 'Piece')}</p>
-            <p class="muted truncate m-0 text-[10px]">${escapeHtml(w.brand_name || '')}</p>
+            <p class="muted truncate m-0 text-[10px]">${escapeHtml([w.brand_name, w.color].filter(Boolean).join(' · '))}</p>
             <p class="mono text-[9px] text-[#6B3A55] m-0 mt-0.5">${escapeHtml(w.category_bucket || '')}</p>
           </div>
         </article>
       `).join('');
     }
 
-    function renderCompleteLooks(looks) {
-      const rail = $('completeRail');
-      if (!looks || !looks.length) {
-        rail.innerHTML = '<p class="muted px-1">No complementary outfit pairs for this brand yet.</p>';
-        return;
-      }
-      rail.innerHTML = looks.map((look, i) => {
-        const own = (look.own || [])[0] || {};
-        const own2 = (look.own || [])[1];
-        const buy = look.buy || {};
-        const ownBlock = own2
-          ? `<div class="grid grid-cols-2 gap-1">${imgOrPh(own.image_url, own.label)}${imgOrPh(own2.image_url, own2.label)}</div>`
-          : imgOrPh(own.image_url, own.label);
-        return `
-          <article class="look-card ${look.rank === 1 ? 'rank-1' : ''}" style="animation-delay:${i * 60}ms">
-            <div class="relative">
-              <div class="pair-row">
-                <div>
-                  <p class="text-[9px] uppercase tracking-wider text-[#6B3A55] font-bold m-0 mb-1">You have</p>
-                  ${ownBlock}
-                </div>
-                <div class="plus">+</div>
-                <div>
-                  <p class="text-[9px] uppercase tracking-wider text-[#6B3A55] font-bold m-0 mb-1">Add this</p>
-                  ${imgOrPh(buy.image_url, buy.label)}
-                </div>
+    function pairCard(look, i, opts) {
+      const buy = look.buy || {};
+      const own = opts.own;
+      const ownBlock = own.length > 1
+        ? `<div class="grid grid-cols-2 gap-1">${imgOrPh(own[0].image_url, own[0].label)}${imgOrPh(own[1].image_url, own[1].label)}</div>`
+        : imgOrPh((own[0] || {}).image_url, (own[0] || {}).label);
+      return `
+        <article class="look-card ${opts.cls}" style="animation-delay:${Math.min(i, 10) * 60}ms">
+          <div class="relative">
+            <div class="pair-row">
+              <div>
+                <p class="text-[9px] uppercase tracking-wider text-[#6B3A55] font-bold m-0 mb-1">${opts.leftLabel}</p>
+                ${ownBlock}
               </div>
-              <span class="score-badge">#${look.rank} · ${look.score ?? '—'}</span>
+              <div class="plus">${opts.joiner}</div>
+              <div>
+                <p class="text-[9px] uppercase tracking-wider text-[#6B3A55] font-bold m-0 mb-1">${opts.rightLabel}</p>
+                ${imgOrPh(buy.image_url, buy.label)}
+              </div>
             </div>
-            <div class="p-4 space-y-2 flex-1 flex flex-col">
-              <h3 class="display text-lg m-0 leading-tight">${escapeHtml(look.title || 'Complete your outfit')}</h3>
-              <p class="text-sm leading-relaxed m-0 text-[#4A3441]">${escapeHtml(look.description || '')}</p>
-              <p class="muted m-0 text-[11px] leading-relaxed"><strong class="text-[#6B3A55]">Why:</strong> ${escapeHtml(look.why_it_works || '')}</p>
-              <p class="mono text-[10px] text-[#6B3A55] m-0 pt-1">${escapeHtml(buy.brand_name || '')} · ${escapeHtml(buy.category_bucket || '')}</p>
-              <div class="mt-auto">${buyButton(buy, 'complete_outfit')}</div>
-            </div>
-          </article>
-        `;
-      }).join('');
+            <span class="score-badge">#${look.rank} · ${look.score ?? '—'}</span>
+          </div>
+          <div class="p-4 space-y-2 flex-1 flex flex-col">
+            <h3 class="display text-lg m-0 leading-tight">${escapeHtml(look.title || '')}</h3>
+            <p class="text-sm leading-relaxed m-0 text-[#4A3441]">${escapeHtml(look.description || '')}</p>
+            <p class="muted m-0 text-[11px] leading-relaxed"><strong class="text-[#6B3A55]">Why:</strong> ${escapeHtml(look.why_it_works || '')}</p>
+            <p class="mono text-[10px] text-[#6B3A55] m-0 pt-1">${escapeHtml(buy.brand_name || '')} · ${escapeHtml(buy.category_bucket || '')}</p>
+            <div class="mt-auto">${buyButton(buy, opts.source)}</div>
+          </div>
+        </article>`;
     }
 
-    function renderSimilarLikes(likes) {
-      const rail = $('similarRail');
-      if (!likes || !likes.length) {
-        rail.innerHTML = '<p class="muted px-1">No same-category similar picks for this brand yet.</p>';
-        return;
-      }
-      rail.innerHTML = likes.map((look, i) => {
-        const liked = look.liked || {};
-        const buy = look.buy || {};
-        return `
-          <article class="look-card similar" style="animation-delay:${i * 60}ms">
-            <div class="relative">
-              <div class="pair-row">
-                <div>
-                  <p class="text-[9px] uppercase tracking-wider text-[#6B3A55] font-bold m-0 mb-1">You like</p>
-                  ${imgOrPh(liked.image_url, liked.label)}
-                </div>
-                <div class="plus">→</div>
-                <div>
-                  <p class="text-[9px] uppercase tracking-wider text-[#6B3A55] font-bold m-0 mb-1">Try this</p>
-                  ${imgOrPh(buy.image_url, buy.label)}
-                </div>
-              </div>
-              <span class="score-badge">#${look.rank} · ${look.score ?? '—'}</span>
-            </div>
-            <div class="p-4 space-y-2 flex-1 flex flex-col">
-              <h3 class="display text-lg m-0 leading-tight">${escapeHtml(look.title || 'You may also like')}</h3>
-              <p class="text-sm leading-relaxed m-0 text-[#4A3441]">${escapeHtml(look.description || '')}</p>
-              <p class="muted m-0 text-[11px] leading-relaxed"><strong class="text-[#6B3A55]">Why:</strong> ${escapeHtml(look.why_it_works || '')}</p>
-              <div class="mt-auto">${buyButton(buy, 'similar_likes')}</div>
-            </div>
-          </article>
-        `;
-      }).join('');
+    function renderCompleteLooks(looks) {
+      $('completeRail').innerHTML = looks && looks.length
+        ? looks.map((look, i) => pairCard(look, i, {
+            own: look.own || [], cls: look.rank === 1 ? 'rank-1' : '', leftLabel: 'You have',
+            rightLabel: 'Add this', joiner: '+', source: 'complete_outfit',
+          })).join('')
+        : `<p class="muted px-1">${EMPTY_PICKS}</p>`;
+    }
+
+    function renderRecommended(picks) {
+      $('recommendedRail').innerHTML = picks && picks.length
+        ? picks.map((pick, i) => pairCard(pick, i, {
+            own: pick.liked ? [pick.liked] : [], cls: 'similar', leftLabel: 'You have',
+            rightLabel: 'You may like', joiner: '→', source: 'recommended',
+          })).join('')
+        : `<p class="muted px-1">${EMPTY_PICKS}</p>`;
     }
 
     document.body.addEventListener('click', (ev) => {
@@ -633,160 +571,94 @@
       console.info('[style_assistant] buy', { sku, label, brand, url, source: btn.dataset.source });
     });
 
-    async function loadSelectors() {
-      setError('');
-      try {
-        const authH = SuffaiSession.authHeaders();
-        const fetches = [
-          fetch(endpoint('/v1/style-assistant/brands'), { headers: { Accept: 'application/json', ...authH } }),
-        ];
-        if (!lockedCustomerId) {
-          fetches.unshift(
-            fetch(endpoint('/v1/style-assistant/users'), { headers: { Accept: 'application/json', ...authH } })
-          );
-        }
-        const results = await Promise.all(fetches);
-        let uData = { users: [] };
-        let bRes, bData;
-        if (lockedCustomerId) {
-          bRes = results[0];
-          bData = await bRes.json().catch(() => ({}));
-          state.users = [lockedCustomerId];
-          applyCustomerLock();
-        } else {
-          const uRes = results[0];
-          bRes = results[1];
-          uData = await uRes.json().catch(() => ({}));
-          bData = await bRes.json().catch(() => ({}));
-          if (!uRes.ok) throw new Error(SuffaiSession.formatApiDetail(uData.detail, 'Could not load customers.'));
-          state.users = uData.users || [];
-          const uSel = $('userSelect');
-          uSel.innerHTML = state.users.length
-            ? '<option value="">Select customer…</option>' + state.users.map(u => `<option value="${escapeHtml(u)}">${escapeHtml(u)}</option>`).join('')
-            : '<option value="">No customers in user_wardrobe</option>';
-        }
-        if (!bRes.ok) throw new Error(SuffaiSession.formatApiDetail(bData.detail, 'Could not load brands.'));
-
-        state.brands = bData.brands || [];
-
-        const bSel = $('brandSelect');
-        bSel.innerHTML = state.brands.length
-          ? '<option value="">Select brand…</option>' + state.brands.map(b => `<option value="${escapeHtml(b)}">${escapeHtml(b)}</option>`).join('')
-          : '<option value="">No brands in brand_skus</option>';
-
-        $('apiStatus').textContent = lockedCustomerId
-          ? `Your looks · ${state.brands.length} brands`
-          : `${state.users.length} customers · ${state.brands.length} brands`;
-        updateRunEnabled();
-        if (lockedCustomerId) {
-          // Customer path: load personalized feed by default (no campaign labeling)
-          await loadCustomerFeed();
-        }
-      } catch (e) {
-        console.error('[style_assistant]', e);
-        $('apiStatus').textContent = 'Unavailable';
-        setError(e.message || String(e));
-        if (!lockedCustomerId) $('userSelect').innerHTML = '<option value="">Unavailable</option>';
-        else applyCustomerLock();
-        $('brandSelect').innerHTML = '<option value="">Unavailable</option>';
-      }
+    function currentCustomer() {
+      return lockedCustomerId || $('userSelect').value;
     }
 
-    async function loadCustomerFeed() {
-      if (!lockedCustomerId) return;
+    function fillBrandFilter(brands, selected) {
+      const sel = $('brandSelect');
+      sel.innerHTML = '<option value="">All brands</option>'
+        + brands.map((b) => `<option value="${escapeHtml(b)}" ${b === selected ? 'selected' : ''}>${escapeHtml(b)}</option>`).join('');
+      sel.disabled = !brands.length;
+    }
+
+    async function loadFeed() {
+      const customer = currentCustomer();
+      if (!customer) {
+        renderCompleteLooks([]); renderRecommended([]); renderWardrobe([]);
+        $('runHint').textContent = 'Select a customer to see their saved picks.';
+        return;
+      }
+      const brand = $('brandSelect').value;
+      const qs = new URLSearchParams();
+      if (!lockedCustomerId) qs.set('user_uuid', customer);
+      if (brand) qs.set('brand', brand);
       setError('');
       setLoading(true);
-      $('runHint').textContent = 'Loading your suggestions…';
       try {
-        const res = await fetch(endpoint('/v1/style-assistant/feed'), {
+        const res = await fetch(endpoint('/v1/style-assistant/feed' + (qs.toString() ? '?' + qs : '')), {
           headers: { Accept: 'application/json', ...SuffaiSession.authHeaders() },
         });
         const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.detail || data.message || ('HTTP ' + res.status));
+        if (!res.ok) throw new Error(SuffaiSession.formatApiDetail(data.detail || data.message, 'Could not load your picks.'));
         state.result = data;
-        const complete = data.complete_outfit || data.looks || [];
-        const similar = data.similar_likes || [];
-        const brands = (data.brands || []).filter(Boolean);
-        $('completeMeta').textContent = complete.length
-          ? `${complete.length} looks` + (brands.length ? ` · ${brands.join(', ')}` : '')
-          : 'No looks yet';
-        $('similarMeta').textContent = similar.length ? `${similar.length} similar picks` : '';
-        $('wardrobeMeta').textContent = `${(data.wardrobe || []).length} pieces`;
+        const complete = data.complete_outfit || [];
+        const recommended = data.recommended || [];
+        const wardrobe = data.wardrobe || [];
+        fillBrandFilter((data.brands || []).filter(Boolean), data.brand || '');
+        $('completeCount').textContent = complete.length || '';
+        $('recommendedCount').textContent = recommended.length || '';
+        $('wardrobeCount').textContent = wardrobe.length || '';
         renderCompleteLooks(complete);
-        renderSimilarLikes(similar);
-        renderWardrobe(data.wardrobe || []);
-        if (!complete.length && !similar.length) {
-          $('completeRail').innerHTML = '<p class="muted px-1">New looks will appear here when brands publish styles for your area.</p>';
-          $('similarRail').innerHTML = '<p class="muted px-1">Similar picks will show up alongside your wardrobe.</p>';
-          $('runHint').textContent = 'No personalized looks yet — check back soon.';
-        } else {
-          $('runHint').textContent = 'Suggestions tailored to your wardrobe.';
-        }
-        $('apiStatus').textContent = 'Your looks ready';
+        renderRecommended(recommended);
+        renderWardrobe(wardrobe);
+        $('runHint').textContent = complete.length || recommended.length
+          ? `${complete.length + recommended.length} picks${data.brand ? ' from ' + data.brand : ''}.`
+          : EMPTY_PICKS;
+        $('apiStatus').textContent = (data.brands || []).length ? `${data.brands.length} brand(s)` : 'No picks yet';
       } catch (e) {
         console.error('[style_assistant] feed', e);
         setError(e.message || String(e));
-        $('runHint').textContent = 'Could not load suggestions.';
+        $('runHint').textContent = 'Could not load picks.';
+        $('apiStatus').textContent = 'Unavailable';
       } finally {
         setLoading(false);
-        updateRunEnabled();
       }
     }
 
-    async function generate() {
-      let user_uuid = $('userSelect').value;
-      if (lockedCustomerId) user_uuid = lockedCustomerId;
-      const brand_name = $('brandSelect').value;
-      if (!user_uuid || !brand_name || state.loading) return;
-      let doneMsg = '';
-      setError('');
-      setLoading(true);
-      $('wardrobeTitle').textContent = 'Here is your current wardrobe';
+    async function initAssistant() {
+      document.querySelectorAll('.tab-btn').forEach((b) => b.addEventListener('click', () => selectTab(b.dataset.tab)));
+      $('brandSelect').addEventListener('change', loadFeed);
+      if (lockedCustomerId) {
+        $('userField').hidden = true;
+        $('pageTitle').textContent = 'Your Style Assistant';
+        await loadFeed();
+        return;
+      }
+      $('userSelect').addEventListener('change', () => { $('brandSelect').value = ''; loadFeed(); });
       try {
-        const res = await fetch(endpoint('/v1/style-assistant/recommend'), {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-            ...SuffaiSession.authHeaders(),
-          },
-          body: JSON.stringify({ user_uuid, brand_name, limit: 6 })
+        const res = await fetch(endpoint('/v1/style-assistant/users'), {
+          headers: { Accept: 'application/json', ...SuffaiSession.authHeaders() },
         });
         const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(SuffaiSession.formatApiDetail(data.detail || data.message, 'Could not generate suggestions (HTTP ' + res.status + ').'));
-        state.result = data;
-
-        const complete = data.complete_outfit || data.looks || [];
-        const similar = data.similar_likes || [];
-
-        $('completeMeta').textContent = `${complete.length} looks · ${brand_name}`;
-        $('similarMeta').textContent = `${similar.length} similar · ${brand_name}`;
-        $('wardrobeMeta').textContent = `${data.wardrobe_count || 0} pieces`;
-
-        renderCompleteLooks(complete);
-        renderSimilarLikes(similar);
-        renderWardrobe(data.wardrobe || []);
-
-        doneMsg = `Suggestions ready · ${complete.length + similar.length} picks.`;
-        if (data.request_id) console.info('[style_assistant] request_id', data.request_id);
+        if (!res.ok) throw new Error(SuffaiSession.formatApiDetail(data.detail, 'Could not load customers.'));
+        const users = data.users || [];
+        $('userSelect').innerHTML = users.length
+          ? '<option value="">Select customer…</option>' + users.map((u) => `<option value="${escapeHtml(u)}">${escapeHtml(u)}</option>`).join('')
+          : '<option value="">No customers with a wardrobe yet</option>';
+        $('apiStatus').textContent = `${users.length} customers`;
+        await loadFeed();
       } catch (e) {
-        console.error('[style_assistant] recommend', e);
+        console.error('[style_assistant]', e);
+        $('userSelect').innerHTML = '<option value="">Unavailable</option>';
+        $('apiStatus').textContent = 'Unavailable';
         setError(e.message || String(e));
-        $('completeRail').innerHTML = '<p class="muted px-1">Could not generate complete-outfit looks.</p>';
-        $('similarRail').innerHTML = '<p class="muted px-1">Could not generate similar picks.</p>';
-      } finally {
-        setLoading(false);
-        updateRunEnabled();
-        if (doneMsg) $('runHint').textContent = doneMsg;
       }
     }
 
-    $('userSelect').addEventListener('change', updateRunEnabled);
-    $('brandSelect').addEventListener('change', updateRunEnabled);
-    $('runBtn').addEventListener('click', generate);
     const PAGE_PARAMS = new URLSearchParams(location.search);
     const PREVIEW_MODE = session.role === 'brand' || PAGE_PARAMS.get('mode') === 'campaign_preview';
-    if (!PREVIEW_MODE) loadSelectors();
+    if (!PREVIEW_MODE) initAssistant();
   </script>
 
   <script>

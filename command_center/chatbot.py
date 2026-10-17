@@ -124,8 +124,8 @@ Primary signals on focus_pin:
   for analysis_brand vs everyone else (or "Competitors") in that PIN under the same filters
 - commodities: top {commodity, count} rows for analysis_brand in that PIN (assortment proof)
 - catchment_pop: coarse population buffer (secondary only)
-- heuristic_decision / score: a weak prior from rules — you may override it if the
-  competitive + commodity evidence disagrees, but say why
+- heuristic_decision / score: the internal expansion signal before the proximity rule
+  (score weights Champions & Loyalists demand 60% within the demand term)
 
 Guidance (adapt to sparse demo data; do not require huge absolute counts):
 - Yes: meaningful filtered demand AND brand_share clearly competitive (often ≥ ~0.30–0.35)
@@ -139,14 +139,30 @@ If analysis_brand is missing or brand_garments+competitor_garments are all zero,
 or Consider and explain that competitive evidence is insufficient — never invent shares.
 
 ========================
+BINDING RULES (computed server-side — never override)
+========================
+- hv_demand = Champions + Loyal ("Champions & Loyalists") customers in the PIN. These are the
+  priority segments; a new store needs hv_demand > 0.
+- 4 km proximity rule: proximity_zone / nearest_store_km come from the analysed brand's existing
+  stores (located via Google Search). If proximity_zone is "service" (nearest store ≤ 4 km), the
+  decision is "No" — "Service via Existing Store" (optimisation mode): explain cannibalisation risk
+  and use stock_mix to say what that store should stock (commodity, colour, pattern, size curve).
+- proximity_zone "whitespace" (> 4 km): expansion candidate judged on demand density and the
+  optional external_market signals (footfall, rents, competition from Google Search).
+- proximity_zone "unverified": store locations could not be checked; say so and never answer Yes.
+- focus_pin.binding_decision is the final decision. Return exactly that value in "decision" and
+  explain the reasons; cite the 4 km threshold and the nearest-store distance when present.
+
+========================
 EXPLANATION REQUIREMENTS
 ========================
 In "explanation" (4–8 sentences or short bullets), cover:
 1) Audience slice (filters: PIN, age, gender, RFM) and Estimated footfall / demand
-2) Brand vs competitor balance at this PIN (cite brand_share and garment counts)
-3) What commodities the brand shows in wardrobe data (cite top 2–3 from commodities)
-4) Explicit open-store call: Yes / Consider / No and the single strongest reason
-5) One practical next step (e.g. test assortment, compare top_pins, widen filters)
+2) Champions & Loyalists demand and the 4 km proximity result (nearest store distance or whitespace)
+3) Brand vs competitor balance at this PIN (cite brand_share and garment counts)
+4) What commodities the brand shows in wardrobe data (cite top 2–3 from commodities)
+5) Explicit open-store call: Yes / Consider / No and the single strongest reason
+6) One practical next step (e.g. route stock to the existing store, run the external market check)
 
 Never mention individual people, phones, emails, addresses, or exact personal coordinates.
 Use area_label + PIN only. Do not invent PINs, counts, or percentages not present in JSON.

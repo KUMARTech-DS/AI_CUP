@@ -1314,7 +1314,12 @@ def set_campaign_impact(
             )
 
 
-def list_started_recs_for_user(user_uuid: str, *, limit: int = 20) -> list[dict[str, Any]]:
+# Campaigns whose saved per-customer picks are shown in the Style Assistant
+# (from the moment ranking finishes; discarded / draft / error campaigns are hidden).
+STYLE_FEED_STATUSES = ("ranked", "configured", "launched", "exported", "started")
+
+
+def list_recs_for_user(user_uuid: str, *, limit: int = 50) -> list[dict[str, Any]]:
     with connect() as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -1323,11 +1328,11 @@ def list_started_recs_for_user(user_uuid: str, *, limit: int = 20) -> list[dict[
                        r.payload, r.computed_at, c.status
                 FROM campaign_user_recommendations r
                 JOIN brand_campaigns c ON c.campaign_id = r.campaign_id
-                WHERE r.user_uuid = %s AND c.status = 'started'
+                WHERE r.user_uuid = %s AND c.status = ANY(%s)
                 ORDER BY COALESCE(r.fit_score, 0) DESC, r.computed_at DESC
                 LIMIT %s
                 """,
-                (user_uuid, limit),
+                (user_uuid, list(STYLE_FEED_STATUSES), limit),
             )
             out = []
             for row in cur.fetchall():

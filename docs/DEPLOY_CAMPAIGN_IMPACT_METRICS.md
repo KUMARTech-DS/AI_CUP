@@ -500,6 +500,71 @@ FROM campaign_jobs ORDER BY created_at DESC LIMIT 10;
 
 ---
 
+## Step 4d — Geo: RFM scoring, 4 km store rule, external market check, stock routing (migration 010)
+
+### What changes on the Geo tab (brand and admin)
+
+- **RFM-led scoring.** Champions + Loyal customers ("Champions & Loyalists") make up 60% of the demand term in the opportunity score. A PIN with no Champions or Loyal customers can reach Consider but never Yes. This high-value count ignores the RFM filter, so narrowing the view never hides it.
+- **4 km proximity rule.** Gemini with Google Search grounding locates the analysed brand's existing stores in `GEO_CITY`. The results are validated against the city bounding box, fall back to the PIN centroid when needed, and are cached. If a PIN centroid is within 4.0 km (haversine distance) of an existing store, the decision is always **No**, labelled **Service via Existing Store** (optimisation mode). The server recomputes this for `/v1/geo/brief` and overrides Gemini when it disagrees. If the store lookup fails, proximity is shown as **unverified** and Yes is capped at Consider.
+- **Whitespace (more than 4 km).** The decision comes from demand density and brand fit. **Run external check** fetches grounded footfall, retail rent and competition data, together with its sources and the Google Search suggestions chip. An unfavourable result lowers the decision by one step; external data never raises it. Brand logins never see competitor names.
+- **Stock routing.** For PINs within 4 km, the guide covers the store's 4 km catchment: aggregated RFM x age x gender personas, demographics, commodity, colour and pattern mix, and the size curve. Persona groups smaller than `GEO_PERSONA_MIN_CUSTOMERS` are merged into "Other segments", and the merged group is hidden if it is still too small.
+- **Explainable logic.** The "Why this decision" card lists each step: high-value demand, the 4 km rule with the nearest-store distance, demand and brand fit, the external market result, and the final decision. The map shows existing stores (blue squares, grey when the location is approximate) with dashed 4 km rings. The Logistics store plan only offers whitespace areas.
+- AURA: `analyze_geo` and `run_geo_brief` return the proximity fields and the decision steps. The new `stock_routing_guide` tool builds the routing guide.
+
+### 1. Migration
+
+Apply `db/migrations/010_geo_store_intel.sql`, using the same method as Step 2. It creates `geo_store_lookups`, `geo_brand_stores` and `geo_market_enrichment`. Without `DATABASE_URL`, both caches fall back to per-instance memory.
+
+```sql
+SELECT brand_key, city, status, fetched_at FROM geo_store_lookups ORDER BY fetched_at DESC LIMIT 10;
+```
+
+### 2. Dependency, IAM and cost
+
+- `command_center/requirements.txt` now includes `google-genai`, so rebuild the image (Step 3).
+- Grounding runs on Vertex AI through the Command Center service account. Its existing `roles/aiplatform.user` role is enough. `GEO_GROUNDING_LOCATION=global` is the safest region for Google Search grounding.
+- Each grounded prompt is billed separately from tokens. Calls happen only on a cache miss: one per brand and city for stores (refreshed every `GEO_STORE_CACHE_DAYS`, or by an admin) and one per PIN, brand and role when **Run external check** is clicked. Brand logins cannot force a refresh.
+- Google's terms require grounded answers to be shown with their sources and the search suggestions chip. The UI shows both. Do not remove them.
+
+### 3. Environment (optional, defaults shown)
+
+Use `--update-env-vars` so existing variables are kept.
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `GEO_GROUNDING_ENABLED` | `true` | Turn grounded calls off (proximity becomes unverified and Yes is capped at Consider) |
+| `GEO_GROUNDING_MODEL` | `gemini-2.5-flash` | Model for store lookup and market check |
+| `GEO_GROUNDING_LOCATION` | `global` | Vertex location for grounding |
+| `GEO_CITY` | `Bengaluru` | City searched for existing stores (bounding box validated) |
+| `GEO_STORE_CACHE_DAYS` | `7` | Store-location cache |
+| `GEO_MARKET_CACHE_DAYS` | `7` | External market cache |
+| `GEO_PERSONA_MIN_CUSTOMERS` | `3` | Minimum persona group size in the routing guide |
+
+```bash
+gcloud run services update suffai-command-center --region="$GCP_REGION" --project="$GOOGLE_CLOUD_PROJECT" \
+  --update-env-vars="GEO_GROUNDING_LOCATION=global,GEO_CITY=Bengaluru"
+```
+
+### 4. Smoke test
+
+```bash
+TOKEN=...   # from POST /v1/auth/login (brand or admin)
+curl -s -H "Authorization: Bearer $TOKEN" "$CC_URL/v1/geo/stores" | jq '{status, n: (.stores|length), sources: (.sources|length)}'
+curl -s -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"pin":"560008"}' "$CC_URL/v1/geo/routing-guide" | jq '{store, personas: (.personas|length)}'   # 409 if the PIN is whitespace
+curl -s -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"pin":"560066","expansion_decision":"Yes"}' "$CC_URL/v1/geo/market-enrichment" | jq '{status, proximity_zone, decision_after, sources: (.sources|length)}'   # 409 within 4 km
+```
+
+In the UI, open Geo and check the following:
+- The note under the map lists the stores found with their sources.
+- Blue store squares appear with 4 km rings.
+- A PIN inside a ring shows **No · Service via Existing Store** together with the routing card.
+- A PIN outside every ring shows the external check card.
+- For brand logins, no competitor names appear in the external check.
+
+---
+
 ## Step 5 — Logs if something fails
 
 ```bash
@@ -530,13 +595,17 @@ Look for:
 | SKU attributes empty (CSV / Campaigns tab) | `suffai-extraction` has `ENABLE_VERTEX=false` (returns `unknown`), or the image is not a garment |
 | Job `failed` with "temporarily unavailable" | Pipeline env missing (`EXTRACTION_URL`, `SIMILARITY_URL`, `GCS_IMAGE_BUCKET`) |
 | Brand does not see the Campaigns tab | Old session — reload the shell or log in again |
+| Geo shows "Store locations could not be verified" for every PIN | Grounding failed. Logs show `store lookup unavailable`. Usual causes: `google-genai` is missing (rebuild the image), `GEO_GROUNDING_ENABLED=false`, `ENABLE_VERTEX` is not `true`, the project is missing, or grounding is not available in `GEO_GROUNDING_LOCATION` (use `global`) |
+| `relation "geo_store_lookups" does not exist` in logs | Migration `010` not applied. Results still work but are cached only in memory |
+| A known store is missing or misplaced | Ask an admin to click **Refresh stores** (or `GET /v1/geo/stores?refresh=true`). Grey squares are approximate PIN-centroid locations |
+| External check returns 409 | The PIN is within 4 km of an existing store. Use the routing guide instead |
 
 ---
 
 ## Checklist
 
 - [ ] `DATABASE_URL` + Cloud SQL connection on `suffai-command-center`
-- [ ] Migrations `005` → `006` → `007` → `008` → `009` applied
+- [ ] Migrations `005` → `006` → `007` → `008` → `009` → `010` applied
 - [ ] `suffai-similarity` redeployed; `compare-pins` returns 400 (not 404) for a bad PIN; `ENABLE_VERTEX=true` on similarity and extraction
 - [ ] Cloud Tasks queue `campaign-rank`, invoker SA and IAM bindings created; `CLOUD_TASKS_QUEUE`, `TASKS_SERVICE_ACCOUNT`, `COMMAND_CENTER_URL` set; timeout 900s
 - [ ] Ads Lab job card shows counts + ETA; popup on completion; 3P CSV export and 1P Campaigns hand-off work
@@ -550,6 +619,8 @@ Look for:
 - [ ] `ENABLE_VERTEX=true`; AURA completes the chat smoke test (analyse → brief → start → attach + rank → configure → Confirm launch → monitor)
 - [ ] AURA guardrail spot-checks refuse, and errors show only a generic message + Reference id
 - [ ] One instance or session affinity enabled for AURA state
+- [ ] Migration `010` applied; image rebuilt with `google-genai`; `/v1/geo/stores` returns `status: ok` (or `empty`) with sources
+- [ ] Geo: PINs within 4 km show No · Service via Existing Store and the routing guide; whitespace PINs offer the external check with sources and the search chip; no competitor names for brand logins
 
 ---
 
@@ -558,4 +629,4 @@ Look for:
 - Full stack bootstrap: [GCP_DEPLOY_STEP_BY_STEP.md](./GCP_DEPLOY_STEP_BY_STEP.md)
 - Command Center overview: [GCP_COMMAND_CENTER.md](./GCP_COMMAND_CENTER.md)
 - Deploy script: `deploy/deploy_command_center.sh`
-- Migrations: `db/migrations/007_campaign_impact_metrics.sql`, `db/migrations/008_campaign_journey.sql`, `db/migrations/009_campaign_jobs_channels.sql`
+- Migrations: `db/migrations/007_campaign_impact_metrics.sql`, `db/migrations/008_campaign_journey.sql`, `db/migrations/009_campaign_jobs_channels.sql`, `db/migrations/010_geo_store_intel.sql`

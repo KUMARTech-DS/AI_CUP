@@ -45,9 +45,19 @@ AI_CUP_latest/
 | `POST` | `/v1/ads-lab/extract` | Upload → GCS `demo/` → existing `suffai-extraction` `/v1/extract` (baseline extract; still available) |
 | `POST` | `/v1/ads-lab/campaign` | **Primary Ads Lab path:** brand SKU campaign — GCS `brands/{brand}/…` → extract (brand overwrite) → similarity compare-pins → rank with PIN+age+gender+RFM; brand role forces `brand_name` |
 | `POST` | `/v1/chat` | Corner bot on Command Center (not legacy `api/`): Vertex Gemini + slim `web/metrics.json` + Geo/Ads UI + optional `filter_context` |
-| `POST` | `/v1/geo/brief` | Geo Market brief (Vertex Gemini) from **PII-free** store-score aggregates; template fallback in UI if Vertex off |
-| `GET` | `/v1/admin/unique-summary` | Admin tab proxy → `suffai-similarity` `/v1/admin/unique-garments/summary` |
-| `GET` | `/v1/admin/unique-garments` | Admin tab proxy → `suffai-similarity` `/v1/admin/unique-garments` |
+| `POST` | `/v1/geo/brief` | Geo Market brief (Vertex Gemini) from **PII-free** store-score aggregates; template fallback in UI if Vertex off. Server enforces the 4 km store rule and returns `decision_label`, `mode`, `proximity`, `decision_logic`, `stock_mix` |
+| `GET` | `/v1/geo/stores` | Existing stores of the analysed brand (Gemini + Google Search, cached) with 4 km catchment PINs; `?refresh=true` admin only |
+| `POST` | `/v1/geo/routing-guide` | Regional stock & assortment routing guide for a PIN within 4 km of an existing store (aggregated personas, min group size) |
+| `POST` | `/v1/geo/market-enrichment` | Grounded footfall / rent / competition for a whitespace PIN (> 4 km); 409 within 4 km; competitor names masked for brands |
+| `GET` | `/v1/admin/unique-summary` | Admin only. Proxy → `suffai-similarity` `/v1/admin/unique-garments/summary` |
+| `GET` | `/v1/admin/unique-garments` | Admin only. Proxy → `suffai-similarity` `/v1/admin/unique-garments` |
+| `GET` | `/v1/admin/intel/customers-overview` | Admin only. Total / qualified users, cohort size, RFM breakdown, age × gender (`rfm`, `pin` CSV filters) |
+| `GET` | `/v1/admin/intel/customers` | Admin only. Paged directory; `q` = name or phone digits, `rfm`, `pin`, `qualified`, `page`, `size`. Phones masked (`+91 98xxx xx210`) |
+| `GET` | `/v1/admin/intel/customers/{id}` | Admin only. Person-level profile: commodities, colours, sizes, service split, garment attributes, monthly spending momentum |
+| `POST` | `/v1/admin/intel/customers/{id}/reveal-phone` | Admin only. Returns the full phone and logs `admin=<user> customer=<short id> action=reveal_phone` (never the number) |
+| `GET` | `/v1/admin/intel/garments` | Admin only. Garment cards + fabric / pattern / size / category × fabric aggregates (`commodity`, `brand`, `fabric`, `pattern`, `garment_size`) |
+| `GET` | `/v1/admin/intel/brands` | Admin only. Share ranking, treemap, co-ownership heatmap, sunburst, size matrix, regional skew, deep dives (`brands`, `pin`, `rfm`, `commodity`, `menu`) |
+| `GET` | `/v1/admin/intel/campaigns` | Admin only. Campaign cards with mapped status + **simulated** conversion / redemptions (`brand`, `status`, `pin`, `rfm`) |
 | `GET` | `/v1/style-assistant/users` | Style Assistant: distinct `user_uuid` from `user_wardrobe` |
 | `GET` | `/v1/style-assistant/brands` | Style Assistant: distinct brands from `brand_skus` |
 | `POST` | `/v1/style-assistant/recommend` | Feature 2: wardrobe × brand SKU outfits (Feature 1 blend + Vertex copy); customer role forces `user_uuid` |
@@ -59,13 +69,18 @@ AI_CUP_latest/
 
 **Chat UI:** floating corner **Bot** on `index.html` (Geo + Ads Lab only; hidden on Admin). Uses `web/metrics.json` summary on the server. Request body may include optional `filter_context` (PIN/age/gender/RFM/brand) merged into the Vertex prompt.
 
-**Admin tab:** `admin.html` in the shell calls CC `/v1/admin/*`, which proxies to similarity (requires `SIMILARITY_URL` + CC SA `run.invoker` on similarity).
+**Admin tab:** `admin.html` has four tabs: Customer Intelligence, Wardrobe & Garments, Brands Intelligence and Campaigns Management. Every `/v1/admin/*` route requires an admin session and returns `Cache-Control: no-store` for intel payloads.
+- **Data:** real data only. BigQuery `customers` / `orders` / `commodities` (cached in-process for `ADMIN_INTEL_CACHE_SEC`, default 600) plus Cloud SQL `brand_campaigns` / `brand_skus`. Missing fields render as "No data"; nothing is synthesised. The image-deduplicated garments section still proxies to similarity (requires `SIMILARITY_URL` + CC SA `run.invoker` on similarity).
+- **Qualified users:** at least 3 orders and an order within 60 days of the latest order date in the dataset.
+- **Menu catalog** is derived from each garment's `gender` field.
+- **Campaign status:** `launched` within its end date (or launch + duration) → Active, past it → Completed; `configured` with a future `start_date` → Scheduled; other `configured` / `ranked` → Draft; `ignored` → Discarded. Conversion % = simulated conversions ÷ simulated reach; redemptions = simulated conversions. Both are labelled Simulated.
+- **PII:** names and masked phones are visible to admin sessions only. Full phones need an explicit Reveal (logged server-side without the number). None of this reaches AURA, the corner Bot or brand logins; load errors are returned as a generic 503.
 
 **Ads Lab campaign (Part 1):** brand name + multi-PIN + age/gender/RFM → `POST /v1/ads-lab/campaign`. Extraction service unchanged; brand overwritten in BFF. Ranking blends PIN unique-garment similarity (`suffai-similarity` `/v1/similarity/compare-pins`) with metrics taste for the full audience. Tables: `brand_campaigns`, `brand_skus`, `brand_sku_pin_scores` (migration `005_brand_sku_campaigns.sql`). Requires `SIMILARITY_URL` + `DATABASE_URL` on command-center.
 
 **Style Assistant (Part 2):** tab `style_assistant.html` — pick `user_uuid` + advertising brand → `POST /v1/style-assistant/recommend`. Response sections: **`complete_outfit`** (complementary pairs + Vertex copy), **`similar_likes`** (same-category “you may also like”), **`wardrobe`**. Feature 1 blend for scoring. Buy CTA uses optional `STYLE_BUY_URL_TEMPLATE` (`{sku_uuid}`, `{brand_name}`). Needs `DATABASE_URL`, `ENABLE_VERTEX=true`, GCS signed URLs. No new migration (005 + wardrobe tables).
 
-**Geo store placement:** Hub **centroid is fixed at pincode** (`pin_geo`). Demo filters change Estimated footfall. Open-store uses **brand vs competitor garment share** at the PIN (under filters) plus **brand commodity counts**, then `POST /v1/geo/brief` asks Gemini for `decision` + full `explanation` + `brief` (JSON). Heuristic prior used if Vertex fails (`fallback=true`, still returns a decision). No per-user lat/lon or PII in the prompt.
+**Geo store placement:** Hub **centroid is fixed at pincode** (`pin_geo`). Demo filters change Estimated footfall. Open-store uses **brand vs competitor garment share** at the PIN (under filters) plus **brand commodity counts**, then `POST /v1/geo/brief` asks Gemini for `decision` + full `explanation` + `brief` (JSON). Heuristic prior used if Vertex fails (`fallback=true`, still returns a decision). No per-user lat/lon or PII in the prompt. Champions & Loyalists weight the demand term (60%); a PIN within 4 km of an existing store of the brand is always **No · Service via Existing Store** (see [DEPLOY_CAMPAIGN_IMPACT_METRICS.md](./DEPLOY_CAMPAIGN_IMPACT_METRICS.md) Step 4d).
 
 ---
 
@@ -208,7 +223,16 @@ curl -sS -X POST "$URL/v1/chat" -H 'Content-Type: application/json' \
   -d '{"message":"Summarize top brands","context":{"active_tab":"geo"}}'
 # Open: $URL/login.html  — use admin1 / brand_* / cust_* from plaintext handoff
 # (demo seed admin: admin1 / 123@admin). Corner Bot on Geo/Ads for brand+admin only.
+
+# Admin intelligence (admin token required; brand token → 403, none → 401)
+TOKEN=$(curl -sS -X POST "$URL/v1/auth/login" -H 'Content-Type: application/json' \
+  -d '{"username":"admin1","password":"..."}' | python3 -c 'import sys,json;print(json.load(sys.stdin)["token"])')
+curl -sS "$URL/v1/admin/intel/customers-overview" -H "X-Session-Token: $TOKEN" | head -c 400
+curl -sS "$URL/v1/admin/intel/customers?q=98&size=5" -H "X-Session-Token: $TOKEN" | head -c 400
+curl -sS "$URL/v1/admin/intel/campaigns" -H "X-Session-Token: $TOKEN" | head -c 400
 ```
+
+**Admin smoke checklist:** each of the four tabs loads with charts; customer search by name and by phone digits works; Details expands the profile; Reveal shows the full phone and Cloud Logging shows `action=reveal_phone` with no number; garment and brand filters change the charts; campaign cards show Simulated labels and "All columns" shows the full table; a brand login gets 403 on `/v1/admin/*`.
 
 ### Alternative — Cloud Build
 
