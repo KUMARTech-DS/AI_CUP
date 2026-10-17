@@ -61,6 +61,25 @@
     }
     .btn-primary:hover:not(:disabled) { background: #4A4339; transform: translateY(-1px); }
     .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-buy {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      width: 100%;
+      margin-top: 0.65rem;
+      padding: 0.55rem 0.75rem;
+      border-radius: 10px;
+      border: 1px solid rgba(137,118,92,0.55);
+      background: rgba(137,118,92,0.12);
+      color: var(--ink);
+      font-weight: 700;
+      font-size: 0.78rem;
+      cursor: pointer;
+      transition: background 0.2s ease, transform 0.15s ease;
+    }
+    .btn-buy:hover { background: rgba(137,118,92,0.22); transform: translateY(-1px); }
+    .btn-buy.bought { background: #292722; color: #FAF8F4; border-color: #292722; }
     .wardrobe-rail, .looks-rail {
       display: flex;
       gap: 1rem;
@@ -98,6 +117,8 @@
       box-shadow: 0 14px 36px rgba(41,39,34,0.08);
       transition: transform 0.35s ease, box-shadow 0.35s ease;
       animation: rise 0.55s ease both;
+      display: flex;
+      flex-direction: column;
     }
     .look-card:hover {
       transform: translateY(-6px) scale(1.01);
@@ -105,6 +126,7 @@
       border-color: var(--accent);
     }
     .look-card.rank-1 { border-color: var(--accent); box-shadow: 0 0 0 1px rgba(137,118,92,0.25), 0 18px 40px rgba(137,118,92,0.12); }
+    .look-card.similar { border-color: #DED7CB; }
     .pair-row {
       display: grid;
       grid-template-columns: 1fr auto 1fr;
@@ -144,6 +166,32 @@
       text-align: center;
       padding: 0.5rem;
     }
+    .section-kicker {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+      color: var(--accent);
+      font-weight: 700;
+      margin: 0;
+    }
+    .toast {
+      position: fixed;
+      bottom: 1.25rem;
+      right: 1.25rem;
+      z-index: 50;
+      background: #292722;
+      color: #FAF8F4;
+      padding: 0.75rem 1rem;
+      border-radius: 10px;
+      font-size: 13px;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.25);
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity 0.25s ease, transform 0.25s ease;
+      pointer-events: none;
+      max-width: 280px;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
     @keyframes rise {
       from { opacity: 0; transform: translateY(12px); }
       to { opacity: 1; transform: translateY(0); }
@@ -160,7 +208,7 @@
   <header class="glass z-20 border-b border-[#E4DED3] px-4 py-3 flex-none flex items-center justify-between gap-4">
     <div class="min-w-0">
       <h1 class="display text-2xl m-0 tracking-wide">Style Assistant</h1>
-      <p class="muted m-0 mt-0.5">Your wardrobe × brand ads — outfit combinations that invite a buy</p>
+      <p class="muted m-0 mt-0.5">Complete outfits · similar picks · your wardrobe</p>
     </div>
     <div id="apiStatus" class="mono text-[11px] px-2 py-1 rounded-full border border-[#E4DED3] bg-[#F0ECE4] text-[#4A4339]">Loading…</div>
   </header>
@@ -180,12 +228,12 @@
           Advertising brand
           <select id="brandSelect" class="field mt-1"><option value="">Loading brands…</option></select>
         </label>
-        <p class="muted leading-relaxed">Uses wardrobe embeddings + Feature 1 blend scoring, then Vertex copy for each look.</p>
+        <p class="muted leading-relaxed">1) Complete the outfit with complementary SKUs. 2) Similar items in the same category. 3) Your wardrobe.</p>
       </section>
 
       <section class="mt-auto space-y-2">
         <button id="runBtn" type="button" class="btn-primary" disabled>
-          <i class="fa-solid fa-wand-magic-sparkles text-[#89765C] mr-2"></i>Generate outfits
+          <i class="fa-solid fa-wand-magic-sparkles text-[#89765C] mr-2"></i>Generate suggestions
         </button>
         <p id="runHint" class="muted">Select a customer and brand to continue.</p>
         <p id="errorBox" class="err hidden"></p>
@@ -196,16 +244,48 @@
       <div id="loadingOverlay" class="absolute inset-0 z-40 hidden items-center justify-center bg-[#FAF8F4]/85 backdrop-blur-sm">
         <div class="text-center">
           <i class="fa-solid fa-circle-notch text-4xl text-[#89765C] animate-spin mb-4"></i>
-          <p class="mono text-sm">Ranking SKUs · writing outfit stories…</p>
+          <p class="mono text-sm">Building outfits · finding similar picks…</p>
         </div>
       </div>
 
       <div class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+        <!-- 1. Complete your outfit -->
         <section class="glass p-4 sm:p-5">
           <div class="flex items-end justify-between gap-3 mb-2">
             <div>
-              <p class="text-[10px] uppercase tracking-[0.2em] text-[#89765C] font-bold">Their wardrobe</p>
-              <h2 id="wardrobeTitle" class="display text-xl m-0 mt-1">Pick a customer</h2>
+              <p class="section-kicker">1 · Outfit completion</p>
+              <h2 class="display text-xl m-0 mt-1">Complete your outfit</h2>
+              <p class="muted m-0 mt-1">Pair what you own with a complementary brand piece to buy.</p>
+            </div>
+            <p id="completeMeta" class="muted mono"></p>
+          </div>
+          <div id="completeRail" class="looks-rail">
+            <p class="muted px-1">Complementary looks appear here after you generate.</p>
+          </div>
+        </section>
+
+        <!-- 2. Similar likes -->
+        <section class="glass p-4 sm:p-5">
+          <div class="flex items-end justify-between gap-3 mb-2">
+            <div>
+              <p class="section-kicker">2 · Similar taste</p>
+              <h2 class="display text-xl m-0 mt-1">Since you have these, you may like similar ones</h2>
+              <p class="muted m-0 mt-1">Same category as pieces you already own — alternatives from the brand.</p>
+            </div>
+            <p id="similarMeta" class="muted mono"></p>
+          </div>
+          <div id="similarRail" class="looks-rail">
+            <p class="muted px-1">Similar-item suggestions appear here after you generate.</p>
+          </div>
+        </section>
+
+        <!-- 3. Current wardrobe -->
+        <section class="glass p-4 sm:p-5">
+          <div class="flex items-end justify-between gap-3 mb-2">
+            <div>
+              <p class="section-kicker">3 · Closet</p>
+              <h2 id="wardrobeTitle" class="display text-xl m-0 mt-1">Here is your current wardrobe</h2>
+              <p class="muted m-0 mt-1">Everything we know for this customer from wardrobe ingest.</p>
             </div>
             <p id="wardrobeMeta" class="muted mono"></p>
           </div>
@@ -213,22 +293,11 @@
             <p class="muted px-1">Wardrobe pieces appear here after you generate.</p>
           </div>
         </section>
-
-        <section class="glass p-4 sm:p-5">
-          <div class="flex items-end justify-between gap-3 mb-2">
-            <div>
-              <p class="text-[10px] uppercase tracking-[0.2em] text-[#89765C] font-bold">Recommended looks</p>
-              <h2 class="display text-xl m-0 mt-1">Own it + complete it</h2>
-            </div>
-            <p id="looksMeta" class="muted mono"></p>
-          </div>
-          <div id="looksRail" class="looks-rail">
-            <p class="muted px-1">Outfit cards will show wardrobe pieces paired with a brand SKU to buy.</p>
-          </div>
-        </section>
       </div>
     </section>
   </main>
+
+  <div id="toast" class="toast" role="status"></div>
 
   <script>
     const $ = (id) => document.getElementById(id);
@@ -246,6 +315,14 @@
       el.classList.remove('hidden');
     }
 
+    function showToast(msg) {
+      const t = $('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      clearTimeout(showToast._timer);
+      showToast._timer = setTimeout(() => t.classList.remove('show'), 2800);
+    }
+
     function setLoading(on) {
       state.loading = on;
       const ov = $('loadingOverlay');
@@ -257,7 +334,7 @@
     function updateRunEnabled() {
       $('runBtn').disabled = state.loading || !$('userSelect').value || !$('brandSelect').value;
       if ($('userSelect').value && $('brandSelect').value) {
-        $('runHint').textContent = 'Ready — generate wardrobe × brand outfit combinations.';
+        $('runHint').textContent = 'Ready — generate complete outfits and similar picks.';
       } else {
         $('runHint').textContent = 'Select a customer and brand to continue.';
       }
@@ -274,6 +351,21 @@
       })[c]);
     }
 
+    function buyButton(buy, source) {
+      if (!buy || !buy.sku_uuid) return '';
+      const label = escapeHtml(buy.label || 'item');
+      const brand = escapeHtml(buy.brand_name || '');
+      const url = buy.buy_url ? escapeHtml(buy.buy_url) : '';
+      return `<button type="button" class="btn-buy" data-buy="1"
+        data-sku="${escapeHtml(buy.sku_uuid)}"
+        data-label="${label}"
+        data-brand="${brand}"
+        data-url="${url}"
+        data-source="${escapeHtml(source || '')}">
+        <i class="fa-solid fa-bag-shopping"></i> Buy this item
+      </button>`;
+    }
+
     function renderWardrobe(items) {
       const rail = $('wardrobeRail');
       if (!items || !items.length) {
@@ -286,15 +378,16 @@
           <div class="p-2">
             <p class="text-[11px] font-semibold truncate m-0">${escapeHtml(w.label || 'Piece')}</p>
             <p class="muted truncate m-0 text-[10px]">${escapeHtml(w.brand_name || '')}</p>
+            <p class="mono text-[9px] text-[#89765C] m-0 mt-0.5">${escapeHtml(w.category_bucket || '')}</p>
           </div>
         </article>
       `).join('');
     }
 
-    function renderLooks(looks) {
-      const rail = $('looksRail');
+    function renderCompleteLooks(looks) {
+      const rail = $('completeRail');
       if (!looks || !looks.length) {
-        rail.innerHTML = '<p class="muted px-1">No looks returned. Try another brand or customer.</p>';
+        rail.innerHTML = '<p class="muted px-1">No complementary outfit pairs for this brand yet.</p>';
         return;
       }
       rail.innerHTML = looks.map((look, i) => {
@@ -314,22 +407,77 @@
                 </div>
                 <div class="plus">+</div>
                 <div>
-                  <p class="text-[9px] uppercase tracking-wider text-[#89765C] font-bold m-0 mb-1">Buy this</p>
+                  <p class="text-[9px] uppercase tracking-wider text-[#89765C] font-bold m-0 mb-1">Add this</p>
                   ${imgOrPh(buy.image_url, buy.label)}
                 </div>
               </div>
               <span class="score-badge">#${look.rank} · ${look.score ?? '—'}</span>
             </div>
-            <div class="p-4 space-y-2">
-              <h3 class="display text-lg m-0 leading-tight">${escapeHtml(look.title || 'Complete the look')}</h3>
+            <div class="p-4 space-y-2 flex-1 flex flex-col">
+              <h3 class="display text-lg m-0 leading-tight">${escapeHtml(look.title || 'Complete your outfit')}</h3>
               <p class="text-sm leading-relaxed m-0 text-[#3d3a34]">${escapeHtml(look.description || '')}</p>
-              <p class="muted m-0 text-[11px] leading-relaxed"><strong class="text-[#89765C]">Why it works:</strong> ${escapeHtml(look.why_it_works || '')}</p>
-              <p class="mono text-[10px] text-[#89765C] m-0 pt-1">${escapeHtml(buy.brand_name || '')} · ${escapeHtml((buy.attributes && buy.attributes.color) || '')}</p>
+              <p class="muted m-0 text-[11px] leading-relaxed"><strong class="text-[#89765C]">Why:</strong> ${escapeHtml(look.why_it_works || '')}</p>
+              <p class="mono text-[10px] text-[#89765C] m-0 pt-1">${escapeHtml(buy.brand_name || '')} · ${escapeHtml(buy.category_bucket || '')}</p>
+              <div class="mt-auto">${buyButton(buy, 'complete_outfit')}</div>
             </div>
           </article>
         `;
       }).join('');
     }
+
+    function renderSimilarLikes(likes) {
+      const rail = $('similarRail');
+      if (!likes || !likes.length) {
+        rail.innerHTML = '<p class="muted px-1">No same-category similar picks for this brand yet.</p>';
+        return;
+      }
+      rail.innerHTML = likes.map((look, i) => {
+        const liked = look.liked || {};
+        const buy = look.buy || {};
+        return `
+          <article class="look-card similar" style="animation-delay:${i * 60}ms">
+            <div class="relative">
+              <div class="pair-row">
+                <div>
+                  <p class="text-[9px] uppercase tracking-wider text-[#89765C] font-bold m-0 mb-1">You like</p>
+                  ${imgOrPh(liked.image_url, liked.label)}
+                </div>
+                <div class="plus">→</div>
+                <div>
+                  <p class="text-[9px] uppercase tracking-wider text-[#89765C] font-bold m-0 mb-1">Try this</p>
+                  ${imgOrPh(buy.image_url, buy.label)}
+                </div>
+              </div>
+              <span class="score-badge">#${look.rank} · ${look.score ?? '—'}</span>
+            </div>
+            <div class="p-4 space-y-2 flex-1 flex flex-col">
+              <h3 class="display text-lg m-0 leading-tight">${escapeHtml(look.title || 'You may also like')}</h3>
+              <p class="text-sm leading-relaxed m-0 text-[#3d3a34]">${escapeHtml(look.description || '')}</p>
+              <p class="muted m-0 text-[11px] leading-relaxed"><strong class="text-[#89765C]">Why:</strong> ${escapeHtml(look.why_it_works || '')}</p>
+              <div class="mt-auto">${buyButton(buy, 'similar_likes')}</div>
+            </div>
+          </article>
+        `;
+      }).join('');
+    }
+
+    document.body.addEventListener('click', (ev) => {
+      const btn = ev.target.closest('[data-buy="1"]');
+      if (!btn) return;
+      const sku = btn.dataset.sku || '';
+      const label = btn.dataset.label || 'item';
+      const brand = btn.dataset.brand || '';
+      const url = btn.dataset.url || '';
+      if (url) {
+        window.open(url, '_blank', 'noopener,noreferrer');
+        showToast(`Opening buy page for ${label}`);
+      } else {
+        showToast(`Buy intent: ${label}${brand ? ' · ' + brand : ''} (demo — set STYLE_BUY_URL_TEMPLATE for a real link)`);
+      }
+      btn.classList.add('bought');
+      btn.innerHTML = '<i class="fa-solid fa-check"></i> Added';
+      console.info('[style_assistant] buy', { sku, label, brand, url, source: btn.dataset.source });
+    });
 
     async function loadSelectors() {
       setError('');
@@ -373,7 +521,7 @@
       if (!user_uuid || !brand_name || state.loading) return;
       setError('');
       setLoading(true);
-      $('wardrobeTitle').textContent = user_uuid;
+      $('wardrobeTitle').textContent = 'Here is your current wardrobe';
       try {
         const res = await fetch(endpoint('/v1/style-assistant/recommend'), {
           method: 'POST',
@@ -383,15 +531,24 @@
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.detail || data.message || ('HTTP ' + res.status));
         state.result = data;
-        $('wardrobeMeta').textContent = `${data.wardrobe_count || 0} pieces · ${data.sku_count || 0} SKUs`;
-        $('looksMeta').textContent = `${(data.looks || []).length} looks · ${brand_name}`;
+
+        const complete = data.complete_outfit || data.looks || [];
+        const similar = data.similar_likes || [];
+
+        $('completeMeta').textContent = `${complete.length} looks · ${brand_name}`;
+        $('similarMeta').textContent = `${similar.length} similar · ${brand_name}`;
+        $('wardrobeMeta').textContent = `${data.wardrobe_count || 0} pieces`;
+
+        renderCompleteLooks(complete);
+        renderSimilarLikes(similar);
         renderWardrobe(data.wardrobe || []);
-        renderLooks(data.looks || []);
+
         $('runHint').textContent = data.request_id ? `Done · request_id=${data.request_id}` : 'Done.';
       } catch (e) {
         console.error('[style_assistant] recommend', e);
         setError(e.message || String(e));
-        $('looksRail').innerHTML = '<p class="muted px-1">Could not generate looks.</p>';
+        $('completeRail').innerHTML = '<p class="muted px-1">Could not generate complete-outfit looks.</p>';
+        $('similarRail').innerHTML = '<p class="muted px-1">Could not generate similar picks.</p>';
       } finally {
         setLoading(false);
         updateRunEnabled();

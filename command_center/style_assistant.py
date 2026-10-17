@@ -17,6 +17,158 @@ log = logging.getLogger("command_center.style_assistant")
 COSINE_MATCH_THRESHOLD = float(os.getenv("STYLE_COSINE_THRESHOLD", "0.75"))
 SIGNED_URL_MINUTES = int(os.getenv("STYLE_SIGNED_URL_MINUTES", "60"))
 
+# Outfit completion: same bucket must never pair (no shirt↔shirt / jeans↔jeans).
+CATEGORY_BUCKETS = ("top", "bottom", "outer", "dress", "footwear", "accessory", "unknown")
+
+COMPLEMENTARY: dict[str, frozenset[str]] = {
+    "top": frozenset({"bottom", "outer", "footwear", "accessory", "dress"}),
+    "bottom": frozenset({"top", "outer", "footwear", "accessory"}),
+    "outer": frozenset({"top", "bottom", "dress", "footwear", "accessory"}),
+    "dress": frozenset({"outer", "footwear", "accessory", "bottom"}),
+    "footwear": frozenset({"top", "bottom", "outer", "dress", "accessory"}),
+    "accessory": frozenset({"top", "bottom", "outer", "dress", "footwear"}),
+    "unknown": frozenset(),  # resolved per-item with soft rules
+}
+
+# Longer / more specific phrases first
+_CATEGORY_KEYWORDS: list[tuple[str, tuple[str, ...]]] = [
+    (
+        "outer",
+        (
+            "overshirt",
+            "overcoat",
+            "trench",
+            "parka",
+            "blazer",
+            "bomber",
+            "windbreaker",
+            "raincoat",
+            "hoodie",
+            "sweatshirt",
+            "cardigan",
+            "jacket",
+            "coat",
+            "vest",
+            "gilet",
+            "shrug",
+        ),
+    ),
+    (
+        "bottom",
+        (
+            "jeans",
+            "denim",
+            "chinos",
+            "trousers",
+            "pants",
+            "leggings",
+            "joggers",
+            "shorts",
+            "skirt",
+            "culottes",
+            "track pant",
+            "trackpants",
+        ),
+    ),
+    (
+        "dress",
+        ("dress", "gown", "jumpsuit", "romper", "playsuit", "saree", "kurta set"),
+    ),
+    (
+        "footwear",
+        (
+            "sneaker",
+            "shoes",
+            "shoe",
+            "boot",
+            "sandal",
+            "loafer",
+            "heel",
+            "footwear",
+            "slipper",
+        ),
+    ),
+    (
+        "accessory",
+        (
+            "belt",
+            "scarf",
+            "hat",
+            "cap",
+            "bag",
+            "handbag",
+            "watch",
+            "tie",
+            "sock",
+            "gloves",
+            "jewellery",
+            "jewelry",
+            "necklace",
+            "sunglass",
+        ),
+    ),
+    (
+        "top",
+        (
+            "t-shirt",
+            "tshirt",
+            "tee",
+            "shirt",
+            "blouse",
+            "polo",
+            "kurta",
+            "top",
+            "tank",
+            "camisole",
+            "sweater",
+            "jumper",
+            "tunic",
+        ),
+    ),
+]
+
+
+def infer_category_bucket(*texts: Any) -> str:
+    """Map free-text garment type / commodity / filename → outfit bucket."""
+    blob = " ".join(str(t or "") for t in texts).lower()
+    blob = re.sub(r"[_\-.]+", " ", blob)
+    if not blob.strip():
+        return "unknown"
+    for bucket, keywords in _CATEGORY_KEYWORDS:
+        for kw in keywords:
+            if kw in blob:
+                return bucket
+    return "unknown"
+
+
+def categories_complementary(a: str, b: str) -> bool:
+    """True if a and b can complete an outfit together (never same bucket)."""
+    ca = a if a in COMPLEMENTARY else "unknown"
+    cb = b if b in COMPLEMENTARY else "unknown"
+    if ca == "unknown" or cb == "unknown":
+        # Unknown × known: allow (cannot prove same category).
+        # Unknown × unknown: allow soft; ranking still prefers complementary when known.
+        return ca != cb or ca == "unknown"
+    if ca == cb:
+        return False
+    return cb in COMPLEMENTARY[ca]
+
+
+def annotate_item_category(item: dict[str, Any]) -> str:
+    attrs = item.get("attributes") or {}
+    bucket = infer_category_bucket(
+        attrs.get("commodity"),
+        attrs.get("name"),
+        attrs.get("garment_type"),
+        attrs.get("category"),
+        item.get("label"),
+        item.get("commodity_type"),
+        item.get("original_filename"),
+        item.get("gcs_object_key"),
+    )
+    item["category_bucket"] = bucket
+    return bucket
+
 
 def _parse_embedding(raw: Any) -> Optional[List[float]]:
     if raw is None:
@@ -90,44 +242,108 @@ def list_style_brands(*, limit: int = 200) -> list[str]:
             return [str(r[0]) for r in cur.fetchall() if r[0]]
 
 
+def _wardrobe_rows_from_cursor(cur_rows: list[Any]) -> list[dict[str, Any]]:
+    rows = []
+    for r in cur_rows:
+        emb = _parse_embedding(r[4])
+        brand = r[1] or (r[12] if len(r) > 12 else None)
+        commodity = r[8] if len(r) > 8 else None
+        attrs: dict[str, Any] = {}
+        if brand:
+            attrs["brand"] = brand
+        if commodity:
+            attrs["commodity"] = commodity
+            attrs["name"] = commodity
+        if len(r) > 9 and r[9]:
+            attrs["color"] = r[9]
+        if len(r) > 10 and r[10]:
+            attrs["material"] = r[10]
+        if len(r) > 11 and r[11]:
+            attrs["pattern"] = r[11]
+        label = commodity or brand or "Wardrobe piece"
+        first_key = r[7] if len(r) > 7 else None
+        item = {
+            "garment_id": r[0],
+            "brand_name": brand,
+            "gcs_bucket": r[2],
+            "gcs_object_key": r[3] or first_key,
+            "embedding": emb,
+            "pin_code": r[5],
+            "observation_count_total": int(r[6] or 0),
+            "commodity_type": commodity,
+            "label": label,
+            "attributes": attrs,
+        }
+        annotate_item_category(item)
+        rows.append(item)
+    return rows
+
+
 def load_user_wardrobe_rich(user_uuid: str, *, limit: int = 80) -> list[dict[str, Any]]:
+    """Load wardrobe; enrich commodity_type from garment_instances when GCS key matches."""
     with brand_camp.connect() as conn:
         with conn.cursor() as cur:
-            cur.execute(
-                """
-                SELECT ug.garment_id::text,
-                       ug.brand_name,
-                       ug.representative_gcs_bucket,
-                       ug.representative_gcs_object_key,
-                       ug.embedding,
-                       uw.pin_code_at_first_sight,
-                       ug.observation_count_total
-                FROM user_wardrobe uw
-                JOIN unique_garments ug ON ug.garment_id = uw.garment_id
-                WHERE uw.user_uuid = %s
-                ORDER BY ug.updated_at DESC
-                LIMIT %s
-                """,
-                (user_uuid, limit),
-            )
-            rows = []
-            for r in cur.fetchall():
-                emb = _parse_embedding(r[4])
-                brand = r[1]
-                rows.append(
-                    {
-                        "garment_id": r[0],
-                        "brand_name": brand,
-                        "gcs_bucket": r[2],
-                        "gcs_object_key": r[3],
-                        "embedding": emb,
-                        "pin_code": r[5],
-                        "observation_count_total": int(r[6] or 0),
-                        "label": brand or "Wardrobe piece",
-                        "attributes": {"brand": brand} if brand else {},
-                    }
+            try:
+                cur.execute(
+                    """
+                    SELECT * FROM (
+                      SELECT DISTINCT ON (ug.garment_id)
+                             ug.garment_id::text,
+                             ug.brand_name,
+                             ug.representative_gcs_bucket,
+                             ug.representative_gcs_object_key,
+                             ug.embedding,
+                             uw.pin_code_at_first_sight,
+                             ug.observation_count_total,
+                             uw.first_gcs_object_key,
+                             ginst.commodity_type,
+                             ginst.primary_color,
+                             ginst.material_type,
+                             ginst.pattern,
+                             ginst.brand_name_raw,
+                             ug.updated_at
+                      FROM user_wardrobe uw
+                      JOIN unique_garments ug ON ug.garment_id = uw.garment_id
+                      LEFT JOIN garment_images gim ON (
+                          gim.gcs_object_key = ug.representative_gcs_object_key
+                          OR gim.gcs_object_key = uw.first_gcs_object_key
+                      )
+                      LEFT JOIN garment_instances ginst ON ginst.id = gim.garment_instance_id
+                        AND ginst.deleted_at IS NULL
+                      WHERE uw.user_uuid = %s
+                      ORDER BY ug.garment_id, ginst.updated_at DESC NULLS LAST
+                    ) enriched
+                    ORDER BY updated_at DESC NULLS LAST
+                    LIMIT %s
+                    """,
+                    (user_uuid, limit),
                 )
-            return rows
+                return _wardrobe_rows_from_cursor(cur.fetchall())
+            except Exception as exc:
+                log.warning(
+                    "wardrobe enrich join failed (%s); falling back without extract attrs",
+                    exc,
+                )
+                conn.rollback()
+                cur.execute(
+                    """
+                    SELECT ug.garment_id::text,
+                           ug.brand_name,
+                           ug.representative_gcs_bucket,
+                           ug.representative_gcs_object_key,
+                           ug.embedding,
+                           uw.pin_code_at_first_sight,
+                           ug.observation_count_total,
+                           uw.first_gcs_object_key
+                    FROM user_wardrobe uw
+                    JOIN unique_garments ug ON ug.garment_id = uw.garment_id
+                    WHERE uw.user_uuid = %s
+                    ORDER BY ug.updated_at DESC
+                    LIMIT %s
+                    """,
+                    (user_uuid, limit),
+                )
+                return _wardrobe_rows_from_cursor(cur.fetchall())
 
 
 def list_brand_skus(brand_name: str, *, limit: int = 80) -> list[dict[str, Any]]:
@@ -162,19 +378,19 @@ def list_brand_skus(brand_name: str, *, limit: int = 80) -> list[dict[str, Any]]
                     "collar_type": r[10],
                     "brand": r[1],
                 }
-                out.append(
-                    {
-                        "sku_uuid": r[0],
-                        "brand_name": r[1],
-                        "gcs_bucket": r[2],
-                        "gcs_object_key": r[3],
-                        "attributes": attrs,
-                        "embedding": _parse_embedding(r[11]),
-                        "original_filename": r[12],
-                        "extract_ok": bool(r[13]),
-                        "label": r[8] or r[12] or r[1] or "SKU",
-                    }
-                )
+                item = {
+                    "sku_uuid": r[0],
+                    "brand_name": r[1],
+                    "gcs_bucket": r[2],
+                    "gcs_object_key": r[3],
+                    "attributes": attrs,
+                    "embedding": _parse_embedding(r[11]),
+                    "original_filename": r[12],
+                    "extract_ok": bool(r[13]),
+                    "label": r[8] or r[12] or r[1] or "SKU",
+                }
+                annotate_item_category(item)
+                out.append(item)
             return out
 
 
@@ -205,59 +421,239 @@ def build_wardrobe_taste_profile(wardrobe: list[dict[str, Any]]) -> dict[str, An
     return {"cell_count": len(wardrobe), "distributions": dist}
 
 
+def _complementary_wardrobe(
+    sku: dict[str, Any], wardrobe: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    """Wardrobe pieces that can complete an outfit with this SKU (not same category)."""
+    sku_cat = sku.get("category_bucket") or annotate_item_category(sku)
+    allowed = []
+    for w in wardrobe:
+        w_cat = w.get("category_bucket") or annotate_item_category(w)
+        if categories_complementary(sku_cat, w_cat):
+            # Extra hard block: identical non-unknown buckets
+            if sku_cat != "unknown" and w_cat != "unknown" and sku_cat == w_cat:
+                continue
+            allowed.append(w)
+    return allowed
+
+
+def _same_category_wardrobe(
+    sku: dict[str, Any], wardrobe: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    """Wardrobe pieces in the same category — for 'you may like similar' suggestions."""
+    sku_cat = sku.get("category_bucket") or annotate_item_category(sku)
+    if sku_cat == "unknown":
+        return []
+    return [
+        w
+        for w in wardrobe
+        if (w.get("category_bucket") or annotate_item_category(w)) == sku_cat
+    ]
+
+
+def _score_sku_against_partners(
+    sku: dict[str, Any],
+    partners: list[dict[str, Any]],
+    profile: dict[str, Any],
+) -> Optional[dict[str, Any]]:
+    if not partners:
+        return None
+    partners_emb = [w for w in partners if w.get("embedding")]
+    sku_emb = sku.get("embedding")
+    best_cos = -1.0
+    best_matches: list[tuple[str, float]] = []
+
+    if sku_emb and partners_emb:
+        for w in partners_emb:
+            cos = cosine_similarity(sku_emb, w["embedding"] or [])
+            best_matches.append((w["garment_id"], cos))
+            if cos > best_cos:
+                best_cos = cos
+        best_matches.sort(key=lambda t: t[1], reverse=True)
+        top_own = [gid for gid, _ in best_matches[:2]]
+        sim = sim_fit_01(best_cos)
+        above = sum(1 for _, c in best_matches if c >= COSINE_MATCH_THRESHOLD)
+        freq = above / max(1, len(best_matches))
+    else:
+        sim = 0.0
+        freq = 0.0
+        top_own = [partners[0]["garment_id"]]
+        if len(partners) > 1:
+            top_own.append(partners[1]["garment_id"])
+        best_cos = -1.0
+
+    a_fit = brand_camp.attr_fit_score(sku.get("attributes") or {}, profile)
+    score = brand_camp.blend_rank_score(
+        sim_fit=sim, freq_coverage=freq, attr_fit=a_fit
+    )
+    return {
+        "sku": sku,
+        "score": score,
+        "sim_fit": round(sim, 4),
+        "freq_coverage": round(freq, 4),
+        "attr_fit": round(a_fit, 4),
+        "best_cosine": round(best_cos, 4) if best_cos > -1 else None,
+        "own_garment_ids": top_own,
+        "sku_category": sku.get("category_bucket"),
+        "own_categories": [
+            next(
+                (
+                    w.get("category_bucket")
+                    for w in partners
+                    if w["garment_id"] == gid
+                ),
+                "unknown",
+            )
+            for gid in top_own
+        ],
+    }
+
+
+def sku_buy_fields(sku: dict[str, Any]) -> dict[str, Any]:
+    """Fields for the Buy this item CTA (optional URL template)."""
+    tmpl = (os.getenv("STYLE_BUY_URL_TEMPLATE") or "").strip()
+    sku_uuid = str(sku.get("sku_uuid") or "")
+    brand = str(sku.get("brand_name") or "")
+    buy_url = None
+    if tmpl:
+        try:
+            buy_url = tmpl.format(
+                sku_uuid=sku_uuid,
+                brand_name=brand,
+                brand=brand,
+            )
+        except Exception:
+            buy_url = tmpl
+    return {
+        "sku_uuid": sku_uuid,
+        "brand_name": brand,
+        "label": sku.get("label"),
+        "gcs_bucket": sku.get("gcs_bucket"),
+        "gcs_object_key": sku.get("gcs_object_key"),
+        "image_url": sku.get("image_url"),
+        "attributes": sku.get("attributes") or {},
+        "category_bucket": sku.get("category_bucket"),
+        "buy_url": buy_url,
+    }
+
+
 def rank_skus_for_user(
     wardrobe: list[dict[str, Any]],
     skus: list[dict[str, Any]],
     *,
     limit: int = 12,
 ) -> list[dict[str, Any]]:
+    """
+    Rank brand SKUs to *complete* a wardrobe outfit.
+    Same category pairs (shirt↔shirt, jeans↔jeans) are excluded.
+    Similarity is computed only against complementary wardrobe pieces.
+    """
+    for w in wardrobe:
+        annotate_item_category(w)
+    for s in skus:
+        annotate_item_category(s)
+
     profile = build_wardrobe_taste_profile(wardrobe)
-    wardrobe_with_emb = [w for w in wardrobe if w.get("embedding")]
     ranked: list[dict[str, Any]] = []
 
     for sku in skus:
-        sku_emb = sku.get("embedding")
-        best_cos = -1.0
-        best_matches: list[tuple[str, float]] = []
-        for w in wardrobe_with_emb:
-            cos = cosine_similarity(sku_emb or [], w["embedding"] or [])
-            best_matches.append((w["garment_id"], cos))
-            if cos > best_cos:
-                best_cos = cos
-        best_matches.sort(key=lambda t: t[1], reverse=True)
-        top_own = [gid for gid, _ in best_matches[:2]]
-
-        if sku_emb and wardrobe_with_emb:
-            sim = sim_fit_01(best_cos)
-            above = sum(1 for _, c in best_matches if c >= COSINE_MATCH_THRESHOLD)
-            freq = above / max(1, len(best_matches))
-        else:
-            # No embeddings: fall back to attribute overlap only
-            sim = 0.0
-            freq = 0.0
-            if not top_own and wardrobe:
-                top_own = [wardrobe[0]["garment_id"]]
-                if len(wardrobe) > 1:
-                    top_own.append(wardrobe[1]["garment_id"])
-
-        a_fit = brand_camp.attr_fit_score(sku.get("attributes") or {}, profile)
-        score = brand_camp.blend_rank_score(
-            sim_fit=sim, freq_coverage=freq, attr_fit=a_fit
-        )
-        ranked.append(
-            {
-                "sku": sku,
-                "score": score,
-                "sim_fit": round(sim, 4),
-                "freq_coverage": round(freq, 4),
-                "attr_fit": round(a_fit, 4),
-                "best_cosine": round(best_cos, 4) if best_cos > -1 else None,
-                "own_garment_ids": top_own,
-            }
-        )
+        partners = _complementary_wardrobe(sku, wardrobe)
+        if not partners:
+            log.debug(
+                "skip sku=%s cat=%s — no complementary wardrobe pieces",
+                sku.get("sku_uuid"),
+                sku.get("category_bucket"),
+            )
+            continue
+        row = _score_sku_against_partners(sku, partners, profile)
+        if row:
+            ranked.append(row)
 
     ranked.sort(key=lambda r: (-(r["score"] or 0), r["sku"]["sku_uuid"]))
     return ranked[:limit]
+
+
+def rank_similar_skus_for_user(
+    wardrobe: list[dict[str, Any]],
+    skus: list[dict[str, Any]],
+    *,
+    limit: int = 12,
+    exclude_sku_uuids: Optional[set[str]] = None,
+) -> list[dict[str, Any]]:
+    """
+    Rank brand SKUs similar to what the user already owns (same category).
+    'Since you like this, you may like these.'
+    """
+    for w in wardrobe:
+        annotate_item_category(w)
+    for s in skus:
+        annotate_item_category(s)
+
+    exclude = exclude_sku_uuids or set()
+    profile = build_wardrobe_taste_profile(wardrobe)
+    ranked: list[dict[str, Any]] = []
+
+    for sku in skus:
+        if sku.get("sku_uuid") in exclude:
+            continue
+        twins = _same_category_wardrobe(sku, wardrobe)
+        if not twins:
+            continue
+        row = _score_sku_against_partners(sku, twins, profile)
+        if row:
+            ranked.append(row)
+
+    ranked.sort(key=lambda r: (-(r["score"] or 0), r["sku"]["sku_uuid"]))
+    return ranked[:limit]
+
+
+def build_similar_likes(
+    *,
+    wardrobe: list[dict[str, Any]],
+    ranked: list[dict[str, Any]],
+    brand_name: str,
+    limit: int,
+) -> list[dict[str, Any]]:
+    """Template cards for same-category 'you may like' suggestions."""
+    wardrobe_by_id = {w["garment_id"]: w for w in wardrobe}
+    likes: list[dict[str, Any]] = []
+    for r in ranked[:limit]:
+        sku = r["sku"]
+        own_ids = [g for g in (r.get("own_garment_ids") or []) if g in wardrobe_by_id][:1]
+        if not own_ids:
+            continue
+        liked = wardrobe_by_id[own_ids[0]]
+        color = (sku.get("attributes") or {}).get("color")
+        color_bit = f" in {color}" if color else ""
+        sku_label = sku.get("label") or "this piece"
+        liked_label = liked.get("label") or "this piece"
+        cat = sku.get("category_bucket") or "piece"
+        likes.append(
+            {
+                "rank": len(likes) + 1,
+                "score": r["score"],
+                "sim_fit": r["sim_fit"],
+                "attr_fit": r["attr_fit"],
+                "liked": {
+                    "garment_id": liked["garment_id"],
+                    "label": liked.get("label"),
+                    "brand_name": liked.get("brand_name"),
+                    "category_bucket": liked.get("category_bucket"),
+                    "gcs_object_key": liked.get("gcs_object_key"),
+                    "image_url": liked.get("image_url"),
+                },
+                "buy": sku_buy_fields(sku),
+                "title": f"Since you like your {liked_label}",
+                "description": (
+                    f"You already own {liked_label} — you may also like "
+                    f"{sku_label}{color_bit} from {brand_name}."
+                ),
+                "why_it_works": (
+                    f"Same category ({cat}) with visual/style fit score {r['score']}."
+                ),
+            }
+        )
+    return likes
 
 
 def signed_image_url(
@@ -334,6 +730,7 @@ def build_llm_outfits(
                 "garment_id": w["garment_id"],
                 "label": w.get("label"),
                 "brand_name": w.get("brand_name"),
+                "category_bucket": w.get("category_bucket"),
                 "attributes": w.get("attributes") or {},
             }
             for w in wardrobe[:40]
@@ -343,6 +740,7 @@ def build_llm_outfits(
                 "sku_uuid": r["sku"]["sku_uuid"],
                 "label": r["sku"].get("label"),
                 "brand_name": r["sku"].get("brand_name"),
+                "category_bucket": r["sku"].get("category_bucket"),
                 "attributes": r["sku"].get("attributes") or {},
                 "score": r["score"],
                 "suggested_own_garment_ids": r["own_garment_ids"],
@@ -353,13 +751,23 @@ def build_llm_outfits(
             "max_looks": limit,
             "own_count": "1 or 2 garment_ids from wardrobe only",
             "buy_count": "exactly 1 sku_uuid from ranked_skus only",
-            "tone": "persuasive, warm, concise; tell user what they own and why the SKU completes the look",
+            "pairing": (
+                "COMPLETE the outfit — never pair the same category_bucket "
+                "(no shirt+shirt, no jeans+jeans). Prefer top+bottom, top+outer, "
+                "bottom+outer, etc. Use suggested_own_garment_ids when complementary."
+            ),
+            "tone": (
+                "persuasive, warm, concise; say what they already own and how the "
+                "brand SKU completes the look (not a similar substitute)."
+            ),
         },
     }
 
     system = (
-        "You are SuffAI Style Assistant. Build outfit combinations for a shopper. "
-        "Each look MUST use 1–2 wardrobe garment_ids and exactly 1 brand sku_uuid from the JSON context. "
+        "You are SuffAI Style Assistant. Build outfit combinations that COMPLETE a look. "
+        "Each look MUST use 1–2 wardrobe garment_ids and exactly 1 brand sku_uuid from the JSON. "
+        "NEVER pair the same garment category (e.g. shirt with shirt, jeans with jeans). "
+        "Pair complementary pieces (shirt+jeans, jeans+jacket, tee+overshirt). "
         "Do not invent ids. Return ONLY a JSON array of objects with keys: "
         "own_garment_ids (array), sku_uuid, title, description, why_it_works."
     )
@@ -387,18 +795,39 @@ def build_llm_outfits(
     def _materialize(own_ids: list[str], sku_uuid: str, title: str, desc: str, why: str) -> Optional[dict[str, Any]]:
         if sku_uuid not in sku_by_id:
             return None
+        sku_row = sku_by_id[sku_uuid]
+        sku_cat = sku_row["sku"].get("category_bucket") or "unknown"
         own_ids = [g for g in own_ids if g in wardrobe_by_id][:2]
+        # Drop same-category wardrobe picks (LLM may ignore rules)
+        own_ids = [
+            g
+            for g in own_ids
+            if categories_complementary(
+                sku_cat, wardrobe_by_id[g].get("category_bucket") or "unknown"
+            )
+        ]
         if not own_ids:
-            own_ids = list(sku_by_id[sku_uuid]["own_garment_ids"] or [])[:2]
-            own_ids = [g for g in own_ids if g in wardrobe_by_id]
-        if not own_ids and wardrobe:
-            own_ids = [wardrobe[0]["garment_id"]]
+            own_ids = [
+                g
+                for g in (sku_row.get("own_garment_ids") or [])
+                if g in wardrobe_by_id
+                and categories_complementary(
+                    sku_cat, wardrobe_by_id[g].get("category_bucket") or "unknown"
+                )
+            ][:2]
+        if not own_ids:
+            for w in wardrobe:
+                if categories_complementary(
+                    sku_cat, w.get("category_bucket") or "unknown"
+                ):
+                    own_ids = [w["garment_id"]]
+                    break
         if not own_ids:
             return None
         if sku_uuid in used_skus:
             return None
         used_skus.add(sku_uuid)
-        rank_row = sku_by_id[sku_uuid]
+        rank_row = sku_row
         own = []
         for gid in own_ids:
             w = wardrobe_by_id[gid]
@@ -409,25 +838,17 @@ def build_llm_outfits(
                     "gcs_object_key": w.get("gcs_object_key"),
                     "label": w.get("label"),
                     "brand_name": w.get("brand_name"),
+                    "category_bucket": w.get("category_bucket"),
                     "image_url": w.get("image_url"),
                 }
             )
         sku = rank_row["sku"]
-        buy = {
-            "sku_uuid": sku_uuid,
-            "gcs_bucket": sku.get("gcs_bucket"),
-            "gcs_object_key": sku.get("gcs_object_key"),
-            "attributes": sku.get("attributes") or {},
-            "brand_name": sku.get("brand_name"),
-            "label": sku.get("label"),
-            "image_url": sku.get("image_url"),
-        }
         return {
             "score": rank_row["score"],
             "sim_fit": rank_row["sim_fit"],
             "attr_fit": rank_row["attr_fit"],
             "own": own,
-            "buy": buy,
+            "buy": sku_buy_fields(sku),
             "title": (title or "Complete the look").strip()[:120],
             "description": (desc or "").strip()[:500],
             "why_it_works": (why or "").strip()[:400],
@@ -468,14 +889,18 @@ def build_llm_outfits(
         sku_label = sku.get("label") or "this piece"
         color = (sku.get("attributes") or {}).get("color")
         color_bit = f" in {color}" if color else ""
-        title = f"Pair your look with {brand_name}"
+        sku_cat = sku.get("category_bucket") or "piece"
+        own_cats = ", ".join(
+            str(c) for c in (r.get("own_categories") or []) if c
+        ) or "wardrobe"
+        title = f"Complete your look with {brand_name}"
         desc = (
-            f"You have {own_phrase} — {sku_label}{color_bit} from {brand_name} "
-            f"makes a perfect fit for a polished everyday outfit."
+            f"You already have {own_phrase} — add {sku_label}{color_bit} from "
+            f"{brand_name} to complete the outfit (not another {own_cats})."
         )
         why = (
-            f"Ranked fit score {r['score']} using wardrobe similarity "
-            f"({r['sim_fit']}) and style attributes ({r['attr_fit']})."
+            f"Complementary pairing ({own_cats} + {sku_cat}). "
+            f"Score {r['score']} from fit ({r['sim_fit']}) and style ({r['attr_fit']})."
         )
         look = _materialize(own_ids, sku["sku_uuid"], title, desc, why)
         if look:
@@ -531,15 +956,36 @@ def recommend_looks(
     attach_image_urls(wardrobe)
     attach_image_urls(skus)
 
-    ranked = rank_skus_for_user(wardrobe, skus, limit=max(limit, 8))
-    if not ranked:
-        raise LookupError("Could not rank any SKUs for this wardrobe")
+    ranked_complete = rank_skus_for_user(wardrobe, skus, limit=max(limit, 8))
+    # Same SKU may appear in both sections with different framing
+    # (complete vs complementary own piece vs similar to same-category own piece).
+    ranked_similar = rank_similar_skus_for_user(
+        wardrobe,
+        skus,
+        limit=max(limit, 8),
+    )
 
-    looks = build_llm_outfits(
+    if not ranked_complete and not ranked_similar:
+        raise LookupError(
+            "Could not rank any brand SKUs for this wardrobe "
+            "(need complementary and/or same-category matches)"
+        )
+
+    complete_outfit = (
+        build_llm_outfits(
+            wardrobe=wardrobe,
+            ranked=ranked_complete,
+            brand_name=brand_name,
+            user_uuid=user_uuid,
+            limit=limit,
+        )
+        if ranked_complete
+        else []
+    )
+    similar_likes = build_similar_likes(
         wardrobe=wardrobe,
-        ranked=ranked,
+        ranked=ranked_similar,
         brand_name=brand_name,
-        user_uuid=user_uuid,
         limit=limit,
     )
 
@@ -549,15 +995,20 @@ def recommend_looks(
         "brand_name": brand_name,
         "wardrobe_count": len(wardrobe),
         "sku_count": len(skus),
+        # Primary sections for the Style Assistant UI
+        "complete_outfit": complete_outfit,
+        "similar_likes": similar_likes,
+        # Back-compat alias for complete_outfit
+        "looks": complete_outfit,
         "wardrobe": [
             {
                 "garment_id": w["garment_id"],
                 "label": w.get("label"),
                 "brand_name": w.get("brand_name"),
+                "category_bucket": w.get("category_bucket"),
                 "gcs_object_key": w.get("gcs_object_key"),
                 "image_url": w.get("image_url"),
             }
             for w in wardrobe
         ],
-        "looks": looks,
     }
