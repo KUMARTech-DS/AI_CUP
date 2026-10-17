@@ -41,6 +41,7 @@ sys.path.insert(0, str(SCRIPTS))
 import aggregate_metrics as agg  # noqa: E402
 import auth_acl  # noqa: E402
 import brand_campaign as brand_camp  # noqa: E402
+import aura_agent  # noqa: E402
 import chatbot  # noqa: E402
 import style_assistant as style_asst  # noqa: E402
 
@@ -968,6 +969,164 @@ async def ads_lab_campaign(
     }
 
 
+def _campaign_access(
+    campaign: dict[str, Any],
+    sess: Optional[dict[str, Any]],
+) -> None:
+    if not sess:
+        raise HTTPException(401, "Not authenticated — sign in again")
+    role = sess.get("role")
+    if role == "admin":
+        return
+    if role == "brand":
+        own = (sess.get("brand_name") or "").strip().lower()
+        if own and own == str(campaign.get("brand_name") or "").strip().lower():
+            return
+        raise HTTPException(403, "Not allowed for this campaign")
+    raise HTTPException(403, "Only brand or admin can manage campaigns")
+
+
+@app.get("/v1/ads-lab/campaigns")
+def ads_lab_list_campaigns(
+    request: Request,
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None, alias="X-Session-Token"),
+    limit: int = Query(50, ge=1, le=200),
+):
+    sess = _require_session(request, authorization, x_session_token)
+    role = sess.get("role")
+    if role == "customer":
+        raise HTTPException(403, "Customers cannot list Ads Lab campaigns")
+    brand = None
+    if role == "brand":
+        brand = (sess.get("brand_name") or "").strip() or None
+        if not brand:
+            raise HTTPException(403, "Brand session missing brand_name")
+    try:
+        rows = brand_camp.list_campaigns(brand_name=brand, limit=limit)
+    except Exception as exc:
+        log.exception("list campaigns failed")
+        raise HTTPException(503, f"list campaigns failed: {exc}") from exc
+    return {"ok": True, "campaigns": rows, "count": len(rows)}
+
+
+@app.get("/v1/ads-lab/campaigns/{campaign_id}")
+def ads_lab_campaign_detail(
+    campaign_id: str,
+    request: Request,
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None, alias="X-Session-Token"),
+):
+    sess = _require_session(request, authorization, x_session_token)
+    try:
+        campaign = brand_camp.get_campaign(campaign_id)
+    except Exception as exc:
+        raise HTTPException(503, f"campaign lookup failed: {exc}") from exc
+    if not campaign:
+        raise HTTPException(404, "campaign not found")
+    _campaign_access(campaign, sess)
+    skus = brand_camp.list_campaign_skus(campaign_id)
+    campaign["sku_count"] = len(skus)
+    return {"ok": True, "campaign": campaign, "skus": skus}
+
+
+@app.post("/v1/ads-lab/campaigns/{campaign_id}/start")
+def ads_lab_campaign_start(
+    campaign_id: str,
+    request: Request,
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None, alias="X-Session-Token"),
+):
+    """Publish ranked campaign to Style Assistant for filter-matched customers (1P)."""
+    sess = _require_session(request, authorization, x_session_token)
+    campaign = brand_camp.get_campaign(campaign_id)
+    if not campaign:
+        raise HTTPException(404, "campaign not found")
+    _campaign_access(campaign, sess)
+    if campaign.get("status") not in {"ranked", "started"}:
+        raise HTTPException(
+            400,
+            f"Campaign must be ranked before start (status={campaign.get('status')})",
+        )
+    try:
+        brand_camp.set_campaign_status(campaign_id, "started")
+        result = style_asst.materialize_campaign_recommendations(campaign_id)
+    except LookupError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except Exception as exc:
+        log.exception("campaign start failed id=%s", campaign_id)
+        try:
+            brand_camp.set_campaign_status(campaign_id, "error", str(exc)[:500])
+        except Exception:
+            pass
+        raise HTTPException(503, f"campaign start failed: {exc}") from exc
+    refreshed = brand_camp.get_campaign(campaign_id) or campaign
+    return {"ok": True, "campaign": refreshed, "materialize": result}
+
+
+@app.post("/v1/ads-lab/campaigns/{campaign_id}/ignore")
+def ads_lab_campaign_ignore(
+    campaign_id: str,
+    request: Request,
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None, alias="X-Session-Token"),
+):
+    sess = _require_session(request, authorization, x_session_token)
+    campaign = brand_camp.get_campaign(campaign_id)
+    if not campaign:
+        raise HTTPException(404, "campaign not found")
+    _campaign_access(campaign, sess)
+    if campaign.get("status") == "started":
+        raise HTTPException(400, "Cannot ignore a started campaign in v1 — contact admin")
+    brand_camp.set_campaign_status(campaign_id, "ignored")
+    return {"ok": True, "campaign": brand_camp.get_campaign(campaign_id)}
+
+
+@app.get("/v1/admin/campaigns")
+def admin_list_campaigns(
+    request: Request,
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None, alias="X-Session-Token"),
+    limit: int = Query(100, ge=1, le=500),
+):
+    sess = _require_session(request, authorization, x_session_token)
+    if sess.get("role") != "admin":
+        raise HTTPException(403, "Admin only")
+    try:
+        rows = brand_camp.list_campaigns(brand_name=None, limit=limit)
+    except Exception as exc:
+        raise HTTPException(503, f"admin campaigns failed: {exc}") from exc
+    return {"ok": True, "campaigns": rows, "count": len(rows)}
+
+
+@app.get("/v1/style-assistant/feed")
+def style_assistant_feed(
+    request: Request,
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None, alias="X-Session-Token"),
+    limit: int = Query(12, ge=1, le=40),
+):
+    """Customer Style feed from started 1P campaigns (no campaign labels in payload)."""
+    sess = _require_session(request, authorization, x_session_token)
+    role = sess.get("role")
+    if role == "brand":
+        raise HTTPException(403, "Brand accounts cannot use Style feed")
+    user_uuid = ""
+    if role == "customer":
+        user_uuid = (sess.get("customer_id") or "").strip()
+    elif role == "admin":
+        # Admin can preview via ?user_uuid=
+        user_uuid = (request.query_params.get("user_uuid") or "").strip()
+    if not user_uuid:
+        raise HTTPException(400, "customer_id / user_uuid required")
+    try:
+        payload = style_asst.customer_style_feed(user_uuid, limit=limit)
+    except Exception as exc:
+        log.exception("style feed failed user=%s", user_uuid)
+        raise HTTPException(503, f"style feed failed: {exc}") from exc
+    return payload
+
+
 def _similarity_id_token(audience: str) -> Optional[str]:
     try:
         import google.auth.transport.requests  # type: ignore
@@ -1265,8 +1424,20 @@ def geo_brief(
 
 @app.post("/v1/chat")
 def chat(body: chatbot.ChatRequest):
-    """Dashboard Q&A from metrics.json summary + Geo/Ads UI filters."""
+    """Dashboard Q&A from metrics.json summary + Geo/Ads UI filters (read-only)."""
     return chatbot.run_chat(body, METRICS_JSON)
+
+
+@app.post("/v1/agent/chat")
+def agent_chat(
+    body: aura_agent.AgentChatRequest,
+    request: Request,
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None, alias="X-Session-Token"),
+):
+    """AURA brand operating agent — tool calls for Geo + Ads Lab (session required)."""
+    sess = _require_session(request, authorization, x_session_token)
+    return aura_agent.run_agent(body, sess=sess, metrics_path=METRICS_JSON)
 
 
 @app.get("/")
@@ -1280,13 +1451,19 @@ def root():
             "/v1/metrics",
             "POST /v1/ads-lab/extract",
             "POST /v1/ads-lab/campaign",
+            "GET /v1/ads-lab/campaigns",
+            "POST /v1/ads-lab/campaigns/{id}/start",
+            "POST /v1/ads-lab/campaigns/{id}/ignore",
             "POST /v1/chat",
+            "POST /v1/agent/chat",
             "POST /v1/geo/brief",
             "GET /v1/admin/unique-summary",
             "GET /v1/admin/unique-garments",
+            "GET /v1/admin/campaigns",
             "GET /v1/style-assistant/users",
             "GET /v1/style-assistant/brands",
             "POST /v1/style-assistant/recommend",
+            "GET /v1/style-assistant/feed",
             "POST /v1/auth/login",
             "GET /v1/auth/me",
             "POST /v1/auth/logout",

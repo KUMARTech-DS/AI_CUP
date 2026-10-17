@@ -257,8 +257,54 @@
         </section>
 
         <section class="glass-panel rounded-xl overflow-hidden">
-          <div class="p-4 border-b border-[#E4DED3] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"><div><h3 class="text-xs font-bold uppercase tracking-wider text-[#292722]"><i class="fa-solid fa-table text-[#89765C] mr-2"></i>Segment ranking matrix</h3><p class="text-[10px] text-[#777066] mt-1">Contains the same filtered and sorted images as the cards above.</p></div><button id="downloadButton" type="button" class="px-3 py-2 bg-[#89765C] hover:bg-[#66513B] rounded-lg text-xs font-bold text-white shadow-sm"><i class="fa-solid fa-file-csv mr-2"></i>Export CSV</button></div>
+          <div class="p-4 border-b border-[#E4DED3] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <h3 class="text-xs font-bold uppercase tracking-wider text-[#292722]"><i class="fa-solid fa-table text-[#89765C] mr-2"></i>Segment ranking matrix</h3>
+              <p class="text-[10px] text-[#777066] mt-1">1P = Style Assistant · 3P = Export CSV for external ads.</p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <button id="startCampaignBtn" type="button" disabled class="px-3 py-2 bg-[#292722] hover:bg-[#4A4339] disabled:opacity-40 rounded-lg text-xs font-bold text-white shadow-sm"><i class="fa-solid fa-play mr-2"></i>Start campaign (1P)</button>
+              <button id="ignoreCampaignBtn" type="button" disabled class="px-3 py-2 border border-[#E4DED3] bg-white hover:border-[#89765C] disabled:opacity-40 rounded-lg text-xs font-bold text-[#292722]"><i class="fa-solid fa-ban mr-2"></i>Ignore</button>
+              <button id="downloadButton" type="button" class="px-3 py-2 bg-[#89765C] hover:bg-[#66513B] rounded-lg text-xs font-bold text-white shadow-sm"><i class="fa-solid fa-file-csv mr-2"></i>Export CSV</button>
+            </div>
+          </div>
           <div class="overflow-x-auto"><table class="w-full text-left text-xs whitespace-nowrap"><thead class="bg-[#F0ECE4] text-[#777066] font-mono text-[10px] uppercase"><tr><th class="px-4 py-3">Rank</th><th class="px-4 py-3">Creative</th><th class="px-4 py-3">Geo</th><th class="px-4 py-3">Age</th><th class="px-4 py-3">Gender</th><th class="px-4 py-3">RFM</th><th class="px-4 py-3">Extracted taste</th><th class="px-4 py-3 text-right">Segment fit</th></tr></thead><tbody id="matrixBody" class="divide-y divide-[#E4DED3]"><tr><td colspan="8" class="px-4 py-8 text-center text-[#777066]">Upload images to populate the matrix.</td></tr></tbody></table></div>
+        </section>
+
+        <section class="glass-panel rounded-xl overflow-hidden mt-6">
+          <div class="p-4 border-b border-[#E4DED3] flex items-center justify-between gap-3">
+            <div>
+              <h3 class="text-xs font-bold uppercase tracking-wider text-[#292722]"><i class="fa-solid fa-rectangle-list text-[#89765C] mr-2"></i>My campaigns</h3>
+              <p class="text-[10px] text-[#777066] mt-1">1P campaigns for your brand — start publishes Style recommendations to matching customers. Reach–ROAS columns are <span title="Synthetic KPIs seeded when the campaign is created">demo metrics</span>.</p>
+            </div>
+            <button id="refreshCampaignsBtn" type="button" class="px-3 py-2 border border-[#E4DED3] rounded-lg text-xs font-bold text-[#292722] hover:border-[#89765C]"><i class="fa-solid fa-rotate mr-1"></i>Refresh</button>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs whitespace-nowrap">
+              <thead class="bg-[#F0ECE4] text-[#777066] font-mono text-[10px] uppercase">
+                <tr>
+                  <th class="px-4 py-3">Created</th>
+                  <th class="px-4 py-3">Status</th>
+                  <th class="px-4 py-3">Audience</th>
+                  <th class="px-4 py-3">SKUs</th>
+                  <th class="px-4 py-3">Eligible</th>
+                  <th class="px-4 py-3">Recs</th>
+                  <th class="px-4 py-3">Serves</th>
+                  <th class="px-4 py-3" title="Demo metrics">Reach</th>
+                  <th class="px-4 py-3" title="Demo metrics">Impr.</th>
+                  <th class="px-4 py-3" title="Demo metrics">CTR</th>
+                  <th class="px-4 py-3" title="Demo metrics">Conv.</th>
+                  <th class="px-4 py-3" title="Demo metrics">Rev.</th>
+                  <th class="px-4 py-3" title="Demo metrics">Lift</th>
+                  <th class="px-4 py-3" title="Demo metrics">ROAS</th>
+                  <th class="px-4 py-3">Id</th>
+                </tr>
+              </thead>
+              <tbody id="campaignListBody" class="divide-y divide-[#E4DED3]">
+                <tr><td colspan="15" class="px-4 py-8 text-center text-[#777066]">Loading campaigns…</td></tr>
+              </tbody>
+            </table>
+          </div>
         </section>
       </div>
     </section>
@@ -711,10 +757,90 @@
       }
     }
 
-    window.addEventListener('message', (ev) => {
-      if (!ev.data || ev.data.type !== 'cc-context-request') return;
+    let agentAutoRunAfterFiles = false;
+
+    function applyAgentAdsFilters(filters) {
+      if (!filters || typeof filters !== 'object') return;
+      const area = $('filterArea');
+      if (area && Array.isArray(filters.pin_codes)) {
+        const wanted = new Set(filters.pin_codes.map(String));
+        Array.from(area.options || []).forEach((opt) => {
+          opt.selected = wanted.has(String(opt.value));
+        });
+      }
+      if ('age_group' in filters && $('filterAge')) {
+        $('filterAge').value = filters.age_group == null ? '' : String(filters.age_group);
+      }
+      if ('gender' in filters && $('filterGender')) {
+        $('filterGender').value = filters.gender == null ? '' : String(filters.gender);
+      }
+      if ('rfm_segment' in filters && $('filterRfm')) {
+        $('filterRfm').value = filters.rfm_segment == null ? '' : String(filters.rfm_segment);
+      }
+      applyBrandLock();
       if (state.metrics) refreshForFilters();
       else publishAdsContext();
+    }
+
+    function resetAgentAdsFilters() {
+      const area = $('filterArea');
+      if (area) Array.from(area.options || []).forEach((opt) => { opt.selected = false; });
+      if ($('filterAge')) $('filterAge').value = '';
+      if ($('filterGender')) $('filterGender').value = '';
+      if ($('filterRfm')) $('filterRfm').value = '';
+      applyBrandLock();
+      if (state.metrics) refreshForFilters();
+      else publishAdsContext();
+    }
+
+    function runAgentCampaign() {
+      applyBrandLock();
+      if (!state.assets.length) {
+        agentAutoRunAfterFiles = true;
+        $('uploadSummary').textContent = 'AURA: select SKU images to extract & rank…';
+        if ($('fileInput')) $('fileInput').click();
+        return;
+      }
+      runAnalysis();
+    }
+
+    function handleAgentCommand(cmd) {
+      if (!cmd || typeof cmd !== 'object') return;
+      const t = String(cmd.type || '');
+      if (t === 'set_filters') {
+        applyAgentAdsFilters(cmd.filters || {});
+      } else if (t === 'reset_filters') {
+        resetAgentAdsFilters();
+      } else if (t === 'run_campaign') {
+        runAgentCampaign();
+      } else if (t === 'export_csv') {
+        downloadCSV();
+      } else if (t === 'open_file_picker') {
+        if ($('fileInput')) $('fileInput').click();
+      } else {
+        return;
+      }
+      try {
+        window.parent.postMessage({
+          type: 'cc-agent-ack',
+          source: 'ads',
+          command: t,
+          ok: true,
+        }, '*');
+      } catch (_) { /* ignore */ }
+    }
+
+    window.addEventListener('message', (ev) => {
+      const data = ev.data;
+      if (!data || typeof data !== 'object') return;
+      if (data.type === 'cc-context-request') {
+        if (state.metrics) refreshForFilters();
+        else publishAdsContext();
+        return;
+      }
+      if (data.type === 'cc-agent-command') {
+        handleAgentCommand(data.command || data);
+      }
     });
 
     function extractionAttrs(item) {
@@ -838,6 +964,10 @@
         $('uploadSummary').textContent = `${state.assets.length} file(s) selected.`;
         $('runButton').disabled = false;
         renderCreatives();
+        if (agentAutoRunAfterFiles) {
+          agentAutoRunAfterFiles = false;
+          await runAnalysis();
+        }
       } catch (e) { alert(e.message); }
     }
     const dropzone = $('dropzone'); const fileInput =$('fileInput');
@@ -886,7 +1016,9 @@
         }));
         if (!state.campaignItems.length) throw new Error('Campaign returned no SKU items.');
         refreshForFilters();
-        $('uploadSummary').textContent = `Campaign ${data.campaign_id} · ranked ${state.campaignItems.length} SKU(s) for ${filtersLabel(f)}.`;
+        $('uploadSummary').textContent = `Campaign ${data.campaign_id} · ranked ${state.campaignItems.length} SKU(s) for ${filtersLabel(f)}. Start 1P or Export CSV for 3P.`;
+        setLifecycleButtons(true);
+        loadMyCampaigns();
       } catch (e) {
         console.error('[ads_lab] campaign failed', e);
         state.campaign = null;
@@ -894,7 +1026,111 @@
         state.results = state.assets.map(({file}) => ({filename:file.name, ok:false, error:e.message, attributes:{}}));
         refreshForFilters();
         $('uploadSummary').textContent = `Campaign failed: ${e.message}.`;
+        setLifecycleButtons(false);
       } finally { setLoading(false); }
+    }
+    function setLifecycleButtons(enabled) {
+      const on = !!enabled && !!(state.campaign && state.campaign.campaign_id);
+      if ($('startCampaignBtn')) $('startCampaignBtn').disabled = !on;
+      if ($('ignoreCampaignBtn')) $('ignoreCampaignBtn').disabled = !on;
+    }
+    function audienceLabel(c) {
+      const pins = c.pin_codes || [];
+      const pinBit = !pins.length ? 'No PIN' : (pins.length <= 2 ? pins.join(', ') : pins.length + ' PINs');
+      return [pinBit, c.age_group || 'All ages', displayGender(c.gender), c.rfm_segment || 'All RFM'].join(' × ');
+    }
+    function fmtImpactNum(v) {
+      if (v == null || v === '') return '—';
+      return Number(v).toLocaleString();
+    }
+    function fmtImpactPct(v) {
+      if (v == null || v === '') return '—';
+      return Number(v).toFixed(1) + '%';
+    }
+    function fmtImpactMoney(v) {
+      if (v == null || v === '') return '—';
+      return '₹' + Math.round(Number(v)).toLocaleString();
+    }
+    function fmtImpactRoas(v) {
+      if (v == null || v === '') return '—';
+      return Number(v).toFixed(1) + 'x';
+    }
+    async function loadMyCampaigns() {
+      const body = $('campaignListBody');
+      if (!body) return;
+      try {
+        const res = await fetch(endpoint('/v1/ads-lab/campaigns'), {
+          headers: { Accept: 'application/json', ...SuffaiSession.authHeaders() },
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.detail || ('HTTP ' + res.status));
+        const rows = data.campaigns || [];
+        if (!rows.length) {
+          body.innerHTML = '<tr><td colspan="15" class="px-4 py-8 text-center text-[#777066]">No campaigns yet. Rank SKUs to create one.</td></tr>';
+          return;
+        }
+        body.innerHTML = rows.map((c) => {
+          const created = (c.created_at || '').replace('T', ' ').slice(0, 16);
+          const i = c.impact || {};
+          return `<tr>
+            <td class="px-4 py-3 mono text-[#777066]">${esc(created)}</td>
+            <td class="px-4 py-3 font-semibold">${esc(c.status || '')}</td>
+            <td class="px-4 py-3 whitespace-normal min-w-[180px]">${esc(audienceLabel(c))}</td>
+            <td class="px-4 py-3">${esc(c.sku_count ?? '—')}</td>
+            <td class="px-4 py-3">${esc(c.eligible_users ?? 0)}</td>
+            <td class="px-4 py-3">${esc(c.recommendations_computed ?? 0)}</td>
+            <td class="px-4 py-3">${esc(c.style_feed_serves ?? 0)}</td>
+            <td class="px-4 py-3" title="Demo metrics">${esc(fmtImpactNum(i.reach))}</td>
+            <td class="px-4 py-3" title="Demo metrics">${esc(fmtImpactNum(i.impressions))}</td>
+            <td class="px-4 py-3" title="Demo metrics">${esc(fmtImpactPct(i.ctr))}</td>
+            <td class="px-4 py-3" title="Demo metrics">${esc(fmtImpactNum(i.conversions))}</td>
+            <td class="px-4 py-3" title="Demo metrics">${esc(fmtImpactMoney(i.revenue))}</td>
+            <td class="px-4 py-3" title="Demo metrics">${esc(fmtImpactPct(i.lift))}</td>
+            <td class="px-4 py-3" title="Demo metrics">${esc(fmtImpactRoas(i.roas))}</td>
+            <td class="px-4 py-3 mono text-[10px] text-[#777066]">${esc((c.campaign_id || '').slice(0, 8))}…</td>
+          </tr>`;
+        }).join('');
+      } catch (e) {
+        body.innerHTML = `<tr><td colspan="15" class="px-4 py-8 text-center text-red-700">${esc(e.message || String(e))}</td></tr>`;
+      }
+    }
+    async function startCurrentCampaign() {
+      const id = state.campaign && state.campaign.campaign_id;
+      if (!id) return;
+      if (!confirm('Start this 1P campaign? Eligible customers matching these filters will see Style recommendations (no campaign label shown to them).')) return;
+      setLoading(true, 'Starting 1P campaign · computing Style recommendations…');
+      try {
+        const res = await fetch(endpoint('/v1/ads-lab/campaigns/' + encodeURIComponent(id) + '/start'), {
+          method: 'POST',
+          headers: { Accept: 'application/json', ...SuffaiSession.authHeaders() },
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.detail || data.message || ('HTTP ' + res.status));
+        const m = data.materialize || {};
+        $('uploadSummary').textContent = `Started 1P · eligible ${m.eligible_users ?? '—'} · recs ${m.recommendations_computed ?? '—'}.`;
+        setLifecycleButtons(false);
+        loadMyCampaigns();
+      } catch (e) {
+        alert('Start failed: ' + (e.message || String(e)));
+      } finally { setLoading(false); }
+    }
+    async function ignoreCurrentCampaign() {
+      const id = state.campaign && state.campaign.campaign_id;
+      if (!id) return;
+      if (!confirm('Ignore this campaign? It will not appear in Style Assistant.')) return;
+      try {
+        const res = await fetch(endpoint('/v1/ads-lab/campaigns/' + encodeURIComponent(id) + '/ignore'), {
+          method: 'POST',
+          headers: { Accept: 'application/json', ...SuffaiSession.authHeaders() },
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.detail || data.message || ('HTTP ' + res.status));
+        $('uploadSummary').textContent = 'Campaign ignored.';
+        setLifecycleButtons(false);
+        loadMyCampaigns();
+      } catch (e) {
+        alert('Ignore failed: ' + (e.message || String(e)));
+      }
     }
     function downloadCSV() {
       const list = makeRankedAssets(); const f = currentFilters();
@@ -903,11 +1139,19 @@
       const csv = rows.map(row => row.map(v => `"${String(v ?? '').replace(/"/g,'""')}"`).join(',')).join('\r\n');
       const url = URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8;'})); const a = document.createElement('a'); a.href = url; a.download = 'ads_lab_segment_ranking.csv'; a.click(); URL.revokeObjectURL(url);
     }
-    $('downloadButton').addEventListener('click', downloadCSV);$('creativePrev').addEventListener('click', () => $('creativeGrid').scrollBy({left: -360, behavior: 'smooth'}));$('creativeNext').addEventListener('click', () => $('creativeGrid').scrollBy({left: 360, behavior: 'smooth'}));$('creativeGrid').addEventListener('keydown', (event) => {
+    $('downloadButton').addEventListener('click', downloadCSV);
+    if ($('startCampaignBtn')) $('startCampaignBtn').addEventListener('click', startCurrentCampaign);
+    if ($('ignoreCampaignBtn')) $('ignoreCampaignBtn').addEventListener('click', ignoreCurrentCampaign);
+    if ($('refreshCampaignsBtn')) $('refreshCampaignsBtn').addEventListener('click', loadMyCampaigns);
+    $('creativePrev').addEventListener('click', () => $('creativeGrid').scrollBy({left: -360, behavior: 'smooth'}));
+    $('creativeNext').addEventListener('click', () => $('creativeGrid').scrollBy({left: 360, behavior: 'smooth'}));
+    $('creativeGrid').addEventListener('keydown', (event) => {
       if (event.key === 'ArrowRight') $('creativeGrid').scrollBy({left: 360, behavior: 'smooth'});
       if (event.key === 'ArrowLeft') $('creativeGrid').scrollBy({left: -360, behavior: 'smooth'});
     });
+    setLifecycleButtons(false);
     loadMetrics();
+    loadMyCampaigns();
   </script>
 </body>
 </html>

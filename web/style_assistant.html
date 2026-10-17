@@ -316,10 +316,14 @@
     function applyCustomerLock() {
       const uSel = $('userSelect');
       if (!uSel || !lockedCustomerId) return;
-      const label = session.display_name || session.username || lockedCustomerId;
+      const label = session.display_name || session.username || 'You';
       uSel.innerHTML = `<option value="${escapeHtml(lockedCustomerId)}" selected>${escapeHtml(label)}</option>`;
       uSel.disabled = true;
-      uSel.title = 'Locked to your customer session';
+      uSel.title = 'Your account';
+      // Brand picker optional for customers — feed loads automatically
+      const brandLabel = $('brandSelect') && $('brandSelect').closest('label');
+      if (brandLabel) brandLabel.classList.add('opacity-70');
+      $('runHint').textContent = 'Loading looks for you…';
       updateRunEnabled();
     }
 
@@ -536,9 +540,13 @@
           : '<option value="">No brands in brand_skus</option>';
 
         $('apiStatus').textContent = lockedCustomerId
-          ? `Your wardrobe · ${state.brands.length} brands`
+          ? `Your looks · ${state.brands.length} brands`
           : `${state.users.length} customers · ${state.brands.length} brands`;
         updateRunEnabled();
+        if (lockedCustomerId) {
+          // Customer path: load personalized feed by default (no campaign labeling)
+          await loadCustomerFeed();
+        }
       } catch (e) {
         console.error('[style_assistant]', e);
         $('apiStatus').textContent = 'API error';
@@ -546,6 +554,47 @@
         if (!lockedCustomerId) $('userSelect').innerHTML = '<option value="">Unavailable</option>';
         else applyCustomerLock();
         $('brandSelect').innerHTML = '<option value="">Unavailable</option>';
+      }
+    }
+
+    async function loadCustomerFeed() {
+      if (!lockedCustomerId) return;
+      setError('');
+      setLoading(true);
+      $('runHint').textContent = 'Loading your suggestions…';
+      try {
+        const res = await fetch(endpoint('/v1/style-assistant/feed'), {
+          headers: { Accept: 'application/json', ...SuffaiSession.authHeaders() },
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.detail || data.message || ('HTTP ' + res.status));
+        state.result = data;
+        const complete = data.complete_outfit || data.looks || [];
+        const similar = data.similar_likes || [];
+        const brands = (data.brands || []).filter(Boolean);
+        $('completeMeta').textContent = complete.length
+          ? `${complete.length} looks` + (brands.length ? ` · ${brands.join(', ')}` : '')
+          : 'No looks yet';
+        $('similarMeta').textContent = similar.length ? `${similar.length} similar picks` : '';
+        $('wardrobeMeta').textContent = `${(data.wardrobe || []).length} pieces`;
+        renderCompleteLooks(complete);
+        renderSimilarLikes(similar);
+        renderWardrobe(data.wardrobe || []);
+        if (!complete.length && !similar.length) {
+          $('completeRail').innerHTML = '<p class="muted px-1">New looks will appear here when brands publish styles for your area.</p>';
+          $('similarRail').innerHTML = '<p class="muted px-1">Similar picks will show up alongside your wardrobe.</p>';
+          $('runHint').textContent = 'No personalized looks yet — check back soon.';
+        } else {
+          $('runHint').textContent = 'Suggestions tailored to your wardrobe.';
+        }
+        $('apiStatus').textContent = 'Your looks ready';
+      } catch (e) {
+        console.error('[style_assistant] feed', e);
+        setError(e.message || String(e));
+        $('runHint').textContent = 'Could not load suggestions.';
+      } finally {
+        setLoading(false);
+        updateRunEnabled();
       }
     }
 

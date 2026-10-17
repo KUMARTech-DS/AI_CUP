@@ -23,4 +23,4 @@ echo "SIMILARITY_URL=$SIMILARITY_URL"
 
 "$ROOT/deploy/deploy_command_center.sh"
 
-echo "==> Step 4 done. Ads Lab campaign uses EXTRACTION_URL + SIMILARITY_URL; apply migration 005 for brand_skus."
+echo "==> Step 4 done. Admin tab proxies to similarity; Ads Lab uses extraction."

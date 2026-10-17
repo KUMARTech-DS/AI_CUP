@@ -6,6 +6,7 @@ import json
 import logging
 import math
 import os
+import random
 import re
 import uuid
 from contextlib import contextmanager
@@ -65,7 +66,58 @@ def create_campaign(
                     rfm_segment or None,
                 ),
             )
+    seed_synthetic_impact(campaign_id)
     return campaign_id
+
+
+def seed_synthetic_impact(campaign_id: str) -> None:
+    """Persist demo marketing KPIs once at campaign create (no-op if already present)."""
+    reach = random.randint(5_000, 80_000)
+    impressions = int(reach * random.uniform(1.2, 3.5))
+    ctr = round(random.uniform(0.8, 4.5), 2)
+    conversions = max(1, int(impressions * (ctr / 100.0) * random.uniform(0.05, 0.25)))
+    revenue = round(conversions * random.uniform(400.0, 2500.0), 2)
+    lift = round(random.uniform(1.0, 12.0), 2)
+    roas = round(random.uniform(1.2, 6.5), 2)
+    try:
+        with connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO campaign_impact_metrics (
+                      campaign_id, reach, impressions, ctr, conversions,
+                      revenue, lift, roas, source
+                    ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,'synthetic')
+                    ON CONFLICT (campaign_id) DO NOTHING
+                    """,
+                    (campaign_id, reach, impressions, ctr, conversions, revenue, lift, roas),
+                )
+    except Exception as e:
+        log.warning("seed_synthetic_impact failed for %s: %s", campaign_id, e)
+
+
+def _impact_from_row(
+    reach: Any,
+    impressions: Any,
+    ctr: Any,
+    conversions: Any,
+    revenue: Any,
+    lift: Any,
+    roas: Any,
+    source: Any,
+) -> Optional[dict[str, Any]]:
+    if reach is None and impressions is None:
+        return None
+    return {
+        "reach": int(reach or 0),
+        "impressions": int(impressions or 0),
+        "ctr": float(ctr or 0),
+        "conversions": int(conversions or 0),
+        "revenue": float(revenue or 0),
+        "lift": float(lift or 0),
+        "roas": float(roas or 0),
+        "source": source or "synthetic",
+    }
 
 
 def insert_sku(
@@ -161,13 +213,308 @@ def set_campaign_status(
 ) -> None:
     with connect() as conn:
         with conn.cursor() as cur:
+            extra = ""
+            if status == "started":
+                extra = ", started_at = COALESCE(started_at, now()), ignored_at = NULL"
+            elif status == "ignored":
+                extra = ", ignored_at = COALESCE(ignored_at, now())"
             cur.execute(
-                """
+                f"""
                 UPDATE brand_campaigns
-                SET status = %s, error_message = %s, updated_at = now()
+                SET status = %s, error_message = %s, updated_at = now(){extra}
                 WHERE campaign_id = %s
                 """,
                 (status, error_message, campaign_id),
+            )
+
+
+def get_campaign(campaign_id: str) -> Optional[dict[str, Any]]:
+    with connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT c.campaign_id::text, c.brand_name, c.pin_codes, c.age_group, c.gender,
+                       c.rfm_segment, c.status, c.error_message, c.title,
+                       c.started_at, c.ignored_at, c.created_at, c.updated_at,
+                       COALESCE(c.eligible_users, 0),
+                       COALESCE(c.recommendations_computed, 0),
+                       COALESCE(c.style_feed_serves, 0),
+                       i.reach, i.impressions, i.ctr, i.conversions,
+                       i.revenue, i.lift, i.roas, i.source
+                FROM brand_campaigns c
+                LEFT JOIN campaign_impact_metrics i ON i.campaign_id = c.campaign_id
+                WHERE c.campaign_id = %s
+                """,
+                (campaign_id,),
+            )
+            row = cur.fetchone()
+            if not row:
+                return None
+            return _campaign_row(row)
+
+
+def _campaign_row(row: Sequence[Any]) -> dict[str, Any]:
+    pins = row[2] or []
+    if not isinstance(pins, list):
+        pins = list(pins) if pins else []
+    out: dict[str, Any] = {
+        "campaign_id": row[0],
+        "brand_name": row[1],
+        "pin_codes": [str(p) for p in pins],
+        "age_group": row[3],
+        "gender": row[4],
+        "rfm_segment": row[5],
+        "status": row[6],
+        "error_message": row[7],
+        "title": row[8],
+        "started_at": row[9].isoformat() if row[9] else None,
+        "ignored_at": row[10].isoformat() if row[10] else None,
+        "created_at": row[11].isoformat() if row[11] else None,
+        "updated_at": row[12].isoformat() if row[12] else None,
+        "eligible_users": int(row[13] or 0),
+        "recommendations_computed": int(row[14] or 0),
+        "style_feed_serves": int(row[15] or 0),
+    }
+    if len(row) > 16:
+        impact = _impact_from_row(
+            row[16], row[17], row[18], row[19], row[20], row[21], row[22], row[23]
+        )
+        if impact:
+            out["impact"] = impact
+    return out
+
+
+def list_campaigns(
+    *,
+    brand_name: Optional[str] = None,
+    limit: int = 50,
+) -> list[dict[str, Any]]:
+    with connect() as conn:
+        with conn.cursor() as cur:
+            if brand_name:
+                cur.execute(
+                    """
+                    SELECT c.campaign_id::text, c.brand_name, c.pin_codes, c.age_group,
+                           c.gender, c.rfm_segment, c.status, c.error_message, c.title,
+                           c.started_at, c.ignored_at, c.created_at, c.updated_at,
+                           COALESCE(c.eligible_users, 0),
+                           COALESCE(c.recommendations_computed, 0),
+                           COALESCE(c.style_feed_serves, 0),
+                           i.reach, i.impressions, i.ctr, i.conversions,
+                           i.revenue, i.lift, i.roas, i.source,
+                           (SELECT COUNT(*) FROM brand_skus s WHERE s.campaign_id = c.campaign_id)
+                    FROM brand_campaigns c
+                    LEFT JOIN campaign_impact_metrics i ON i.campaign_id = c.campaign_id
+                    WHERE lower(c.brand_name) = lower(%s)
+                    ORDER BY c.created_at DESC
+                    LIMIT %s
+                    """,
+                    (brand_name, limit),
+                )
+            else:
+                cur.execute(
+                    """
+                    SELECT c.campaign_id::text, c.brand_name, c.pin_codes, c.age_group,
+                           c.gender, c.rfm_segment, c.status, c.error_message, c.title,
+                           c.started_at, c.ignored_at, c.created_at, c.updated_at,
+                           COALESCE(c.eligible_users, 0),
+                           COALESCE(c.recommendations_computed, 0),
+                           COALESCE(c.style_feed_serves, 0),
+                           i.reach, i.impressions, i.ctr, i.conversions,
+                           i.revenue, i.lift, i.roas, i.source,
+                           (SELECT COUNT(*) FROM brand_skus s WHERE s.campaign_id = c.campaign_id)
+                    FROM brand_campaigns c
+                    LEFT JOIN campaign_impact_metrics i ON i.campaign_id = c.campaign_id
+                    ORDER BY c.created_at DESC
+                    LIMIT %s
+                    """,
+                    (limit,),
+                )
+            out = []
+            for row in cur.fetchall():
+                item = _campaign_row(row[:24])
+                item["sku_count"] = int(row[24] or 0)
+                out.append(item)
+            return out
+
+
+def list_campaign_skus(campaign_id: str, *, limit: int = 100) -> list[dict[str, Any]]:
+    with connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT sku_uuid::text, brand_name, original_filename, gcs_bucket,
+                       gcs_object_key, color, pattern, material, size, commodity,
+                       extract_ok, extract_error, created_at
+                FROM brand_skus
+                WHERE campaign_id = %s
+                ORDER BY created_at ASC
+                LIMIT %s
+                """,
+                (campaign_id, limit),
+            )
+            rows = []
+            for r in cur.fetchall():
+                rows.append(
+                    {
+                        "sku_uuid": r[0],
+                        "brand_name": r[1],
+                        "original_filename": r[2],
+                        "gcs_bucket": r[3],
+                        "gcs_object_key": r[4],
+                        "attributes": {
+                            "color": r[5],
+                            "pattern": r[6],
+                            "material": r[7],
+                            "size": r[8],
+                            "commodity": r[9],
+                            "name": r[9],
+                        },
+                        "extract_ok": bool(r[10]),
+                        "extract_error": r[11],
+                        "created_at": r[12].isoformat() if r[12] else None,
+                    }
+                )
+            return rows
+
+
+def eligible_user_uuids_for_campaign(
+    campaign: dict[str, Any],
+    *,
+    cap: Optional[int] = None,
+) -> list[str]:
+    """
+    Users whose wardrobe first-sight PIN is in campaign pin_codes.
+    Age/gender/RFM are campaign audience metadata; PIN is the enforceable
+    user-level key available on user_wardrobe today.
+    """
+    limit = cap if cap is not None else int(os.getenv("CAMPAIGN_ELIGIBLE_USER_CAP", "200"))
+    pins = [str(p).strip() for p in (campaign.get("pin_codes") or []) if str(p).strip()]
+    if not pins:
+        return []
+    with connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT DISTINCT user_uuid
+                FROM user_wardrobe
+                WHERE pin_code_at_first_sight = ANY(%s)
+                  AND user_uuid IS NOT NULL
+                  AND trim(user_uuid) <> ''
+                ORDER BY user_uuid
+                LIMIT %s
+                """,
+                (pins, limit),
+            )
+            return [str(r[0]) for r in cur.fetchall()]
+
+
+def upsert_user_recommendation(
+    *,
+    campaign_id: str,
+    user_uuid: str,
+    brand_name: str,
+    fit_score: Optional[float],
+    payload: dict[str, Any],
+) -> None:
+    with connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO campaign_user_recommendations (
+                  campaign_id, user_uuid, brand_name, fit_score, payload
+                ) VALUES (%s,%s,%s,%s,%s::jsonb)
+                ON CONFLICT (campaign_id, user_uuid) DO UPDATE SET
+                  brand_name = EXCLUDED.brand_name,
+                  fit_score = EXCLUDED.fit_score,
+                  payload = EXCLUDED.payload,
+                  computed_at = now()
+                """,
+                (
+                    campaign_id,
+                    user_uuid,
+                    brand_name,
+                    fit_score,
+                    json.dumps(payload),
+                ),
+            )
+
+
+def set_campaign_impact(
+    campaign_id: str,
+    *,
+    eligible_users: Optional[int] = None,
+    recommendations_computed: Optional[int] = None,
+    bump_style_feed_serves: int = 0,
+) -> None:
+    with connect() as conn:
+        with conn.cursor() as cur:
+            sets = ["updated_at = now()"]
+            args: list[Any] = []
+            if eligible_users is not None:
+                sets.append("eligible_users = %s")
+                args.append(int(eligible_users))
+            if recommendations_computed is not None:
+                sets.append("recommendations_computed = %s")
+                args.append(int(recommendations_computed))
+            if bump_style_feed_serves:
+                sets.append("style_feed_serves = COALESCE(style_feed_serves, 0) + %s")
+                args.append(int(bump_style_feed_serves))
+            args.append(campaign_id)
+            cur.execute(
+                f"UPDATE brand_campaigns SET {', '.join(sets)} WHERE campaign_id = %s",
+                tuple(args),
+            )
+
+
+def list_started_recs_for_user(user_uuid: str, *, limit: int = 20) -> list[dict[str, Any]]:
+    with connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT r.campaign_id::text, r.user_uuid, r.brand_name, r.fit_score,
+                       r.payload, r.computed_at, c.status
+                FROM campaign_user_recommendations r
+                JOIN brand_campaigns c ON c.campaign_id = r.campaign_id
+                WHERE r.user_uuid = %s AND c.status = 'started'
+                ORDER BY COALESCE(r.fit_score, 0) DESC, r.computed_at DESC
+                LIMIT %s
+                """,
+                (user_uuid, limit),
+            )
+            out = []
+            for row in cur.fetchall():
+                payload = row[4]
+                if isinstance(payload, str):
+                    try:
+                        payload = json.loads(payload)
+                    except Exception:
+                        payload = {}
+                if not isinstance(payload, dict):
+                    payload = {}
+                out.append(
+                    {
+                        "campaign_id": row[0],
+                        "user_uuid": row[1],
+                        "brand_name": row[2],
+                        "fit_score": float(row[3]) if row[3] is not None else None,
+                        "payload": payload,
+                        "computed_at": row[5].isoformat() if row[5] else None,
+                    }
+                )
+            return out
+
+
+def ensure_campaign_title(campaign_id: str, brand_name: str) -> None:
+    with connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE brand_campaigns
+                SET title = COALESCE(NULLIF(trim(title), ''), %s)
+                WHERE campaign_id = %s
+                """,
+                (f"{brand_name} · 1P", campaign_id),
             )
 
 
