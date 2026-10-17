@@ -125,3 +125,17 @@ def test_policy_echo_suppressed(fake_db, monkeypatch):
         aura_agent.AgentChatRequest(message="Summarise my campaigns"), sess=_sess(token="tok-loop5"), metrics_path=METRICS
     )
     assert aura_agent._CANARY not in resp["answer"]
+
+
+def test_loop_stops_on_input_form(fake_db, monkeypatch):
+    script = [
+        _Resp([_PartObj(function_call=_FC("request_inputs", {"kind": "run_mode", "campaign": "Zara Summer"}))]),
+        _Resp([_PartObj(text="should not be reached")]),
+    ]
+    seen = _install_fake_vertex(monkeypatch, script)
+    resp = aura_agent.run_agent(
+        aura_agent.AgentChatRequest(message="My ranking is done, what next?"), sess=_sess(token="tok-loop6"), metrics_path=METRICS
+    )
+    assert resp["input_form"]["kind"] == "run_mode"
+    assert resp["pending_action"] is None
+    assert len(seen["contents"]) == 1 and len(script) == 1

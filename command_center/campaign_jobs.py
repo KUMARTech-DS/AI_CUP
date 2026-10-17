@@ -21,6 +21,7 @@ from typing import Any, Callable, Optional, Sequence
 
 import brand_campaign as brand_camp
 import campaign_service as svc
+import style_assistant as style_asst
 from campaign_service import ImageInput, ServiceError
 
 log = logging.getLogger("command_center.campaign_jobs")
@@ -221,6 +222,30 @@ def _finish(job_id: str, status: str, *, error_code: Optional[str] = None,
             )
 
 
+def _mark_personalising(job_id: str, progress: dict[str, Any]) -> None:
+    """All images ranked; keep the lease while per-customer picks are saved."""
+    with brand_camp.connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE campaign_jobs
+                SET processed_images = %s, failed_images = %s,
+                    lease_until = now() + make_interval(secs => %s), updated_at = now()
+                WHERE job_id = %s
+                """,
+                (progress["done"] + progress["failed"], progress["failed"], lease_seconds(), job_id),
+            )
+
+
+def _personalise(job_id: str, campaign_id: str, progress: dict[str, Any]) -> None:
+    """Save each eligible customer's Style Assistant picks; never blocks the ranking result."""
+    try:
+        _mark_personalising(job_id, progress)
+        style_asst.personalise_campaign(campaign_id)
+    except Exception:
+        log.exception("personalise failed campaign=%s job=%s", campaign_id, job_id)
+
+
 def _claim_requeue(job_id: str, stale_sec: int) -> bool:
     """Claim a stalled (unleased, untouched) job for re-dispatch; one caller wins."""
     with brand_camp.connect() as conn:
@@ -312,14 +337,18 @@ def job_view(job: dict[str, Any], progress: Optional[dict[str, Any]] = None) -> 
     pending = max(0, total - processed)
     per_image = progress.get("avg_seconds") if progress else None
     if job["status"] in FINAL_STATUSES:
-        eta = 0
+        eta, stage = 0, job["status"]
+    elif total and pending == 0 and job["status"] == "running":
+        eta, stage = _env_int("PERSONALISE_ETA_SEC", 30), "personalising"
     else:
         eta = estimate_seconds(pending, job["total_garments"], per_image=per_image)
+        stage = "ranking" if job["status"] == "running" else job["status"]
     return {
         "job_id": job["job_id"],
         "campaign_id": job["campaign_id"],
         "brand_name": job["brand_name"],
         "status": job["status"],
+        "stage": stage,
         "total_images": total,
         "processed_images": processed,
         "failed_images": job["failed_images"],
@@ -545,6 +574,7 @@ def run_chunk(job_id: str, *, enqueue_next: bool = True) -> dict[str, Any]:
             _finish(job_id, "failed", error_code="all_failed", progress=progress)
             brand_camp.set_campaign_status(cid, "error", "No images could be processed")
             return {"ok": True, "status": "failed", "progress": progress}
+        _personalise(job_id, cid, progress)
         brand_camp.set_campaign_status(cid, "ranked")
         _finish(job_id, "succeeded", progress=progress)
         return {"ok": True, "status": "succeeded", "progress": progress}

@@ -314,7 +314,7 @@
         <h2 class="text-xs font-bold uppercase tracking-wider text-[#3B2733] flex items-center gap-2"><span class="w-5 h-5 rounded bg-[#EAD9E0] text-[#3B2733] flex items-center justify-center text-[10px] border border-[#DCC3CE]">1</span> Brand &amp; audience</h2>
         <label class="block text-[10px] text-[#8A7480] uppercase tracking-wider font-semibold">Brand name<input id="filterBrand" type="text" class="field mt-1" placeholder="e.g. Nike" autocomplete="organization" /></label>
         <label class="block text-[10px] text-[#8A7480] uppercase tracking-wider font-semibold">PIN codes <span id="pinCount" class="normal-case tracking-normal font-normal text-[#6B3A55]"></span><select id="filterArea" class="field mt-1" multiple size="5"><option value="">Loading areas…</option></select></label>
-        <p class="text-[10px] text-[#8A7480]">Click to select or deselect PINs. Pick one or more.</p>
+        <p class="text-[10px] text-[#8A7480] flex items-center justify-between gap-2"><span>Click to select or deselect PINs. Pick one or more.</span><button id="pinSelectAll" type="button" class="flex-none text-[10px] font-semibold text-[#6B3A55] underline underline-offset-2 hover:text-[#552C43]">Select all</button></p>
         <label class="block text-[10px] text-[#8A7480] uppercase tracking-wider font-semibold">Age bucket<select id="filterAge" class="field mt-1"><option value="">All age groups</option></select></label>
         <label class="block text-[10px] text-[#8A7480] uppercase tracking-wider font-semibold">Gender<select id="filterGender" class="field mt-1"><option value="">All genders</option></select></label>
         <label class="block text-[10px] text-[#8A7480] uppercase tracking-wider font-semibold">RFM segment<select id="filterRfm" class="field mt-1"><option value="">All RFM segments</option></select></label>
@@ -513,14 +513,14 @@
       <div class="flex items-start gap-3">
         <div class="h-10 w-10 rounded-full bg-[#F6EEF0] border border-[#6B3A55] flex items-center justify-center flex-none"><i class="fa-solid fa-check text-[#6B3A55]"></i></div>
         <div>
-          <h2 id="createdTitle" class="text-base font-bold text-[#3B2733]">Your campaign has been created</h2>
+          <h2 id="createdTitle" class="text-base font-bold text-[#3B2733]">Your SKUs are ranked</h2>
           <p id="createdSummary" class="text-xs text-[#8A7480] mt-1"></p>
         </div>
       </div>
       <div class="flex flex-col sm:flex-row gap-2 justify-end">
         <button id="createdCloseBtn" type="button" class="px-3 py-2 border border-[#EAD9E0] bg-white rounded-lg text-xs font-bold text-[#3B2733] hover:border-[#6B3A55]">View ranking</button>
         <button id="created3pBtn" type="button" class="px-3 py-2 bg-[#6B3A55] hover:bg-[#552C43] rounded-lg text-xs font-bold text-white"><i class="fa-solid fa-file-csv mr-1"></i>Run on other platforms (3P)</button>
-        <button id="created1pBtn" type="button" class="px-3 py-2 bg-[#6B3A55] hover:bg-[#552C43] rounded-lg text-xs font-bold text-white"><i class="fa-solid fa-bullhorn mr-1 text-[#6B3A55]"></i>Run on SuffAI (1P)</button>
+        <button id="created1pBtn" type="button" class="px-3 py-2 bg-[#6B3A55] hover:bg-[#552C43] rounded-lg text-xs font-bold text-white"><i class="fa-solid fa-bullhorn mr-1"></i>Set up on SuffAI (1P)</button>
       </div>
     </div>
   </div>
@@ -638,7 +638,10 @@
     }
     function updatePinCount() {
       const n = selectedPinCodes().length;
-      $('pinCount').textContent = n ? `· ${n} selected` : '';
+      const total = Array.from($('filterArea').options).filter(o => o.value).length;
+      $('pinCount').textContent = n ? (total > 1 && n === total ? `· all ${n} selected` : `· ${n} selected`) : '';
+      $('pinSelectAll').textContent = total > 0 && n === total ? 'Clear all' : 'Select all';
+      $('pinSelectAll').disabled = total === 0;
     }
     function setApiStatus(ok, msg) {
       $('apiStatus').innerHTML = `<span class="w-1.5 h-1.5 rounded-full ${ok ? 'bg-emerald-600' : 'bg-red-600'}"></span>${esc(msg)}`;
@@ -1620,6 +1623,12 @@
       $('filterArea').dispatchEvent(new Event('change'));
     });
     $('filterArea').addEventListener('change', updatePinCount);
+    $('pinSelectAll').addEventListener('click', () => {
+      const opts = Array.from($('filterArea').options).filter(o => o.value);
+      const selectAll = opts.some(o => !o.selected);
+      opts.forEach(o => { o.selected = selectAll; });
+      $('filterArea').dispatchEvent(new Event('change'));
+    });
     $('runButton').addEventListener('click', runAnalysis);
     applyBrandLock();
     $('btnToggle').addEventListener('click', () => setSidebar($('sidebar').classList.contains('collapsed')));
@@ -1709,8 +1718,10 @@
       const pct = Math.max(0, Math.min(100, Number(job.progress_pct) || 0));
       $('jobProgressBar').style.width = pct + '%';
       $('jobProgressPct').textContent = Math.round(pct) + '%';
-      $('jobProgressLabel').textContent = `${job.processed_images || 0} of ${job.total_images} image(s) processed`
-        + (job.failed_images ? ` · ${job.failed_images} failed` : '');
+      $('jobProgressLabel').textContent = job.stage === 'personalising'
+        ? `All images ranked · saving Style Assistant picks for ${fmtNumber(job.total_customers)} customer(s)`
+        : `${job.processed_images || 0} of ${job.total_images} image(s) processed`
+          + (job.failed_images ? ` · ${job.failed_images} failed` : '');
       $('jobNote').textContent = done
         ? 'Job finished.'
         : 'Your job has been triggered. You can leave this page — it keeps running and resumes here.';
@@ -1829,7 +1840,7 @@
           ? 'This campaign is already running on SuffAI (simulated). Track it on the Campaigns tab.'
           : c.status === 'exported'
             ? 'Exported for 3P. You can still choose to run it on SuffAI.'
-            : `Campaign ready: ${state.campaignItems.filter(r => r.ok).length} ranked SKU(s).`;
+            : `Ranking ready: ${state.campaignItems.filter(r => r.ok).length} ranked SKU(s). Set up and confirm the 1P campaign on the Campaigns tab.`;
     }
 
     function applyCampaignDraft(ctx) {

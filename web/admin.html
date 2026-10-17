@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SuffAI Admin — Garments & Campaigns</title>
+  <title>SuffAI Admin — Intelligence</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
   <script src="./config.js"></script>
   <script src="./session.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Outfit:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet" />
@@ -39,11 +40,11 @@
       padding: 1.1rem 1.25rem;
       box-shadow: 0 8px 24px rgba(107, 58, 85, 0.06);
     }
-    .kpi-val { font-family: 'IBM Plex Mono', monospace; font-size: 1.75rem; color: var(--plum); font-weight: 500; }
+    .kpi-val { font-family: 'IBM Plex Mono', monospace; font-size: 1.6rem; color: var(--plum); font-weight: 500; }
     .kpi-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
-    input, button { font-family: inherit; }
+    input, button, select { font-family: inherit; }
     .lbl { display: flex; flex-direction: column; gap: 0.3rem; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 600; color: var(--muted); }
-    input {
+    input[type=text], input:not([type]) {
       background: var(--panel);
       border: 1.5px solid var(--line);
       color: var(--ink);
@@ -67,6 +68,12 @@
     }
     button.primary:hover { background: var(--plum-dk); }
     button.primary:disabled { opacity: 0.6; cursor: wait; }
+    button.ghost {
+      background: var(--panel); border: 1.5px solid var(--line); color: var(--plum);
+      font-size: 12px; font-weight: 600; padding: 0.35rem 0.7rem; border-radius: 8px; cursor: pointer;
+    }
+    button.ghost:hover { border-color: var(--plum); }
+    button.ghost:disabled { opacity: 0.5; cursor: default; }
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
     th {
       text-align: left;
@@ -78,8 +85,9 @@
       border-bottom: 1px solid var(--line);
       background: var(--raised);
     }
-    td { padding: 0.7rem 0.5rem; border-bottom: 1px solid var(--line); color: var(--ink); }
+    td { padding: 0.7rem 0.5rem; border-bottom: 1px solid var(--line); color: var(--ink); vertical-align: top; }
     tbody tr:hover td { background: rgba(246, 238, 240, 0.6); }
+    tr.detail-row:hover td { background: transparent; }
     .num { text-align: right; font-family: 'IBM Plex Mono', monospace; }
     .mono { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--plum); }
     .err {
@@ -87,6 +95,43 @@
       background: rgba(180, 60, 60, 0.08); border: 1px solid rgba(180, 60, 60, 0.3); color: #a03a3a;
     }
     .muted { color: var(--muted); font-size: 12px; }
+    .tabbar { display: flex; gap: 0.35rem; flex-wrap: wrap; border-bottom: 1px solid var(--line); margin-bottom: 1.25rem; }
+    .tabbar button {
+      background: none; border: none; padding: 0.7rem 1rem; font-size: 14px; font-weight: 600; color: var(--muted);
+      border-bottom: 3px solid transparent; cursor: pointer; margin-bottom: -1px;
+    }
+    .tabbar button[aria-selected=true] { color: var(--plum); border-bottom-color: var(--plum); }
+    .chart { width: 100%; height: 300px; }
+    .chart.sm { height: 240px; }
+    .chart.lg { height: 380px; }
+    .badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 0.15rem 0.55rem; border-radius: 999px; white-space: nowrap; }
+    .sim { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #9a6b1e; background: #fbf0dc; border-radius: 6px; padding: 0.1rem 0.4rem; }
+    details.ms { position: relative; }
+    details.ms > summary {
+      list-style: none; cursor: pointer; background: var(--panel); border: 1.5px solid var(--line); border-radius: 10px;
+      padding: 0.55rem 0.8rem; font-size: 13px; color: var(--ink); text-transform: none; letter-spacing: normal; font-weight: 500;
+      min-width: 150px; max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    details.ms > summary::-webkit-details-marker { display: none; }
+    details.ms[open] > summary { border-color: var(--plum); }
+    details.ms .ms-pop {
+      position: absolute; z-index: 30; top: calc(100% + 4px); left: 0; min-width: 220px; max-height: 280px; overflow: auto;
+      background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 0.4rem; box-shadow: 0 12px 28px rgba(107,58,85,0.15);
+    }
+    details.ms label.opt {
+      display: flex; gap: 0.5rem; align-items: center; padding: 0.3rem 0.4rem; border-radius: 6px; font-size: 13px; color: var(--ink);
+      text-transform: none; letter-spacing: normal; font-weight: 400; cursor: pointer;
+    }
+    details.ms label.opt:hover { background: var(--raised); }
+    details.ms label.opt.all { font-weight: 600; border-bottom: 1px solid var(--line); border-radius: 6px 6px 0 0; margin-bottom: 0.2rem; }
+    .bar-track { background: var(--raised); border-radius: 6px; height: 10px; overflow: hidden; }
+    .bar-fill { background: var(--plum); height: 100%; }
+    .item-card { border: 1px solid var(--line); border-radius: 14px; padding: 0.85rem 1rem; background: var(--panel); }
+    .kv { display: grid; grid-template-columns: auto 1fr; gap: 0.15rem 0.75rem; font-size: 12px; }
+    .kv dt { color: var(--muted); }
+    .kv dd { margin: 0; color: var(--ink); }
+    .pager { display: flex; gap: 0.5rem; align-items: center; justify-content: flex-end; margin-top: 0.75rem; }
+    details.section > summary { cursor: pointer; font-weight: 600; color: var(--plum); }
   </style>
 </head>
 <body>
@@ -94,150 +139,513 @@
     if (!SuffaiSession.requireAuth('admin')) { /* redirected */ }
   </script>
 
-  <div class="max-w-6xl mx-auto px-5 py-8">
-    <div class="mb-6">
-      <h1 class="text-3xl m-0">Unique garments</h1>
-      <p class="muted mt-1 mb-0">Distinct garments seen across customer wardrobes, by PIN and brand.</p>
+  <div class="max-w-7xl mx-auto px-5 py-8">
+    <div class="mb-4">
+      <h1 class="text-3xl m-0">Admin intelligence</h1>
+      <p class="muted mt-1 mb-0">Real BigQuery customers, orders and garments plus Cloud SQL campaigns. Missing fields show "No data". Phones are masked; each reveal is logged.</p>
     </div>
 
-    <form class="card mb-5 flex flex-wrap gap-3 items-end" id="filters">
-      <label class="lbl">
-        PIN code
-        <input id="pin" placeholder="e.g. 560038" maxlength="6" inputmode="numeric" />
-      </label>
-      <label class="lbl">
-        Brand
-        <input id="brand" placeholder="Any brand" />
-      </label>
-      <button type="submit" class="primary" id="btnLoad">Apply</button>
-      <span id="status" class="muted self-center" aria-live="polite"></span>
-    </form>
-
-    <div id="error" class="err mb-4 hidden" role="alert"></div>
-
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-      <div class="card">
-        <div class="kpi-label">Unique garments</div>
-        <div class="kpi-val" id="kpiUnique">—</div>
-      </div>
-      <div class="card">
-        <div class="kpi-label">Total observations</div>
-        <div class="kpi-val" id="kpiObs">—</div>
-      </div>
-      <div class="card">
-        <div class="kpi-label">Unique users</div>
-        <div class="kpi-val" id="kpiUsers">—</div>
-      </div>
+    <div class="tabbar" role="tablist">
+      <button role="tab" data-tab="customers" aria-selected="true">Customer Intelligence</button>
+      <button role="tab" data-tab="garments" aria-selected="false">Wardrobe &amp; Garments</button>
+      <button role="tab" data-tab="brands" aria-selected="false">Brands Intelligence</button>
+      <button role="tab" data-tab="campaigns" aria-selected="false">Campaigns Management</button>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+    <!-- ============ Tab 1: Customers ============ -->
+    <section id="tab-customers" role="tabpanel">
+      <form class="card mb-4 flex flex-wrap gap-3 items-end" id="custFilters">
+        <label class="lbl">Name or phone
+          <input id="custQ" type="text" placeholder="e.g. Priya or 98450" maxlength="80" autocomplete="off" />
+        </label>
+        <div class="lbl">RFM tier<details class="ms" id="custRfm"></details></div>
+        <div class="lbl">PIN code<details class="ms" id="custPin"></details></div>
+        <label class="lbl" style="flex-direction:row;align-items:center;gap:0.4rem;padding-bottom:0.6rem">
+          <input type="checkbox" id="custQualified" /> Qualified only
+        </label>
+        <button type="submit" class="primary">Apply</button>
+        <span class="muted self-center" data-status="customers" aria-live="polite"></span>
+      </form>
+      <div class="err mb-4 hidden" data-error="customers" role="alert"></div>
+
+      <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
+        <div class="card"><div class="kpi-label">Total customers</div><div class="kpi-val" id="kCustTotal">—</div></div>
+        <div class="card"><div class="kpi-label" id="kQualLabel" title="">Qualified users</div><div class="kpi-val" id="kCustQual">—</div></div>
+        <div class="card"><div class="kpi-label">Cohort size</div><div class="kpi-val" id="kCohort">—</div></div>
+        <div class="card"><div class="kpi-label">Cohort spend</div><div class="kpi-val" id="kCohortSpend">—</div></div>
+        <div class="card"><div class="kpi-label">Avg orders</div><div class="kpi-val" id="kAvgOrders">—</div></div>
+      </div>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+        <div class="card"><h2 class="text-base font-semibold m-0 mb-2">RFM tier breakdown</h2><div class="chart" id="chRfm"></div></div>
+        <div class="card"><h2 class="text-base font-semibold m-0 mb-2">Age × gender spread</h2><div class="chart" id="chAgeGender"></div></div>
+      </div>
+
       <div class="card">
-        <h2 class="text-base font-semibold m-0 mb-3">By PIN</h2>
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="text-base font-semibold m-0">Customer directory</h2>
+          <span class="muted" id="custCount"></span>
+        </div>
         <div class="overflow-x-auto">
           <table>
-            <thead><tr><th>PIN</th><th class="num">Unique</th><th class="num">Observations</th></tr></thead>
-            <tbody id="byPin"></tbody>
+            <thead><tr>
+              <th>Name</th><th>Phone</th><th>PIN</th><th>RFM</th><th>Tag</th>
+              <th class="num">Orders</th><th class="num">Spend</th><th>Last order</th><th></th>
+            </tr></thead>
+            <tbody id="custBody"></tbody>
+          </table>
+        </div>
+        <div class="pager" id="custPager"></div>
+      </div>
+    </section>
+
+    <!-- ============ Tab 2: Garments ============ -->
+    <section id="tab-garments" role="tabpanel" hidden>
+      <form class="card mb-4 flex flex-wrap gap-3 items-end" id="garFilters">
+        <div class="lbl">Commodity<details class="ms" id="garCommodity"></details></div>
+        <div class="lbl">Brand<details class="ms" id="garBrand"></details></div>
+        <div class="lbl">Fabric<details class="ms" id="garFabric"></details></div>
+        <div class="lbl">Pattern<details class="ms" id="garPattern"></details></div>
+        <div class="lbl">Size<details class="ms" id="garSize"></details></div>
+        <button type="submit" class="primary">Apply</button>
+        <span class="muted self-center" data-status="garments" aria-live="polite"></span>
+      </form>
+      <div class="err mb-4 hidden" data-error="garments" role="alert"></div>
+
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+        <div class="card"><div class="kpi-label">Garments (filtered)</div><div class="kpi-val" id="kGarTotal">—</div></div>
+        <div class="card"><div class="kpi-label">Tracked in wardrobes</div><div class="kpi-val" id="kGarTracked">—</div></div>
+        <div class="card"><div class="kpi-label">Top fabrics</div><div class="text-sm mt-1" id="kGarFabrics">—</div></div>
+        <div class="card"><div class="kpi-label">Dominant patterns</div><div class="text-sm mt-1" id="kGarPatterns">—</div></div>
+      </div>
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
+        <div class="card lg:col-span-2"><h2 class="text-base font-semibold m-0 mb-2">Category × fabric</h2><div class="chart" id="chComFab"></div></div>
+        <div class="card"><h2 class="text-base font-semibold m-0 mb-2">Pattern mix</h2><div class="chart" id="chPattern"></div></div>
+      </div>
+      <div class="card mb-4"><h2 class="text-base font-semibold m-0 mb-2">Size curve</h2><div class="chart sm" id="chSize"></div></div>
+
+      <div class="card mb-4">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-base font-semibold m-0">Garments</h2>
+          <span class="muted" id="garCount"></span>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3" id="garCards"></div>
+        <div class="pager" id="garPager"></div>
+      </div>
+
+      <details class="card section" id="uniqueSection">
+        <summary>Image-deduplicated garments (similarity service)</summary>
+        <form class="mt-3 mb-3 flex flex-wrap gap-3 items-end" id="uniqFilters">
+          <label class="lbl">PIN code<input id="uniqPin" type="text" placeholder="e.g. 560038" maxlength="6" inputmode="numeric" /></label>
+          <label class="lbl">Brand<input id="uniqBrand" type="text" placeholder="Any brand" /></label>
+          <button type="submit" class="primary">Apply</button>
+          <span class="muted self-center" id="uniqStatus" aria-live="polite"></span>
+        </form>
+        <div class="err mb-3 hidden" id="uniqErr" role="alert"></div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+          <div class="card"><div class="kpi-label">Unique garments</div><div class="kpi-val" id="kpiUnique">—</div></div>
+          <div class="card"><div class="kpi-label">Total observations</div><div class="kpi-val" id="kpiObs">—</div></div>
+          <div class="card"><div class="kpi-label">Unique users</div><div class="kpi-val" id="kpiUsers">—</div></div>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+          <div><h3 class="text-sm font-semibold m-0 mb-2">By PIN</h3>
+            <table><thead><tr><th>PIN</th><th class="num">Unique</th><th class="num">Observations</th></tr></thead><tbody id="byPin"></tbody></table></div>
+          <div><h3 class="text-sm font-semibold m-0 mb-2">By brand</h3>
+            <table><thead><tr><th>Brand</th><th class="num">Unique</th><th class="num">Observations</th></tr></thead><tbody id="byBrand"></tbody></table></div>
+        </div>
+        <h3 class="text-sm font-semibold m-0 mb-2">Recent unique garments</h3>
+        <div class="overflow-x-auto">
+          <table><thead><tr><th>Garment ID</th><th>Brand</th><th>GCS key</th><th class="num">Observations</th><th>Created</th></tr></thead>
+            <tbody id="listBody"></tbody></table>
+        </div>
+      </details>
+    </section>
+
+    <!-- ============ Tab 3: Brands ============ -->
+    <section id="tab-brands" role="tabpanel" hidden>
+      <form class="card mb-4 flex flex-wrap gap-3 items-end" id="brFilters">
+        <div class="lbl">Brands<details class="ms" id="brBrands"></details></div>
+        <div class="lbl">Hubs / PINs<details class="ms" id="brPin"></details></div>
+        <div class="lbl">Customer tier<details class="ms" id="brRfm"></details></div>
+        <div class="lbl">Commodity<details class="ms" id="brCommodity"></details></div>
+        <div class="lbl" title="Derived from each garment's gender field">Menu catalog<details class="ms" id="brMenu"></details></div>
+        <button type="submit" class="primary">Apply</button>
+        <span class="muted self-center" data-status="brands" aria-live="polite"></span>
+      </form>
+      <div class="err mb-4 hidden" data-error="brands" role="alert"></div>
+
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
+        <div class="card"><div class="kpi-label">Wardrobe items</div><div class="kpi-val" id="kBrItems">—</div></div>
+        <div class="card"><div class="kpi-label">Brands</div><div class="kpi-val" id="kBrCount">—</div></div>
+        <div class="card"><div class="kpi-label">Leader</div><div class="text-lg font-semibold mt-1" id="kBrLeader">—</div></div>
+      </div>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+        <div class="card"><h2 class="text-base font-semibold m-0 mb-2">Market share ranking</h2><div class="chart lg" id="chShare"></div></div>
+        <div class="card"><h2 class="text-base font-semibold m-0 mb-2">Wardrobe overlap (brand → commodity)</h2><div class="chart lg" id="chTreemap"></div></div>
+        <div class="card"><h2 class="text-base font-semibold m-0 mb-2">Brand co-ownership (customers owning both)</h2><div class="chart lg" id="chOverlap"></div></div>
+        <div class="card"><h2 class="text-base font-semibold m-0 mb-2">Taste sunburst (menu → commodity → colour)</h2><div class="chart lg" id="chSunburst"></div>
+          <p class="muted m-0" id="brMenuNote"></p></div>
+        <div class="card"><h2 class="text-base font-semibold m-0 mb-2">Size demand matrix</h2><div class="chart" id="chSizeMatrix"></div></div>
+        <div class="card"><h2 class="text-base font-semibold m-0 mb-2">Regional skew across hubs</h2><div class="chart" id="chRegional"></div></div>
+      </div>
+      <div class="card">
+        <h2 class="text-base font-semibold m-0 mb-3">Brand deep dives</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" id="brCards"></div>
+      </div>
+    </section>
+
+    <!-- ============ Tab 4: Campaigns ============ -->
+    <section id="tab-campaigns" role="tabpanel" hidden>
+      <form class="card mb-4 flex flex-wrap gap-3 items-end" id="cmpFilters">
+        <div class="lbl">Brand<details class="ms" id="cmpBrand"></details></div>
+        <div class="lbl">Status<details class="ms" id="cmpStatus"></details></div>
+        <div class="lbl">PIN code<details class="ms" id="cmpPin"></details></div>
+        <div class="lbl">RFM<details class="ms" id="cmpRfm"></details></div>
+        <button type="submit" class="primary">Apply</button>
+        <span class="muted self-center" data-status="campaigns" aria-live="polite"></span>
+      </form>
+      <div class="err mb-4 hidden" data-error="campaigns" role="alert"></div>
+
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+        <div class="card"><div class="kpi-label">Campaigns</div><div class="kpi-val" id="kCmpTotal">—</div></div>
+        <div class="card"><div class="kpi-label">Active</div><div class="kpi-val" id="kCmpActive">—</div></div>
+        <div class="card"><div class="kpi-label">Avg conversion <span class="sim">Simulated</span></div><div class="kpi-val" id="kCmpConv">—</div></div>
+        <div class="card"><div class="kpi-label">Total redemptions <span class="sim">Simulated</span></div><div class="kpi-val" id="kCmpRed">—</div></div>
+      </div>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+        <div class="card"><h2 class="text-base font-semibold m-0 mb-2">Redemptions by brand <span class="sim">Simulated</span></h2><div class="chart" id="chRedemptions"></div></div>
+        <div class="card"><h2 class="text-base font-semibold m-0 mb-2">Status split by brand</h2><div class="chart" id="chStatus"></div></div>
+      </div>
+      <p class="muted mb-3" id="cmpNote"></p>
+      <div class="card mb-4">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-base font-semibold m-0">Campaigns</h2>
+          <button type="button" class="ghost" id="btnAllCols" aria-expanded="false">All columns</button>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" id="cmpCards"></div>
+        <div class="overflow-x-auto mt-4" id="cmpTableWrap" hidden>
+          <table>
+            <thead><tr>
+              <th>Created</th><th>Brand</th><th>Name</th><th>Status</th><th>Run mode</th><th>Channels</th><th>Objective</th>
+              <th>Budget</th><th>Launched</th><th>Audience</th><th>SKUs</th><th>Eligible</th><th>Recs</th><th>Style serves</th>
+              <th title="Simulated metrics">Reach</th><th title="Simulated metrics">Impr.</th><th title="Simulated metrics">CTR</th>
+              <th title="Simulated metrics">Conv.</th><th title="Simulated metrics">Rev.</th><th title="Simulated metrics">Lift</th>
+              <th title="Simulated metrics">ROAS</th><th>Campaign ID</th>
+            </tr></thead>
+            <tbody id="campaignBody"></tbody>
           </table>
         </div>
       </div>
-      <div class="card">
-        <h2 class="text-base font-semibold m-0 mb-3">By brand</h2>
-        <div class="overflow-x-auto">
-          <table>
-            <thead><tr><th>Brand</th><th class="num">Unique</th><th class="num">Observations</th></tr></thead>
-            <tbody id="byBrand"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2 class="text-base font-semibold m-0 mb-3">Recent unique garments</h2>
-      <div class="overflow-x-auto">
-        <table>
-          <thead>
-            <tr>
-              <th>Garment ID</th>
-              <th>Brand</th>
-              <th>GCS key</th>
-              <th class="num">Observations</th>
-              <th>Created</th>
-            </tr>
-          </thead>
-          <tbody id="listBody"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <div class="mt-10 mb-4 flex items-end justify-between gap-3">
-      <div>
-        <h1 class="text-3xl m-0">1P campaigns</h1>
-        <p class="muted mt-1 mb-0">All brand campaigns — configuration, status, audience, SKUs, Style feed, and simulated marketing KPIs (Reach–ROAS). Launched campaigns are simulated; nothing is delivered to customers.</p>
-      </div>
-      <button type="button" class="primary" id="btnCampaigns">Refresh campaigns</button>
-    </div>
-    <div id="campaignErr" class="err mb-4 hidden"></div>
-    <div class="card mb-6">
-      <div class="overflow-x-auto">
-        <table>
-          <thead>
-            <tr>
-              <th>Created</th>
-              <th>Brand</th>
-              <th>Name</th>
-              <th>Status</th>
-              <th>Run mode</th>
-              <th>Channels</th>
-              <th>Objective</th>
-              <th>Budget</th>
-              <th>Launched</th>
-              <th>Audience</th>
-              <th>SKUs</th>
-              <th>Eligible</th>
-              <th>Recs</th>
-              <th>Style serves</th>
-              <th title="Simulated metrics">Reach</th>
-              <th title="Simulated metrics">Impr.</th>
-              <th title="Simulated metrics">CTR</th>
-              <th title="Simulated metrics">Conv.</th>
-              <th title="Simulated metrics">Rev.</th>
-              <th title="Simulated metrics">Lift</th>
-              <th title="Simulated metrics">ROAS</th>
-              <th>Campaign ID</th>
-            </tr>
-          </thead>
-          <tbody id="campaignBody"></tbody>
-        </table>
-      </div>
-    </div>
+    </section>
   </div>
 
   <script>
+    // ---------------- shared helpers ----------------
     const apiBase = () => (window.DASHBOARD_API || '').replace(/\/$/, '');
-    const summaryUrl = (q) => (apiBase() ? apiBase() : '') + '/v1/admin/unique-summary' + (q ? '?' + q : '');
-    const listUrl = (q) => (apiBase() ? apiBase() : '') + '/v1/admin/unique-garments' + (q ? '?' + q : '');
-
-    function qs() {
-      const pin = document.getElementById('pin').value.trim();
-      const brand = document.getElementById('brand').value.trim();
-      const p = new URLSearchParams();
-      if (pin) p.set('pin', pin);
-      if (brand) p.set('brand', brand);
-      return p.toString();
-    }
-
-    function showErr(msg) {
-      const el = document.getElementById('error');
-      if (!msg) { el.classList.add('hidden'); el.textContent = ''; return; }
-      el.textContent = msg;
-      el.classList.remove('hidden');
-      console.error('[admin]', msg);
-    }
-
     const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const fmt = (n) => (n == null || n === '' ? '—' : Number.isFinite(Number(n)) ? Number(n).toLocaleString() : esc(n));
+    const money = (v) => (v == null || v === '' ? '—' : '₹' + Math.round(Number(v)).toLocaleString());
+    const nd = (v) => (v == null || v === '' ? '<span class="muted">No data</span>' : esc(v));
+    const NO_DATA = '<div class="muted">No data for these filters</div>';
+    const PALETTE = ['#6b3a55', '#c59fb0', '#a8577e', '#e3b7a0', '#7d8fb3', '#9bb59a', '#d9a441', '#5c7a8a', '#b07a9a', '#8a7480'];
 
-    // cols: [cell fn returning plain text, optional 'num' | 'mono' | 'title']
+    async function api(path, params, opts) {
+      const q = params ? new URLSearchParams(Object.entries(params).filter(([, v]) => v !== '' && v != null && v !== false)).toString() : '';
+      const res = await fetch(apiBase() + path + (q ? '?' + q : ''), {
+        method: (opts && opts.method) || 'GET',
+        headers: { Accept: 'application/json', ...SuffaiSession.authHeaders() },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const detail = data.detail ? SuffaiSession.formatApiDetail(data.detail) : '';
+        throw new Error(detail || ('Request failed (HTTP ' + res.status + ')'));
+      }
+      return data;
+    }
+
+    function setStatus(tab, text) { const el = document.querySelector('[data-status="' + tab + '"]'); if (el) el.textContent = text; }
+    function setError(tab, msg) {
+      const el = document.querySelector('[data-error="' + tab + '"]');
+      if (!el) return;
+      el.textContent = msg || '';
+      el.classList.toggle('hidden', !msg);
+      if (msg) console.error('[admin]', tab, msg);
+    }
+    async function run(tab, fn) {
+      setStatus(tab, 'Loading…');
+      setError(tab, '');
+      try { await fn(); setStatus(tab, 'Updated ' + new Date().toLocaleTimeString()); }
+      catch (e) { setError(tab, e.message || String(e)); setStatus(tab, ''); }
+    }
+
+    const charts = {};
+    function chart(id, option) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (!window.echarts) { el.innerHTML = '<div class="muted">Charts unavailable (ECharts did not load).</div>'; return; }
+      if (!option) {
+        if (charts[id]) { charts[id].dispose(); delete charts[id]; }
+        el.innerHTML = NO_DATA;
+        return;
+      }
+      if (!charts[id] || charts[id].isDisposed()) { el.innerHTML = ''; charts[id] = echarts.init(el); }
+      charts[id].setOption({ color: PALETTE, textStyle: { fontFamily: 'Outfit, system-ui, sans-serif' }, ...option }, true);
+    }
+    window.addEventListener('resize', () => Object.values(charts).forEach(c => c && !c.isDisposed() && c.resize()));
+
+    // Multi-select built on <details>; keeps selections across option refreshes.
+    function msRender(id, label, options) {
+      const el = document.getElementById(id);
+      const keep = new Set(msValues(id));
+      el.dataset.label = label;
+      el.innerHTML = '<summary></summary><div class="ms-pop">' + (options.length
+        ? (options.length > 1 ? '<label class="opt all"><input type="checkbox" data-all="1" /> Select all</label>' : '')
+          + options.map(o => '<label class="opt"><input type="checkbox" value="' + esc(o) + '"' + (keep.has(o) ? ' checked' : '') + ' /> ' + esc(o) + '</label>').join('')
+        : '<div class="muted p-2">No data</div>') + '</div>';
+      el.querySelectorAll('input:not([data-all])').forEach(i => i.addEventListener('change', () => msSummary(el)));
+      const all = el.querySelector('input[data-all]');
+      if (all) all.addEventListener('change', () => {
+        el.querySelectorAll('input:not([data-all])').forEach(i => { i.checked = all.checked; });
+        msSummary(el);
+      });
+      msSummary(el);
+    }
+    function msSummary(el) {
+      const vals = msValues(el.id);
+      const total = el.querySelectorAll('input:not([data-all])').length;
+      const all = el.querySelector('input[data-all]');
+      if (all) {
+        all.checked = total > 0 && vals.length === total;
+        all.indeterminate = vals.length > 0 && vals.length < total;
+      }
+      el.querySelector('summary').textContent = !vals.length ? 'All ' + el.dataset.label
+        : (total > 1 && vals.length === total) ? 'All selected (' + total + ')'
+        : (vals.length <= 2 ? vals.join(', ') : vals.length + ' selected');
+    }
+    function msValues(id) { return [...document.querySelectorAll('#' + id + ' input:not([data-all]):checked')].map(i => i.value); }
+    const msCsv = (id) => msValues(id).join(',');
+    document.addEventListener('click', (e) => {
+      document.querySelectorAll('details.ms[open]').forEach(d => { if (!d.contains(e.target)) d.removeAttribute('open'); });
+    });
+
+    function pager(elId, total, page, size, onPage) {
+      const el = document.getElementById(elId);
+      const pages = Math.max(1, Math.ceil(total / size));
+      el.innerHTML = '<span class="muted">Page ' + page + ' of ' + pages + '</span>'
+        + '<button type="button" class="ghost" data-p="' + (page - 1) + '"' + (page <= 1 ? ' disabled' : '') + '>Previous</button>'
+        + '<button type="button" class="ghost" data-p="' + (page + 1) + '"' + (page >= pages ? ' disabled' : '') + '>Next</button>';
+      el.querySelectorAll('button').forEach(b => b.addEventListener('click', () => onPage(Number(b.dataset.p))));
+    }
+
+    const RFM_COLORS = {
+      champions: ['#e8f3e6', '#2f6b2a'], loyal: ['#e6eef8', '#2b5a8f'], potential: ['#eef0fb', '#4a4f9a'],
+      new: ['#e9f6f6', '#2a6f6f'], promising: ['#eef7ea', '#4c7a2e'], 'at risk': ['#fbeee4', '#a0522d'],
+      hibernating: ['#f1eef0', '#6f6070'], lost: ['#fbe9ea', '#a03a3a'], 'need attention': ['#fdf4dc', '#8a6a12'],
+    };
+    function rfmBadge(seg) {
+      const k = String(seg || '').toLowerCase();
+      const hit = Object.keys(RFM_COLORS).find(key => k.includes(key));
+      const [bg, fg] = hit ? RFM_COLORS[hit] : ['#f6eef0', '#6b3a55'];
+      return '<span class="badge" style="background:' + bg + ';color:' + fg + '">' + esc(seg || 'Unknown') + '</span>';
+    }
+    const STATUS_COLORS = { Active: ['#e8f3e6', '#2f6b2a'], Scheduled: ['#e6eef8', '#2b5a8f'], Completed: ['#f1eef0', '#6f6070'], Draft: ['#fdf4dc', '#8a6a12'], Discarded: ['#fbe9ea', '#a03a3a'] };
+    function statusBadge(s) { const [bg, fg] = STATUS_COLORS[s] || ['#f6eef0', '#6b3a55']; return '<span class="badge" style="background:' + bg + ';color:' + fg + '">' + esc(s) + '</span>'; }
+    const shareList = (arr) => (arr && arr.length ? arr.map(x => esc(x.value) + ' <span class="muted">' + x.share + '%</span>').join('<br>') : '<span class="muted">No data</span>');
+
+    // ---------------- tabs ----------------
+    const loaders = {};
+    const loaded = new Set();
+    function showTab(name) {
+      if (!document.getElementById('tab-' + name)) name = 'customers';
+      document.querySelectorAll('.tabbar button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === name)));
+      document.querySelectorAll('section[role=tabpanel]').forEach(s => { s.hidden = s.id !== 'tab-' + name; });
+      if (!loaded.has(name)) { loaded.add(name); loaders[name](); }
+      else setTimeout(() => Object.values(charts).forEach(c => c && !c.isDisposed() && c.resize()), 0);
+      history.replaceState(null, '', '#' + name);
+    }
+    document.querySelectorAll('.tabbar button').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
+
+    // ---------------- Tab 1: customers ----------------
+    let custPage = 1;
+    function custParams() {
+      return { q: document.getElementById('custQ').value.trim(), rfm: msCsv('custRfm'), pin: msCsv('custPin') };
+    }
+    async function loadCustomerOverview() {
+      const p = custParams();
+      const o = await api('/v1/admin/intel/customers-overview', { rfm: p.rfm, pin: p.pin });
+      msRender('custRfm', 'tiers', o.options.rfm_segments);
+      msRender('custPin', 'PINs', o.options.pin_codes);
+      document.getElementById('kCustTotal').textContent = fmt(o.total_customers);
+      document.getElementById('kCustQual').textContent = fmt(o.qualified_users);
+      document.getElementById('kQualLabel').title = o.qualified_rule || '';
+      document.getElementById('kCohort').textContent = fmt(o.cohort_size);
+      document.getElementById('kCohortSpend').textContent = money(o.cohort_spend);
+      document.getElementById('kAvgOrders').textContent = fmt(o.avg_orders);
+      chart('chRfm', o.rfm_breakdown.length ? {
+        tooltip: { trigger: 'item' }, legend: { bottom: 0, type: 'scroll' },
+        series: [{ type: 'pie', radius: ['45%', '70%'], data: o.rfm_breakdown.map(r => ({ name: r.value, value: r.count })) }],
+      } : null);
+      const ag = o.age_gender;
+      const genders = Object.keys(ag.series || {});
+      chart('chAgeGender', ag.ages.length ? {
+        tooltip: { trigger: 'axis' }, legend: { bottom: 0 }, grid: { left: 40, right: 16, top: 16, bottom: 48 },
+        xAxis: { type: 'category', data: ag.ages }, yAxis: { type: 'value' },
+        series: genders.map(g => ({ name: g, type: 'bar', stack: 'g', data: ag.series[g] })),
+      } : null);
+    }
+    async function loadCustomerPage(page) {
+      custPage = page || 1;
+      const p = custParams();
+      const data = await api('/v1/admin/intel/customers', { ...p, qualified: document.getElementById('custQualified').checked ? 'true' : '', page: custPage, size: 25 });
+      document.getElementById('custCount').textContent = fmt(data.total) + ' customers';
+      const body = document.getElementById('custBody');
+      body.innerHTML = data.items.length ? data.items.map(c => `<tr data-cid="${esc(c.customer_id)}">
+          <td><div class="font-semibold">${esc(c.name)}</div><div class="mono">${esc(c.short_id)}</div></td>
+          <td><span class="mono" data-phone>${esc(c.phone_masked)}</span>
+            ${c.has_phone ? '<button type="button" class="ghost ml-1" data-reveal>Reveal</button>' : ''}</td>
+          <td>${nd(c.pin_code)}</td>
+          <td>${rfmBadge(c.rfm_segment)}</td>
+          <td class="muted">${esc(c.tag)}</td>
+          <td class="num">${fmt(c.orders)}</td>
+          <td class="num">${money(c.spend)}</td>
+          <td>${nd(c.last_order)}</td>
+          <td><button type="button" class="ghost" data-expand aria-expanded="false">Details</button></td>
+        </tr>`).join('') : '<tr><td colspan="9" class="muted">No data for these filters</td></tr>';
+      pager('custPager', data.total, data.page, data.size, (pg) => run('customers', () => loadCustomerPage(pg)));
+    }
+    document.getElementById('custBody').addEventListener('click', async (e) => {
+      const tr = e.target.closest('tr[data-cid]');
+      if (!tr) return;
+      const cid = tr.dataset.cid;
+      if (e.target.matches('[data-reveal]')) {
+        const btn = e.target;
+        btn.disabled = true;
+        try {
+          const r = await api('/v1/admin/intel/customers/' + encodeURIComponent(cid) + '/reveal-phone', null, { method: 'POST' });
+          tr.querySelector('[data-phone]').textContent = r.phone;
+          btn.remove();
+        } catch (err) { setError('customers', err.message); btn.disabled = false; }
+        return;
+      }
+      if (e.target.matches('[data-expand]')) {
+        const btn = e.target;
+        const next = tr.nextElementSibling;
+        if (next && next.classList.contains('detail-row')) {
+          next.remove(); btn.setAttribute('aria-expanded', 'false'); btn.textContent = 'Details';
+          return;
+        }
+        btn.setAttribute('aria-expanded', 'true'); btn.textContent = 'Hide';
+        const row = document.createElement('tr');
+        row.className = 'detail-row';
+        row.innerHTML = '<td colspan="9"><div class="muted">Loading profile…</div></td>';
+        tr.after(row);
+        try {
+          const d = (await api('/v1/admin/intel/customers/' + encodeURIComponent(cid))).customer;
+          renderCustomerDetail(row.firstElementChild, d);
+        } catch (err) { row.firstElementChild.innerHTML = '<div class="err">' + esc(err.message) + '</div>'; }
+      }
+    });
+    function renderCustomerDetail(td, d) {
+      const uid = 'cd' + d.short_id.replace(/[^a-z0-9]/gi, '');
+      const dm = d.demographics;
+      const bars = (arr) => (arr.length ? arr.map(c => `<div class="mb-2"><div class="flex justify-between text-xs"><span>${esc(c.value)}</span><span class="muted">${c.share}%</span></div>
+          <div class="bar-track"><div class="bar-fill" style="width:${Math.min(100, c.share)}%"></div></div></div>`).join('') : NO_DATA);
+      td.innerHTML = `<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 py-2">
+        <div class="item-card"><div class="kpi-label mb-2">Profile</div>
+          <dl class="kv">
+            <dt>Customer</dt><dd class="mono">${esc(dm.short_id)}</dd>
+            <dt>PIN</dt><dd>${nd(dm.pin_code)}</dd>
+            <dt>Age group</dt><dd>${nd(dm.age_group)}</dd>
+            <dt>Gender</dt><dd>${nd(dm.gender)}</dd>
+            <dt>RFM</dt><dd>${rfmBadge(d.rfm_segment)}</dd>
+            <dt>Tag</dt><dd>${esc(d.tag)}</dd>
+            <dt>Menus</dt><dd>${dm.menus.length ? esc(dm.menus.join(', ')) : '<span class="muted">No data</span>'}</dd>
+            <dt>LTV</dt><dd>${money(dm.ltv)}</dd>
+            <dt>AOV</dt><dd>${money(dm.aov)}</dd>
+            <dt>Orders / month</dt><dd>${fmt(dm.orders_per_month)}</dd>
+            <dt>First order</dt><dd>${nd(dm.first_order)}</dd>
+            <dt>Last order</dt><dd>${nd(dm.last_order)}</dd>
+          </dl></div>
+        <div class="item-card"><div class="kpi-label mb-2">Top commodities</div>
+          ${d.top_commodities.length ? '<div class="grid grid-cols-2 gap-2 mb-3">' + d.top_commodities.map(c => `<div><div class="mono" style="font-size:16px">${c.share}%</div><div class="text-xs">${esc(c.value)}</div></div>`).join('') + '</div>' : NO_DATA}
+          <div class="kpi-label mb-2 mt-2">Colour preference</div>${bars(d.colors)}</div>
+        <div class="item-card"><div class="kpi-label mb-2">Size / fit</div>
+          ${d.sizes.length ? '<table><thead><tr><th>Size</th><th class="num">Items</th><th class="num">Share</th></tr></thead><tbody>' + d.sizes.map(s => `<tr><td>${esc(s.value)}</td><td class="num">${s.count}</td><td class="num">${s.share}%</td></tr>`).join('') + '</tbody></table>' : NO_DATA}
+          <div class="kpi-label mb-1 mt-3">Service split</div><div class="chart sm" id="${uid}svc"></div></div>
+        <div class="item-card lg:col-span-2"><div class="kpi-label mb-2">Garment attributes (${fmt(d.garment_count)} items${d.garment_count > d.garments.length ? ', showing ' + d.garments.length : ''})</div>
+          <div class="overflow-x-auto">${d.garments.length ? '<table><thead><tr><th>Garment</th><th>Commodity</th><th>Brand</th><th>Colour</th><th>Pattern</th><th>Size</th><th>Fabric</th></tr></thead><tbody>'
+            + d.garments.map(g => `<tr><td class="mono">${esc((g.garment_id || '').slice(0, 8)) || '—'}</td><td>${nd(g.commodity)}</td><td>${nd(g.brand)}</td><td>${nd(g.color)}</td><td>${nd(g.pattern)}</td><td>${nd(g.size)}</td><td>${nd(g.material)}</td></tr>`).join('')
+            + '</tbody></table>' : NO_DATA}</div></div>
+        <div class="item-card"><div class="kpi-label mb-2">Recent orders</div>
+          ${d.recent_orders.length ? '<table><thead><tr><th>Date</th><th>Service</th><th class="num">Items</th><th class="num">Amount</th></tr></thead><tbody>' + d.recent_orders.map(o => `<tr><td>${nd(o.date)}</td><td>${esc(o.service)}</td><td class="num">${fmt(o.clothes)}</td><td class="num">${money(o.amount)}</td></tr>`).join('') + '</tbody></table>' : NO_DATA}</div>
+        <div class="item-card lg:col-span-3"><div class="kpi-label mb-1">Spending momentum</div><div class="chart" id="${uid}mom"></div></div>
+      </div>`;
+      chart(uid + 'svc', d.service_split.length ? {
+        tooltip: { trigger: 'item' }, legend: { bottom: 0, type: 'scroll' },
+        series: [{ type: 'pie', radius: ['35%', '65%'], data: d.service_split.map(s => ({ name: s.value, value: s.count })) }],
+      } : null);
+      chart(uid + 'mom', d.momentum.length ? {
+        tooltip: { trigger: 'axis' }, legend: { bottom: 0 }, grid: { left: 56, right: 56, top: 16, bottom: 48 },
+        xAxis: { type: 'category', data: d.momentum.map(m => m.month) },
+        yAxis: [{ type: 'value', name: '₹' }, { type: 'value', name: 'Orders' }],
+        series: [
+          { name: 'Monthly spend', type: 'bar', data: d.momentum.map(m => m.spend) },
+          { name: 'Cumulative spend', type: 'line', smooth: true, areaStyle: { opacity: 0.15 }, data: d.momentum.map(m => m.cumulative_spend) },
+          { name: 'Orders', type: 'line', yAxisIndex: 1, data: d.momentum.map(m => m.orders) },
+        ],
+      } : null);
+    }
+    loaders.customers = () => run('customers', async () => { await loadCustomerOverview(); await loadCustomerPage(1); });
+    document.getElementById('custFilters').addEventListener('submit', (e) => {
+      e.preventDefault();
+      run('customers', async () => { await loadCustomerOverview(); await loadCustomerPage(1); });
+    });
+
+    // ---------------- Tab 2: garments ----------------
+    async function loadGarments(page) {
+      const data = await api('/v1/admin/intel/garments', {
+        commodity: msCsv('garCommodity'), brand: msCsv('garBrand'), fabric: msCsv('garFabric'),
+        pattern: msCsv('garPattern'), garment_size: msCsv('garSize'), page: page || 1, size: 24,
+      });
+      const o = data.options;
+      msRender('garCommodity', 'commodities', o.commodity);
+      msRender('garBrand', 'brands', o.brand);
+      msRender('garFabric', 'fabrics', o.material);
+      msRender('garPattern', 'patterns', o.pattern);
+      msRender('garSize', 'sizes', o.size);
+      document.getElementById('kGarTotal').textContent = fmt(data.total);
+      document.getElementById('kGarTracked').textContent = fmt(data.total_tracked);
+      document.getElementById('kGarFabrics').innerHTML = shareList(data.top_fabrics.slice(0, 3));
+      document.getElementById('kGarPatterns').innerHTML = shareList(data.patterns.slice(0, 3));
+      const cf = data.commodity_fabric;
+      const fabrics = Object.keys(cf.series || {});
+      chart('chComFab', cf.commodities.length && fabrics.length ? {
+        tooltip: { trigger: 'axis' }, legend: { bottom: 0, type: 'scroll' }, grid: { left: 48, right: 16, top: 16, bottom: 56 },
+        xAxis: { type: 'category', data: cf.commodities, axisLabel: { interval: 0, rotate: 20 } }, yAxis: { type: 'value' },
+        series: fabrics.map(f => ({ name: f, type: 'bar', stack: 'f', data: cf.series[f] })),
+      } : null);
+      chart('chPattern', data.patterns.length ? {
+        tooltip: { trigger: 'item' }, legend: { bottom: 0, type: 'scroll' },
+        series: [{ type: 'pie', radius: '65%', data: data.patterns.map(p => ({ name: p.value, value: p.count })) }],
+      } : null);
+      chart('chSize', data.size_curve.length ? {
+        tooltip: { trigger: 'axis' }, grid: { left: 48, right: 16, top: 16, bottom: 32 },
+        xAxis: { type: 'category', data: data.size_curve.map(s => s.value) }, yAxis: { type: 'value' },
+        series: [{ type: 'bar', name: 'Items', data: data.size_curve.map(s => s.count) },
+                 { type: 'line', name: 'Curve', smooth: true, data: data.size_curve.map(s => s.count) }],
+      } : null);
+      document.getElementById('garCount').textContent = fmt(data.total) + ' garments';
+      document.getElementById('garCards').innerHTML = data.items.length ? data.items.map(g => `<div class="item-card">
+          <div class="flex justify-between items-start mb-2"><div class="font-semibold">${nd(g.commodity)}</div><span class="mono">${esc((g.garment_id || '').slice(0, 8)) || '—'}</span></div>
+          <dl class="kv">
+            <dt>Owner</dt><dd>${g.owner_name ? esc(g.owner_name) + ' <span class="mono">' + esc(g.owner_id) + '</span>' : nd(g.owner_id)}</dd>
+            <dt>Brand</dt><dd>${nd(g.brand)}</dd><dt>Colour</dt><dd>${nd(g.color)}</dd>
+            <dt>Pattern</dt><dd>${nd(g.pattern)}</dd><dt>Size</dt><dd>${nd(g.size)}</dd><dt>Fabric</dt><dd>${nd(g.material)}</dd>
+          </dl></div>`).join('') : NO_DATA;
+      pager('garPager', data.total, data.page, data.size, (pg) => run('garments', () => loadGarments(pg)));
+    }
+    loaders.garments = () => run('garments', () => loadGarments(1));
+    document.getElementById('garFilters').addEventListener('submit', (e) => { e.preventDefault(); run('garments', () => loadGarments(1)); });
+
     function rows(tbody, data, cols) {
       if (!data.length) {
         tbody.innerHTML = '<tr><td colspan="' + cols.length + '" class="muted">No data for these filters</td></tr>';
@@ -250,43 +658,25 @@
         return '<td>' + esc(v ?? '—') + '</td>';
       }).join('') + '</tr>').join('');
     }
-
-    async function load() {
-      const status = document.getElementById('status');
+    async function loadUnique() {
+      const status = document.getElementById('uniqStatus');
+      const err = document.getElementById('uniqErr');
       status.textContent = 'Loading…';
-      document.getElementById('btnLoad').disabled = true;
-      showErr('');
-      const q = qs();
+      err.classList.add('hidden');
+      const pin = document.getElementById('uniqPin').value.trim();
+      const brand = document.getElementById('uniqBrand').value.trim();
       try {
-        const [sumRes, listRes] = await Promise.all([
-          fetch(summaryUrl(q)),
-          fetch(listUrl(q + (q ? '&' : '') + 'limit=50')),
+        const [summary, list] = await Promise.all([
+          api('/v1/admin/unique-summary', { pin, brand }),
+          api('/v1/admin/unique-garments', { pin, brand, limit: 50 }).catch(() => null),
         ]);
-        if (!sumRes.ok) {
-          let detail = '';
-          try { detail = (await sumRes.json()).detail || ''; } catch (_) {}
-          console.error('[admin] summary HTTP', sumRes.status, detail);
-          throw new Error('Could not load garment stats (HTTP ' + sumRes.status + ')' + (detail ? ': ' + SuffaiSession.formatApiDetail(detail) : '. The similarity service may be unavailable.'));
-        }
-        const summary = await sumRes.json();
         const k = summary.kpis || {};
         document.getElementById('kpiUnique').textContent = fmt(k.unique_garments);
         document.getElementById('kpiObs').textContent = fmt(k.total_observations);
         document.getElementById('kpiUsers').textContent = fmt(k.unique_users);
-
-        rows(document.getElementById('byPin'), summary.by_pin || [], [
-          [r => r.pin_code],
-          [r => r.unique_garments, 'num'],
-          [r => r.observations, 'num'],
-        ]);
-        rows(document.getElementById('byBrand'), summary.by_brand || [], [
-          [r => r.brand],
-          [r => r.unique_garments, 'num'],
-          [r => r.observations, 'num'],
-        ]);
-
-        if (listRes.ok) {
-          const list = await listRes.json();
+        rows(document.getElementById('byPin'), summary.by_pin || [], [[r => r.pin_code], [r => r.unique_garments, 'num'], [r => r.observations, 'num']]);
+        rows(document.getElementById('byBrand'), summary.by_brand || [], [[r => r.brand], [r => r.unique_garments, 'num'], [r => r.observations, 'num']]);
+        if (list) {
           rows(document.getElementById('listBody'), list.items || [], [
             [r => ({ text: (r.garment_id || '').slice(0, 8) + '…', full: r.garment_id || '' }), 'mono'],
             [r => r.brand_name || '—'],
@@ -298,94 +688,174 @@
           document.getElementById('listBody').innerHTML = '<tr><td colspan="5" class="muted">Recent garments are unavailable right now.</td></tr>';
         }
         status.textContent = 'Updated ' + new Date().toLocaleTimeString();
-      } catch (err) {
-        showErr(err.message || String(err));
-        status.textContent = '';
-      } finally {
-        document.getElementById('btnLoad').disabled = false;
-      }
-    }
-
-    function fmtImpactNum(v) {
-      if (v == null || v === '') return '—';
-      return Number(v).toLocaleString();
-    }
-    function fmtImpactPct(v) {
-      if (v == null || v === '') return '—';
-      return Number(v).toFixed(1) + '%';
-    }
-    function fmtImpactMoney(v) {
-      if (v == null || v === '') return '—';
-      return '₹' + Math.round(Number(v)).toLocaleString();
-    }
-    function fmtImpactRoas(v) {
-      if (v == null || v === '') return '—';
-      return Number(v).toFixed(1) + 'x';
-    }
-
-    async function loadCampaigns() {
-      const err = document.getElementById('campaignErr');
-      const body = document.getElementById('campaignBody');
-      err.classList.add('hidden');
-      err.textContent = '';
-      body.innerHTML = '<tr><td colspan="22" class="muted">Loading…</td></tr>';
-      try {
-        const res = await fetch((apiBase() || '') + '/v1/admin/campaigns', {
-          headers: { Accept: 'application/json', ...SuffaiSession.authHeaders() },
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.detail || ('HTTP ' + res.status));
-        const rows = data.campaigns || [];
-        if (!rows.length) {
-          body.innerHTML = '<tr><td colspan="22" class="muted">No campaigns yet</td></tr>';
-          return;
-        }
-        body.innerHTML = rows.map((c) => {
-          const pins = c.pin_codes || [];
-          const aud = [
-            pins.length ? (pins.length <= 2 ? pins.join(', ') : pins.length + ' PINs') : 'No PIN',
-            c.age_group || 'All ages',
-            c.gender || 'All genders',
-            c.rfm_segment || 'All RFM',
-          ].join(' × ');
-          const created = (c.created_at || '').replace('T', ' ').slice(0, 16);
-          const i = c.impact || {};
-          return `<tr>
-            <td class="mono">${esc(created)}</td>
-            <td>${esc(c.brand_name)}</td>
-            <td style="white-space:normal;max-width:180px">${esc(c.campaign_name || '—')}</td>
-            <td>${esc(c.status)}</td>
-            <td>${esc(c.run_mode === '1p' ? 'SuffAI (1P)' : c.run_mode === '3p' ? 'External (3P)' : '—')}</td>
-            <td>${esc((c.channels || []).map(ch => ({ in_app: 'In-app', whatsapp: 'WhatsApp', sms: 'SMS' }[ch] || ch)).join(', ') || '—')}</td>
-            <td>${esc(c.objective || '—')}</td>
-            <td class="mono">${esc(fmtImpactMoney(c.budget_inr))}</td>
-            <td class="mono">${esc((c.launched_at || '').replace('T', ' ').slice(0, 16) || '—')}</td>
-            <td style="white-space:normal;max-width:220px">${esc(aud)}</td>
-            <td>${esc(c.sku_count ?? '—')}</td>
-            <td>${esc(c.eligible_users ?? 0)}</td>
-            <td>${esc(c.recommendations_computed ?? 0)}</td>
-            <td>${esc(c.style_feed_serves ?? 0)}</td>
-            <td title="Simulated">${esc(fmtImpactNum(i.reach))}</td>
-            <td title="Simulated">${esc(fmtImpactNum(i.impressions))}</td>
-            <td title="Simulated">${esc(fmtImpactPct(i.ctr))}</td>
-            <td title="Simulated">${esc(fmtImpactNum(i.conversions))}</td>
-            <td title="Simulated">${esc(fmtImpactMoney(i.revenue))}</td>
-            <td title="Simulated">${esc(fmtImpactPct(i.lift))}</td>
-            <td title="Simulated">${esc(fmtImpactRoas(i.roas))}</td>
-            <td class="mono">${c.status === 'launched' ? `<a href="./index.html?tab=style&amp;campaign_id=${encodeURIComponent(c.campaign_id)}" target="_top">${esc(c.campaign_id)}</a>` : esc(c.campaign_id || '')}</td>
-          </tr>`;
-        }).join('');
       } catch (e) {
-        err.textContent = e.message || String(e);
+        err.textContent = 'Could not load garment stats: ' + (e.message || e) + '. The similarity service may be unavailable.';
         err.classList.remove('hidden');
-        body.innerHTML = '<tr><td colspan="22" class="muted">Unavailable</td></tr>';
+        status.textContent = '';
       }
     }
+    let uniqueLoaded = false;
+    document.getElementById('uniqueSection').addEventListener('toggle', (e) => {
+      if (e.target.open && !uniqueLoaded) { uniqueLoaded = true; loadUnique(); }
+    });
+    document.getElementById('uniqFilters').addEventListener('submit', (e) => { e.preventDefault(); loadUnique(); });
 
-    document.getElementById('btnCampaigns').addEventListener('click', loadCampaigns);
-    document.getElementById('filters').addEventListener('submit', (e) => { e.preventDefault(); load(); });
-    load();
-    loadCampaigns();
+    // ---------------- Tab 3: brands ----------------
+    async function loadBrands() {
+      const d = await api('/v1/admin/intel/brands', {
+        brands: msCsv('brBrands'), pin: msCsv('brPin'), rfm: msCsv('brRfm'), commodity: msCsv('brCommodity'), menu: msCsv('brMenu'),
+      });
+      const o = d.options;
+      msRender('brBrands', 'brands', o.brands);
+      msRender('brPin', 'hubs', o.pin_codes);
+      msRender('brRfm', 'tiers', o.rfm_segments);
+      msRender('brCommodity', 'commodities', o.commodities);
+      msRender('brMenu', 'menus', o.menus);
+      document.getElementById('brMenuNote').textContent = d.menu_note || '';
+      document.getElementById('kBrItems').textContent = fmt(d.total_items);
+      document.getElementById('kBrCount').textContent = fmt(d.brand_count);
+      document.getElementById('kBrLeader').innerHTML = d.ranking.length ? esc(d.ranking[0].brand) + ' <span class="muted">' + d.ranking[0].share + '%</span>' : '<span class="muted">No data</span>';
+      const rank = d.ranking.slice(0, 15).reverse();
+      chart('chShare', rank.length ? {
+        tooltip: { trigger: 'axis', formatter: (p) => esc(p[0].name) + ': ' + p[0].value + '% share' }, grid: { left: 110, right: 24, top: 8, bottom: 24 },
+        xAxis: { type: 'value', axisLabel: { formatter: '{value}%' } }, yAxis: { type: 'category', data: rank.map(r => r.brand) },
+        series: [{ type: 'bar', data: rank.map(r => r.share) }],
+      } : null);
+      chart('chTreemap', d.treemap.length ? {
+        tooltip: {}, series: [{ type: 'treemap', roam: false, breadcrumb: { show: false }, data: d.treemap,
+          levels: [{ itemStyle: { borderColor: '#fff', borderWidth: 3, gapWidth: 3 } }, { itemStyle: { borderColor: '#fff', borderWidth: 1, gapWidth: 1 }, colorSaturation: [0.35, 0.6] }],
+          label: { show: true, formatter: '{b}' }, upperLabel: { show: true, height: 22, color: '#fff' } }],
+      } : null);
+      const ov = d.overlap;
+      const heat = [];
+      ov.matrix.forEach((row, i) => row.forEach((v, j) => heat.push([j, i, v])));
+      const ovMax = Math.max(1, ...heat.map(h => h[2]));
+      chart('chOverlap', ov.brands.length ? {
+        tooltip: { formatter: (p) => esc(ov.brands[p.value[1]]) + ' × ' + esc(ov.brands[p.value[0]]) + ': ' + p.value[2] + ' customers' },
+        grid: { left: 110, right: 24, top: 8, bottom: 90 },
+        xAxis: { type: 'category', data: ov.brands, axisLabel: { rotate: 40, interval: 0 } }, yAxis: { type: 'category', data: ov.brands },
+        visualMap: { min: 0, max: ovMax, orient: 'horizontal', left: 'center', bottom: 0, inRange: { color: ['#faf6ee', '#c59fb0', '#6b3a55'] } },
+        series: [{ type: 'heatmap', data: heat, label: { show: ov.brands.length <= 8 } }],
+      } : null);
+      chart('chSunburst', d.sunburst.length ? {
+        tooltip: {}, series: [{ type: 'sunburst', data: d.sunburst, radius: ['12%', '92%'], label: { rotate: 'radial', fontSize: 10 } }],
+      } : null);
+      const sm = d.size_matrix;
+      const smRows = Object.keys(sm.series || {});
+      const smHeat = [];
+      smRows.forEach((c, i) => sm.series[c].forEach((v, j) => smHeat.push([j, i, v])));
+      chart('chSizeMatrix', sm.sizes.length && smRows.length ? {
+        tooltip: { formatter: (p) => esc(smRows[p.value[1]]) + ' · ' + esc(sm.sizes[p.value[0]]) + ': ' + p.value[2] },
+        grid: { left: 100, right: 24, top: 8, bottom: 64 },
+        xAxis: { type: 'category', data: sm.sizes }, yAxis: { type: 'category', data: smRows },
+        visualMap: { min: 0, max: Math.max(1, ...smHeat.map(h => h[2])), orient: 'horizontal', left: 'center', bottom: 0, inRange: { color: ['#faf6ee', '#c59fb0', '#6b3a55'] } },
+        series: [{ type: 'heatmap', data: smHeat, label: { show: true } }],
+      } : null);
+      const rg = d.regional;
+      const rgBrands = Object.keys(rg.series || {});
+      chart('chRegional', rg.pins.length && rgBrands.length ? {
+        tooltip: { trigger: 'axis' }, legend: { bottom: 0, type: 'scroll' }, grid: { left: 48, right: 16, top: 16, bottom: 64 },
+        xAxis: { type: 'category', data: rg.pins, axisLabel: { rotate: 30, interval: 0 } }, yAxis: { type: 'value' },
+        series: rgBrands.map(b => ({ name: b, type: 'bar', stack: 'r', data: rg.series[b] })),
+      } : null);
+      document.getElementById('brCards').innerHTML = d.brands.length ? d.brands.map(b => `<div class="item-card">
+          <div class="flex justify-between items-start mb-2"><div class="font-semibold">${esc(b.brand)}</div><span class="badge" style="background:#f6eef0;color:#6b3a55">${b.share}% share</span></div>
+          <dl class="kv mb-2">
+            <dt>Wardrobe items</dt><dd>${fmt(b.items_in_wardrobes)}</dd>
+            <dt>Unique customers</dt><dd>${fmt(b.unique_customers)}</dd>
+            <dt>Catalogue items</dt><dd>${fmt(b.catalog_size)} commodity types</dd>
+            <dt>Top commodities</dt><dd>${b.top_commodities.length ? esc(b.top_commodities.join(', ')) : '<span class="muted">No data</span>'}</dd>
+            <dt>Top colours</dt><dd>${b.top_colors.length ? esc(b.top_colors.join(', ')) : '<span class="muted">No data</span>'}</dd>
+          </dl>
+          ${b.catalog.length ? '<details><summary class="muted" style="cursor:pointer">Catalogue breakdown</summary><table class="mt-1"><tbody>' + b.catalog.map(c => `<tr><td>${esc(c.commodity)}</td><td class="num">${fmt(c.count)}</td></tr>`).join('') + '</tbody></table></details>' : ''}
+        </div>`).join('') : NO_DATA;
+    }
+    loaders.brands = () => run('brands', loadBrands);
+    document.getElementById('brFilters').addEventListener('submit', (e) => { e.preventDefault(); run('brands', loadBrands); });
+
+    // ---------------- Tab 4: campaigns ----------------
+    const fmtImpactNum = (v) => (v == null || v === '' ? '—' : Number(v).toLocaleString());
+    const fmtImpactPct = (v) => (v == null || v === '' ? '—' : Number(v).toFixed(1) + '%');
+    const fmtImpactRoas = (v) => (v == null || v === '' ? '—' : Number(v).toFixed(1) + 'x');
+    function campaignTableRow(c) {
+      const pins = c.pin_codes || [];
+      const aud = [
+        pins.length ? (pins.length <= 2 ? pins.join(', ') : pins.length + ' PINs') : 'No PIN',
+        c.age_group || 'All ages', c.gender || 'All genders', c.rfm_segment || 'All RFM',
+      ].join(' × ');
+      const i = c.impact || {};
+      return `<tr>
+        <td class="mono">${esc((c.created_at || '').replace('T', ' ').slice(0, 16))}</td>
+        <td>${esc(c.brand_name)}</td>
+        <td style="white-space:normal;max-width:180px">${esc(c.campaign_name || '—')}</td>
+        <td>${esc(c.status)}</td>
+        <td>${esc(c.run_mode === '1p' ? 'SuffAI (1P)' : c.run_mode === '3p' ? 'External (3P)' : '—')}</td>
+        <td>${esc((c.channels || []).map(ch => ({ in_app: 'In-app', whatsapp: 'WhatsApp', sms: 'SMS' }[ch] || ch)).join(', ') || '—')}</td>
+        <td>${esc(c.objective || '—')}</td>
+        <td class="mono">${esc(money(c.budget_inr))}</td>
+        <td class="mono">${esc((c.launched_at || '').replace('T', ' ').slice(0, 16) || '—')}</td>
+        <td style="white-space:normal;max-width:220px">${esc(aud)}</td>
+        <td>${esc(c.sku_count ?? '—')}</td>
+        <td>${esc(c.eligible_users ?? 0)}</td>
+        <td>${esc(c.recommendations_computed ?? 0)}</td>
+        <td>${esc(c.style_feed_serves ?? 0)}</td>
+        <td title="Simulated">${esc(fmtImpactNum(i.reach))}</td>
+        <td title="Simulated">${esc(fmtImpactNum(i.impressions))}</td>
+        <td title="Simulated">${esc(fmtImpactPct(i.ctr))}</td>
+        <td title="Simulated">${esc(fmtImpactNum(i.conversions))}</td>
+        <td title="Simulated">${esc(money(i.revenue))}</td>
+        <td title="Simulated">${esc(fmtImpactPct(i.lift))}</td>
+        <td title="Simulated">${esc(fmtImpactRoas(i.roas))}</td>
+        <td class="mono">${c.status === 'launched' ? `<a href="./index.html?tab=style&amp;campaign_id=${encodeURIComponent(c.campaign_id)}" target="_top">${esc(c.campaign_id)}</a>` : esc(c.campaign_id || '')}</td>
+      </tr>`;
+    }
+    async function loadCampaigns() {
+      const d = await api('/v1/admin/intel/campaigns', { brand: msCsv('cmpBrand'), status: msCsv('cmpStatus'), pin: msCsv('cmpPin'), rfm: msCsv('cmpRfm') });
+      const o = d.options;
+      msRender('cmpBrand', 'brands', o.brands);
+      msRender('cmpStatus', 'statuses', o.statuses);
+      msRender('cmpPin', 'PINs', o.pin_codes);
+      msRender('cmpRfm', 'segments', o.rfm_segments);
+      const s = d.summary;
+      document.getElementById('kCmpTotal').textContent = fmt(d.total);
+      document.getElementById('kCmpActive').textContent = fmt(s.active);
+      document.getElementById('kCmpConv').textContent = s.avg_conversion_rate == null ? '—' : s.avg_conversion_rate.toFixed(2) + '%';
+      document.getElementById('kCmpRed').textContent = fmt(s.total_redemptions);
+      document.getElementById('cmpNote').textContent = d.note || '';
+      const brands = Object.keys(s.by_brand || {});
+      const red = brands.map(b => [b, s.by_brand[b].redemptions]).sort((a, b) => b[1] - a[1]);
+      chart('chRedemptions', red.length ? {
+        tooltip: { trigger: 'axis' }, grid: { left: 48, right: 16, top: 16, bottom: 56 },
+        xAxis: { type: 'category', data: red.map(r => r[0]), axisLabel: { rotate: 20, interval: 0 } }, yAxis: { type: 'value' },
+        series: [{ type: 'bar', name: 'Redemptions (simulated)', data: red.map(r => r[1]) }],
+      } : null);
+      chart('chStatus', brands.length ? {
+        tooltip: { trigger: 'axis' }, legend: { bottom: 0 }, grid: { left: 48, right: 16, top: 16, bottom: 64 },
+        xAxis: { type: 'category', data: brands, axisLabel: { rotate: 20, interval: 0 } }, yAxis: { type: 'value', minInterval: 1 },
+        series: o.statuses.map(st => ({ name: st, type: 'bar', stack: 's', itemStyle: { color: (STATUS_COLORS[st] || [])[1] }, data: brands.map(b => s.by_brand[b].status[st] || 0) })),
+      } : null);
+      document.getElementById('cmpCards').innerHTML = d.items.length ? d.items.map(c => `<div class="item-card">
+          <div class="flex justify-between items-start gap-2 mb-2"><div><div class="font-semibold">${esc(c.title)}</div><div class="muted">${esc(c.brand)}</div></div>${statusBadge(c.status)}</div>
+          <dl class="kv">
+            <dt>Campaign</dt><dd class="mono" title="${esc(c.campaign_id)}">${esc((c.campaign_id || '').slice(0, 8))}</dd>
+            <dt>Target PINs</dt><dd>${c.target_pins.length ? esc(c.target_pins.length <= 3 ? c.target_pins.join(', ') : c.target_pins.slice(0, 3).join(', ') + ' +' + (c.target_pins.length - 3)) : '<span class="muted">No data</span>'}</dd>
+            <dt>Target RFM</dt><dd>${esc(c.target_rfm)}</dd>
+            <dt>Commodities</dt><dd>${c.featured_commodities.length ? esc(c.featured_commodities.join(', ')) : '<span class="muted">No data</span>'}</dd>
+            <dt>Conversion</dt><dd>${c.conversion_rate == null ? '<span class="muted">No data</span>' : c.conversion_rate.toFixed(2) + '% <span class="sim">Simulated</span>'}</dd>
+            <dt>Redemptions</dt><dd>${c.redemptions == null ? '<span class="muted">No data</span>' : fmt(c.redemptions) + ' <span class="sim">Simulated</span>'}</dd>
+          </dl></div>`).join('') : NO_DATA;
+      document.getElementById('campaignBody').innerHTML = d.items.length ? d.items.map(c => campaignTableRow(c.raw)).join('') : '<tr><td colspan="22" class="muted">No campaigns for these filters</td></tr>';
+    }
+    loaders.campaigns = () => run('campaigns', loadCampaigns);
+    document.getElementById('cmpFilters').addEventListener('submit', (e) => { e.preventDefault(); run('campaigns', loadCampaigns); });
+    document.getElementById('btnAllCols').addEventListener('click', (e) => {
+      const wrap = document.getElementById('cmpTableWrap');
+      wrap.hidden = !wrap.hidden;
+      e.target.setAttribute('aria-expanded', String(!wrap.hidden));
+      e.target.textContent = wrap.hidden ? 'All columns' : 'Hide table';
+    });
+
+    showTab((location.hash || '#customers').slice(1));
   </script>
 </body>
 </html>
