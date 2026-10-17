@@ -279,6 +279,97 @@
       margin-right: 6px;
       vertical-align: 1px;
     }
+    .map-pin-label.score-high::before { background: #66513B; }
+    .map-pin-label.score-mid::before { background: #89765C; }
+    .map-pin-label.score-low::before { background: #B8A994; }
+
+    .store-strip {
+      display: grid;
+      grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr);
+      gap: 0;
+      border-bottom: 1px solid var(--line);
+      background: var(--panel);
+    }
+    .store-strip > div {
+      padding: 0.85rem 1.1rem;
+      border-right: 1px solid var(--line);
+    }
+    .store-strip > div:last-child { border-right: none; }
+    .store-strip .lbl {
+      font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--muted); font-weight: 600;
+    }
+    .store-strip .val {
+      margin-top: 0.3rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--soft);
+    }
+    .store-strip .sub {
+      margin-top: 0.2rem;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.35;
+    }
+    .decision-badge {
+      display: inline-block;
+      margin-top: 0.35rem;
+      padding: 0.2rem 0.55rem;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      border: 1px solid var(--line);
+    }
+    .decision-badge.yes { background: #E8F0E4; color: #3D5A34; border-color: #C5D9BE; }
+    .decision-badge.consider { background: #F5F0E4; color: #66513B; border-color: #DED7CB; }
+    .decision-badge.no { background: #F3EBEB; color: #6B3F3F; border-color: #E4D0D0; }
+
+    .market-brief {
+      margin: 0;
+      padding: 1rem 1.25rem 1.15rem;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, #FFFFFF 0%, #F7F4EE 100%);
+    }
+    .market-brief .brief-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 0.55rem;
+    }
+    .market-brief h2 {
+      margin: 0;
+      font-family: 'Cormorant Garamond', Georgia, serif;
+      font-size: 1.35rem;
+      font-weight: 600;
+      color: var(--soft);
+    }
+    .market-brief .brief-meta {
+      font-size: 11px;
+      color: var(--muted);
+      font-family: 'IBM Plex Mono', monospace;
+    }
+    .market-brief .brief-body {
+      margin: 0;
+      font-size: 13.5px;
+      line-height: 1.55;
+      color: #3F3A34;
+      white-space: pre-wrap;
+    }
+    .market-brief .brief-body.muted { color: var(--muted); font-style: italic; }
+    .market-brief .brief-err {
+      margin-top: 0.45rem;
+      font-size: 11px;
+      color: #8B4A4A;
+      font-family: 'IBM Plex Mono', monospace;
+    }
+
+    @media (max-width: 900px) {
+      .store-strip { grid-template-columns: 1fr; }
+      .store-strip > div { border-right: none; border-bottom: 1px solid var(--line); }
+    }
 
     .catchment {
       display: grid;
@@ -528,6 +619,34 @@
       </header>
 
       <div class="scroll">
+        <section class="market-brief" aria-live="polite">
+          <div class="brief-head">
+            <h2>Market brief</h2>
+            <span class="brief-meta" id="briefMeta">Waiting for filters…</span>
+          </div>
+          <p class="brief-body muted" id="briefBody">Loading store opportunity summary…</p>
+          <div class="brief-err" id="briefErr" hidden></div>
+        </section>
+
+        <div class="store-strip">
+          <div>
+            <div class="lbl">Store recommendation</div>
+            <div class="val" id="storeFocusLabel">—</div>
+            <span class="decision-badge consider" id="storeDecision">—</span>
+            <div class="sub" id="storeDecisionDetail">Select a PIN or use Top hubs below.</div>
+          </div>
+          <div>
+            <div class="lbl">Opportunity score</div>
+            <div class="val" id="storeScore">—</div>
+            <div class="sub" id="storeScoreDetail">Filter-aware demand · garments · catchment</div>
+          </div>
+          <div>
+            <div class="lbl">Est. footfall</div>
+            <div class="val" id="storeFootfall">—</div>
+            <div class="sub" id="storeTopPins">Top hubs update with filters</div>
+          </div>
+        </div>
+
         <!-- FULL WIDTH MAP -->
         <section class="map-hero">
           <div id="map"></div>
@@ -611,11 +730,11 @@
               <canvas id="rfmChart" height="150"></canvas>
             </div>
             <div class="card">
-              <div class="card-title">Competitor stores</div>
-              <p class="text-[14px] text-muted leading-relaxed m-0">
-                Physical competitor pins and store search will land here in a later release.
+              <div class="card-title">Store placement (filter-aware)</div>
+              <p class="text-[14px] text-muted leading-relaxed m-0" id="storeCardCopy">
+                Map regions and scores use aggregated PIN hubs and cell centroids — not individual customer locations.
               </p>
-              <div class="pill mt-4" style="display:inline-flex">Coming soon</div>
+              <div class="pill-row mt-3" id="storeCardPills"></div>
             </div>
           </div>
         </section>
@@ -625,9 +744,14 @@
 
   <script>
     let DATA = null;
-    let map, markersLayer, circleLayers = [];
+    let map, markersLayer, circleLayers = [], heatLayer = null;
     let sizeChart, brandChart, rfmChart;
     const selection = { pin: [], age: [], gender: [], rfm: [], brand: [] };
+    let focusPin = null; // marker click or single PIN filter
+    let lastStoreState = null;
+    let briefTimer = null;
+    let briefSeq = 0;
+    let lastBriefKey = '';
 
     const CHART = {
       color: '#89765C',
@@ -635,6 +759,11 @@
       grid: '#E4DED3',
       tick: '#777066'
     };
+
+    // Relative store score thresholds (percentile of visible PIN scores)
+    const STORE_W = { demand: 0.45, garment: 0.25, catchment: 0.20, revenue: 0.10 };
+    const STORE_YES = 0.66;
+    const STORE_CONSIDER = 0.33;
 
     const COLOR_HEX = {
       black: '#1a1a1a', white: '#f3efe6', navy: '#1e2a44', blue: '#3b6ea5',
@@ -765,6 +894,405 @@
       updateDropSummary(key, allLabel);
     }
 
+    function norm01(vals) {
+      const nums = vals.filter(v => Number.isFinite(v));
+      if (!nums.length) return () => 0;
+      const lo = Math.min(...nums);
+      const hi = Math.max(...nums);
+      if (hi <= lo) return () => (hi > 0 ? 1 : 0);
+      return (v) => (Number(v) - lo) / (hi - lo);
+    }
+
+    function decisionFromScore(score, demand, estFootfall, brandShare, brandGarments) {
+      // Centroid alone never opens a store — need demand + brand wardrobe presence
+      if (!demand || demand <= 0) return 'No';
+      if (!brandGarments || brandGarments <= 0) return 'No';
+      if (estFootfall != null && estFootfall < 40) return 'No';
+      const share = (brandShare == null || Number.isNaN(brandShare)) ? null : Number(brandShare);
+      if (share != null) {
+        if (share >= 0.35 && estFootfall >= 60 && score >= STORE_CONSIDER) return 'Yes';
+        if (share >= 0.22 || (brandGarments >= 3 && score >= STORE_CONSIDER)) return 'Consider';
+        return 'No';
+      }
+      if (score >= STORE_YES) return 'Yes';
+      if (score >= STORE_CONSIDER) return 'Consider';
+      return 'No';
+    }
+
+    function scoreColor(score) {
+      if (score >= STORE_YES) return '#66513B';
+      if (score >= STORE_CONSIDER) return '#89765C';
+      return '#B8A994';
+    }
+
+    function scoreClass(score) {
+      if (score >= STORE_YES) return 'score-high';
+      if (score >= STORE_CONSIDER) return 'score-mid';
+      return 'score-low';
+    }
+
+    function isOwnBrand(cellBrand, analysisBrand) {
+      if (!analysisBrand) return false;
+      const a = String(analysisBrand).trim().toLowerCase();
+      const b = String(cellBrand || '').trim().toLowerCase();
+      return !!a && a === b;
+    }
+
+    /** Brand to score vs Competitors: session brand, else single brand filter, else top wardrobe brand. */
+    function resolveAnalysisBrand(garmDemo) {
+      const sess = (window.SuffaiSession && SuffaiSession.getSession()) || {};
+      if (sess.role === 'brand' && sess.brand_name) return String(sess.brand_name);
+      const selected = (selection.brand || []).filter(b => b && b !== 'Competitors');
+      if (selected.length === 1) return selected[0];
+      const counts = {};
+      for (const g of garmDemo || []) {
+        const b = String(g.brand || '').trim();
+        if (!b || b === 'Competitors') continue;
+        counts[b] = (counts[b] || 0) + (Number(g.garments) || 0);
+      }
+      const ranked = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+      return ranked.length ? ranked[0][0] : null;
+    }
+
+    /**
+     * PIN hub centroid FIXED from pin_geo.
+     * Demo filters change demand/footfall.
+     * Brand vs competitor garment share + brand commodities drive open-store heuristic
+     * (Gemini may override with explanation).
+     */
+    function computeStoreScores(cust, garmDemo, pinFilter, analysisBrand) {
+      const pinSet = pinFilter.length ? new Set(pinFilter) : null;
+      const byPin = {};
+
+      for (const c of cust) {
+        const pin = String(c.pin_code || '');
+        if (!pin) continue;
+        if (pinSet && !pinSet.has(pin)) continue;
+        const row = byPin[pin] || (byPin[pin] = {
+          pin, demand: 0, orders: 0, revenue: 0,
+          brand_garments: 0, competitor_garments: 0, commodityCounts: {},
+        });
+        row.demand += Number(c.customers) || 0;
+        row.orders += Number(c.orders) || 0;
+        row.revenue += Number(c.revenue) || 0;
+      }
+
+      for (const g of garmDemo) {
+        const pin = String(g.pin_code || '');
+        if (!pin || (pinSet && !pinSet.has(pin))) continue;
+        if (!byPin[pin]) {
+          byPin[pin] = {
+            pin, demand: 0, orders: 0, revenue: 0,
+            brand_garments: 0, competitor_garments: 0, commodityCounts: {},
+          };
+        }
+        const n = Number(g.garments) || 0;
+        const own = isOwnBrand(g.brand, analysisBrand);
+        if (own) {
+          byPin[pin].brand_garments += n;
+          const names = Array.isArray(g.names) ? g.names : [];
+          for (const item of names) {
+            const name = (item && (item.value || item.name)) || null;
+            if (!name) continue;
+            const cnt = Number(item.count != null ? item.count : 1) || 0;
+            byPin[pin].commodityCounts[name] = (byPin[pin].commodityCounts[name] || 0) + cnt;
+          }
+        } else {
+          byPin[pin].competitor_garments += n;
+        }
+      }
+
+      const pinsToScore = pinSet ? [...pinSet] : Object.keys(DATA.pin_geo || {});
+      const rows = [];
+      for (const pin of pinsToScore) {
+        const geo = DATA.pin_geo[pin] || {};
+        const lat = geo.centroid_lat != null ? Number(geo.centroid_lat) : null;
+        const lon = geo.centroid_lon != null ? Number(geo.centroid_lon) : null;
+        if (lat == null || lon == null) continue;
+
+        const agg = byPin[pin] || {
+          pin, demand: 0, orders: 0, revenue: 0,
+          brand_garments: 0, competitor_garments: 0, commodityCounts: {},
+        };
+        const catchment = Number(geo.pop_buffer_2km || geo.population_pin || 0) || 0;
+        const revInt = agg.demand > 0 ? agg.revenue / agg.demand : 0;
+        const est_footfall = Math.round(agg.demand * 18 + (agg.demand > 0 ? catchment * 0.012 : 0));
+        const wardrobeTotal = agg.brand_garments + agg.competitor_garments;
+        const brand_share = wardrobeTotal > 0 ? agg.brand_garments / wardrobeTotal : null;
+        const commodities = Object.entries(agg.commodityCounts)
+          .map(([name, count]) => ({ commodity: name, name, count }))
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 8);
+
+        rows.push({
+          pin,
+          area_label: geo.area_label || pin,
+          demand: agg.demand,
+          orders: agg.orders,
+          revenue: agg.revenue,
+          garment_pull: agg.brand_garments + agg.competitor_garments,
+          brand_garments: agg.brand_garments,
+          competitor_garments: agg.competitor_garments,
+          brand_share,
+          commodities,
+          catchment_pop: catchment,
+          revenue_intensity: revInt,
+          est_footfall,
+          centroid_lat: lat,
+          centroid_lon: lon,
+          analysis_brand: analysisBrand,
+        });
+      }
+
+      const nd = norm01(rows.map(r => r.demand));
+      const ng = norm01(rows.map(r => r.brand_garments));
+      const nc = norm01(rows.map(r => r.catchment_pop));
+      const nr = norm01(rows.map(r => r.revenue_intensity));
+      const ns = norm01(rows.map(r => (r.brand_share == null ? 0 : r.brand_share)));
+      for (const r of rows) {
+        const catchPart = r.demand > 0 ? STORE_W.catchment * nc(r.catchment_pop) : 0;
+        r.score = STORE_W.demand * nd(r.demand)
+          + STORE_W.garment * ng(r.brand_garments)
+          + catchPart
+          + STORE_W.revenue * nr(r.revenue_intensity)
+          + 0.15 * ns(r.brand_share == null ? 0 : r.brand_share);
+        r.heuristic_decision = decisionFromScore(
+          r.score, r.demand, r.est_footfall, r.brand_share, r.brand_garments
+        );
+        r.decision = r.heuristic_decision; // may be overridden by Gemini
+        r.decision_source = 'heuristic';
+      }
+      rows.sort((a, b) => b.score - a.score || b.demand - a.demand || (b.brand_share || 0) - (a.brand_share || 0));
+      return rows;
+    }
+
+    function resolveFocusPin(scored) {
+      if (focusPin && scored.some(r => r.pin === focusPin)) return focusPin;
+      if (selection.pin.length === 1) return selection.pin[0];
+      return scored[0] ? scored[0].pin : null;
+    }
+
+    function templateBrief(payload) {
+      const f = payload.focus_pin;
+      const brand = payload.analysis_brand || 'brand';
+      const trends = payload.trends || {};
+      const kpis = payload.kpis || {};
+      const top = (payload.top_pins || []).slice(0, 3)
+        .map(p => `${p.area_label} (${p.pin}) — ${p.decision}`)
+        .join('; ');
+      const taste = [
+        trends.top_commodity && `commodity ${trends.top_commodity}`,
+        trends.top_color && `color ${trends.top_color}`,
+        trends.top_brand && `brand ${trends.top_brand}`,
+      ].filter(Boolean).join(', ');
+      const audience = [
+        (payload.filters.pins || []).length ? `PIN ${(payload.filters.pins || []).join(', ')}` : 'all hubs',
+        (payload.filters.age || []).length ? `age ${(payload.filters.age || []).join('/')}` : null,
+        (payload.filters.gender || []).length ? `gender ${(payload.filters.gender || []).join('/')}` : null,
+        (payload.filters.rfm || []).length ? `RFM ${(payload.filters.rfm || []).join('/')}` : null,
+      ].filter(Boolean).join(' · ');
+      if (!f) {
+        return `No PIN hubs available for this filter set.\n\nAudience: ${audience}. Customers ${kpis.customers || 0}.`;
+      }
+      const sharePct = f.brand_share == null ? 'n/a' : (Math.round(f.brand_share * 1000) / 10) + '%';
+      const commodities = (f.commodities || []).slice(0, 3)
+        .map(c => `${c.commodity || c.name} (${c.count})`).join(', ');
+      const action = f.decision === 'Yes'
+        ? `Recommend opening a store for ${brand} in ${f.area_label} (PIN ${f.pin}).`
+        : f.decision === 'Consider'
+          ? `Consider a store for ${brand} in ${f.area_label} (PIN ${f.pin}) — mixed competitive signals.`
+          : `Do not open a store for ${brand} in ${f.area_label} (PIN ${f.pin}) under this demographic slice.`;
+      return [
+        `Audience: ${audience}. Aggregates only (no individual customer data).`,
+        `Estimated footfall ~${Math.round(f.est_footfall || 0)} · demand ${Math.round(f.demand || 0)}.`,
+        `${brand} vs competitors at PIN: share ${sharePct} (${Math.round(f.brand_garments || 0)} vs ${Math.round(f.competitor_garments || 0)} garments).`,
+        commodities ? `Brand commodities: ${commodities}.` : 'No brand commodity counts in this slice.',
+        taste ? `Trending taste: ${taste}.` : '',
+        action,
+        top ? `Other hubs: ${top}.` : '',
+      ].filter(Boolean).join('\n\n');
+    }
+
+    function buildBriefPayload(scored, focus, kpis, trends, analysisBrand) {
+      const sess = (window.SuffaiSession && SuffaiSession.getSession()) || {};
+      const toPin = (r) => ({
+        pin: r.pin,
+        area_label: r.area_label,
+        decision: r.decision,
+        heuristic_decision: r.heuristic_decision || r.decision,
+        score: Math.round(r.score * 1000) / 1000,
+        est_footfall: r.est_footfall,
+        demand: r.demand,
+        catchment_pop: r.catchment_pop,
+        garment_pull: r.garment_pull,
+        brand_garments: r.brand_garments,
+        competitor_garments: r.competitor_garments,
+        brand_share: r.brand_share == null ? null : Math.round(r.brand_share * 1000) / 1000,
+        commodities: (r.commodities || []).slice(0, 8),
+        revenue: Math.round(r.revenue),
+      });
+      return {
+        filters: {
+          pins: selection.pin.slice(),
+          age: selection.age.slice(),
+          gender: selection.gender.slice(),
+          rfm: selection.rfm.slice(),
+          brand: selection.brand.slice(),
+        },
+        kpis: {
+          customers: kpis.customers,
+          orders: kpis.orders,
+          revenue: Math.round(kpis.revenue),
+          garments: kpis.garments,
+        },
+        analysis_brand: analysisBrand,
+        focus_pin: focus ? toPin(focus) : null,
+        top_pins: scored.slice(0, 5).map(toPin),
+        trends: {
+          top_commodity: trends.top_commodity || null,
+          top_color: trends.top_color || null,
+          top_brand: trends.top_brand || null,
+          top_pattern: trends.top_pattern || null,
+          top_size: trends.top_size || null,
+        },
+        role: sess.role || 'admin',
+      };
+    }
+
+    function renderStoreStrip(scored, focus, analysisBrand) {
+      const badge = $('storeDecision');
+      if (!focus) {
+        $('storeFocusLabel').textContent = 'No hub';
+        badge.textContent = '—';
+        badge.className = 'decision-badge consider';
+        $('storeDecisionDetail').textContent = 'No PIN hubs with coordinates for this filter set.';
+        $('storeScore').textContent = '—';
+        $('storeFootfall').textContent = '—';
+        $('storeTopPins').textContent = '—';
+        $('storeCardPills').innerHTML = '';
+        return;
+      }
+      const brandLabel = analysisBrand || focus.analysis_brand || 'brand';
+      const sharePct = focus.brand_share == null ? 'n/a' : (Math.round(focus.brand_share * 1000) / 10) + '%';
+      $('storeFocusLabel').textContent = `${focus.area_label} · ${focus.pin}`;
+      badge.textContent = focus.decision;
+      badge.className = 'decision-badge ' + (
+        focus.decision === 'Yes' ? 'yes' : focus.decision === 'No' ? 'no' : 'consider'
+      );
+      $('storeDecisionDetail').textContent =
+        `${brandLabel} share ${sharePct} (${Math.round(focus.brand_garments || 0)} vs ${Math.round(focus.competitor_garments || 0)} garments) · demand ${focus.demand.toLocaleString()}`
+        + (focus.decision_source === 'gemini' ? ' · Gemini decision' : ' · heuristic prior');
+      $('storeScore').textContent = focus.score.toFixed(2);
+      $('storeScoreDetail').textContent = 'Score blends demand, brand garments, share, catchment';
+      $('storeFootfall').textContent = '~' + focus.est_footfall.toLocaleString();
+      const topLine = scored.slice(0, 3).map(r => `${r.area_label} (${r.decision})`).join(' · ');
+      $('storeTopPins').textContent = 'Top: ' + (topLine || '—');
+      const commodityPills = (focus.commodities || []).slice(0, 4).map(c =>
+        `<span class="pill">${c.commodity || c.name} <b>${c.count}</b></span>`
+      ).join('');
+      $('storeCardPills').innerHTML =
+        scored.slice(0, 3).map(r =>
+          `<span class="pill">${r.area_label} <b>${r.decision}</b> · share ${r.brand_share == null ? '—' : Math.round(r.brand_share * 100) + '%'}</span>`
+        ).join('') + commodityPills;
+      $('storeCardCopy').textContent =
+        'Fixed PIN centroid. Filters change Estimated footfall. Open-store uses ' + brandLabel
+        + ' vs competitor wardrobe share + commodity counts; Gemini explains the final call.';
+    }
+
+    function scheduleMarketBrief(payload) {
+      const key = JSON.stringify(payload);
+      if (key === lastBriefKey && $('briefBody').dataset.source === 'gemini') return;
+      clearTimeout(briefTimer);
+      $('briefMeta').textContent = 'Gemini deciding…';
+      $('briefErr').hidden = true;
+      briefTimer = setTimeout(() => fetchMarketBrief(payload, key), 500);
+    }
+
+    async function fetchMarketBrief(payload, key) {
+      const seq = ++briefSeq;
+      const apiBase = (window.DASHBOARD_API || '').replace(/\/$/, '');
+      const url = (apiBase || '') + '/v1/geo/brief';
+      const fallback = templateBrief(payload);
+      try {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            ...(window.SuffaiSession ? SuffaiSession.authHeaders() : {}),
+          },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (seq !== briefSeq) return;
+
+        const decision = data.decision;
+        const explanation = data.explanation || '';
+        const briefText = data.brief || fallback;
+        const factors = Array.isArray(data.key_factors) ? data.key_factors : [];
+
+        if (!res.ok && !data.brief && !data.decision) {
+          const detail = SuffaiSession.formatApiDetail(data.detail, 'HTTP ' + res.status);
+          console.warn('[geo] brief hard fail request_id=%s detail=%s', data.request_id || '—', detail);
+          $('briefBody').textContent = fallback;
+          $('briefBody').classList.remove('muted');
+          $('briefBody').dataset.source = 'template';
+          $('briefMeta').textContent = 'Template · API error';
+          $('briefErr').hidden = false;
+          $('briefErr').textContent = 'Brief API: ' + detail + (data.request_id ? ' [' + data.request_id + ']' : '');
+          lastBriefKey = key;
+          return;
+        }
+
+        // Apply Gemini (or heuristic-fallback) decision to focus hub + strip
+        if (decision && lastStoreState && lastStoreState.focus) {
+          lastStoreState.focus.decision = decision;
+          lastStoreState.focus.decision_source = data.fallback ? 'heuristic' : 'gemini';
+          lastStoreState.focus.explanation = explanation;
+          const scored = lastStoreState.scored || [];
+          const idx = scored.findIndex(r => r.pin === lastStoreState.focus.pin);
+          if (idx >= 0) {
+            scored[idx].decision = decision;
+            scored[idx].decision_source = lastStoreState.focus.decision_source;
+          }
+          renderStoreStrip(scored, lastStoreState.focus, payload.analysis_brand);
+          updateMap(selection.pin, scored, lastStoreState.focus, lastStoreState.cust);
+        }
+
+        const factorLine = factors.length
+          ? '\n\nKey factors: ' + factors.join(' · ')
+          : '';
+        const explBlock = explanation
+          ? '\n\n— Decision explanation —\n' + explanation + factorLine
+          : '';
+        $('briefBody').textContent = briefText + explBlock;
+        $('briefBody').classList.remove('muted');
+        $('briefBody').dataset.source = data.fallback ? 'heuristic' : 'gemini';
+        $('briefMeta').textContent = (data.fallback ? 'Heuristic fallback' : 'Gemini')
+          + (data.model ? ' · ' + data.model : '')
+          + (data.confidence ? ' · ' + data.confidence : '')
+          + (data.request_id ? ' · ' + data.request_id : '');
+        if (data.fallback && data.detail) {
+          $('briefErr').hidden = false;
+          $('briefErr').textContent = 'Vertex fallback: ' + data.detail + (data.request_id ? ' [' + data.request_id + ']' : '');
+        } else {
+          $('briefErr').hidden = true;
+        }
+        lastBriefKey = key;
+        console.info('[geo] brief ok request_id=%s decision=%s fallback=%s', data.request_id, decision, !!data.fallback);
+      } catch (err) {
+        if (seq !== briefSeq) return;
+        console.error('[geo] brief network error', err);
+        $('briefBody').textContent = fallback;
+        $('briefBody').classList.remove('muted');
+        $('briefBody').dataset.source = 'template';
+        $('briefMeta').textContent = 'Template brief · network error';
+        $('briefErr').hidden = false;
+        $('briefErr').textContent = 'Brief network error: ' + (err.message || String(err));
+        lastBriefKey = key;
+      }
+    }
+
     function applyFilters() {
       const pins = selection.pin;
       const ages = selection.age;
@@ -772,18 +1300,24 @@
       const rfms = selection.rfm;
       const brands = selection.brand;
 
+      if (pins.length === 1) focusPin = pins[0];
+      else if (focusPin && pins.length && !pins.includes(focusPin)) focusPin = null;
+
       const cust = DATA.customer_cells.filter(c => matchDemo(c, pins, ages, genders, rfms));
-      const garm = DATA.garment_cells.filter(c =>
-        matchDemo(c, pins, ages, genders, rfms) && (!brands.length || brands.includes(c.brand))
-      );
+      // Demo-filtered garments for competition (do not brand-filter — need Competitors)
+      const garmDemo = DATA.garment_cells.filter(c => matchDemo(c, pins, ages, genders, rfms));
+      const garm = garmDemo.filter(c => !brands.length || brands.includes(c.brand));
+      const analysisBrand = resolveAnalysisBrand(garmDemo);
 
       const customers = cust.reduce((s, c) => s + c.customers, 0);
       const orders = cust.reduce((s, c) => s + c.orders, 0);
       const revenue = cust.reduce((s, c) => s + c.revenue, 0);
       const garments = garm.reduce((s, c) => s + c.garments, 0);
 
-      $('kpiCust').textContent = customers.toLocaleString();$('kpiRev').textContent = '₹' + Math.round(revenue).toLocaleString();
-      $('kpiOrd').textContent = orders.toLocaleString();$('kpiGar').textContent = garments.toLocaleString();
+      $('kpiCust').textContent = customers.toLocaleString();
+      $('kpiRev').textContent = '₹' + Math.round(revenue).toLocaleString();
+      $('kpiOrd').textContent = orders.toLocaleString();
+      $('kpiGar').textContent = garments.toLocaleString();
       const jobsN = DATA.extraction_jobs_count;
       $('kpiJobs').textContent = (jobsN == null ? '—' : Number(jobsN).toLocaleString());
 
@@ -793,6 +1327,9 @@
       const sleeves = mergePairs(garm, 'sleeve_types');
       const collars = mergePairs(garm, 'collar_types');
       const materials = mergePairs(garm, 'materials');
+      const commodities = mergePairs(garm, 'commodities').length
+        ? mergePairs(garm, 'commodities')
+        : mergePairs(garm, 'names');
 
       const brandMix = {};
       for (const g of garm) brandMix[g.brand] = (brandMix[g.brand] || 0) + g.garments;
@@ -807,9 +1344,11 @@
       const topSleeve = sleeves[0];
       const topCollar = collars[0];
       const topSize = withShare(sizes).sort((a, b) => b.count - a.count)[0];
+      const topCommodity = commodities[0];
 
       if (!garments) {
-        $('tasteHeadline').textContent = 'No garment observations for this filter set.';$('tastePills').innerHTML = '';
+        $('tasteHeadline').textContent = 'No garment observations for this filter set.';
+        $('tastePills').innerHTML = '';
       } else {
         const parts = [];
         if (topColor) parts.push(topColor.value);
@@ -828,7 +1367,8 @@
       renderColorStory(colors);
       renderShareRows($('patternMix'), patterns, 'No pattern signals');
       renderShareRows($('sleeveMix'), sleeves, 'No sleeve data');
-      renderShareRows($('collarMix'), collars, 'No collar data');$('materialMix').innerHTML = withShare(materials).slice(0, 8).map(m =>
+      renderShareRows($('collarMix'), collars, 'No collar data');
+      $('materialMix').innerHTML = withShare(materials).slice(0, 8).map(m =>
         `<span class="pill capitalize">${m.value} <b>${m.pct}%</b></span>`
       ).join('') || '<span class="text-[13px] text-muted">No material signals</span>';
 
@@ -837,8 +1377,28 @@
       updateChart(brandChart, brandsArr.map(x => x.value), brandsArr.map(x => x.count), CHART.colorAlt);
       updateChart(rfmChart, rfmArr.map(x => x.value), rfmArr.map(x => x.count), CHART.color);
 
-      updateMap(pins);
-      updateCatchment(pins);
+      const scored = computeStoreScores(cust, garmDemo, pins, analysisBrand);
+      const focusId = resolveFocusPin(scored);
+      const focus = scored.find(r => r.pin === focusId) || scored[0] || null;
+      lastStoreState = { scored, focus, cust, analysisBrand };
+      renderStoreStrip(scored, focus, analysisBrand);
+      updateMap(pins, scored, focus, cust);
+      updateCatchment(focus ? [focus.pin] : pins);
+
+      const trends = {
+        top_commodity: topCommodity ? topCommodity.value : null,
+        top_color: topColor ? topColor.value : null,
+        top_brand: brandsArr[0] ? brandsArr[0].value : null,
+        top_pattern: topPattern ? topPattern.value : null,
+        top_size: topSize ? topSize.value : null,
+      };
+      const briefPayload = buildBriefPayload(
+        scored, focus, { customers, orders, revenue, garments }, trends, analysisBrand
+      );
+      $('briefBody').textContent = templateBrief(briefPayload);
+      $('briefBody').classList.add('muted');
+      $('briefBody').dataset.source = 'template';
+      scheduleMarketBrief(briefPayload);
 
       publishGeoContext({
         customers, orders, revenue, garments,
@@ -847,7 +1407,10 @@
         top_pattern: topPattern ? topPattern.value : null,
         top_size: topSize ? topSize.value : null,
         top_brand: brandsArr[0] ? brandsArr[0].value : null,
-        top_rfm: (rfmArr.slice().sort((a, b) => b.count - a.count)[0] || {}).value || null
+        top_rfm: (rfmArr.slice().sort((a, b) => b.count - a.count)[0] || {}).value || null,
+        store_focus_pin: focus ? focus.pin : null,
+        store_decision: focus ? focus.decision : null,
+        store_score: focus ? focus.score : null,
       });
     }
 
@@ -905,56 +1468,85 @@
       $('pop4').textContent = p4 ? p4.toLocaleString() : '—';
     }
 
-    function updateMap(pins) {
+    function updateMap(pins, scored, focus, cust) {
       markersLayer.clearLayers();
       circleLayers.forEach(c => map.removeLayer(c));
       circleLayers = [];
+      if (heatLayer) {
+        map.removeLayer(heatLayer);
+        heatLayer = null;
+      }
 
+      scored = scored || [];
       const hubs = [];
-      const pinSet = pins.length ? new Set(pins) : null;
-      for (const [pin, g] of Object.entries(DATA.pin_geo)) {
-        if (pinSet && !pinSet.has(pin)) continue;
-        if (g.centroid_lat == null || g.centroid_lon == null) continue;
-        const name = g.area_label || pin;
-        hubs.push({ ...g, pin, name });
+      const maxFoot = Math.max(1, ...scored.map(r => r.est_footfall || 0));
+
+      for (const r of scored) {
+        // Marker always at stable PIN centroid (pin_geo)
+        if (r.centroid_lat == null || r.centroid_lon == null) continue;
+        const name = r.area_label || r.pin;
+        const color = scoreColor(r.score);
+        hubs.push(r);
 
         const icon = L.divIcon({
           className: '',
-          html: `<div class="map-pin-label">${name}</div>`,
-          iconSize: [120, 28],
-          iconAnchor: [60, 14]
+          html: `<div class="map-pin-label ${scoreClass(r.score)}">${name} · ${r.decision}</div>`,
+          iconSize: [160, 28],
+          iconAnchor: [80, 14]
         });
-        const marker = L.marker([g.centroid_lat, g.centroid_lon], { icon })
+        const marker = L.marker([r.centroid_lat, r.centroid_lon], { icon })
           .bindPopup(
             `<strong style="color:#292722;font-size:13px">${name}</strong><br/>` +
-            `<span style="color:#777066">PIN ${pin}</span><br/>` +
-            `Customers: <b>${g.customers}</b> · Orders: <b>${g.orders}</b>`
+            `<span style="color:#777066">PIN ${r.pin} · fixed hub centroid</span><br/>` +
+            `Open store? <b>${r.decision}</b> · Score: <b>${r.score.toFixed(2)}</b><br/>` +
+            `Filtered demand: <b>${r.demand}</b><br/>` +
+            `Est. segment footfall: <b>~${r.est_footfall.toLocaleString()}</b>`
           );
+        marker.on('click', () => {
+          focusPin = r.pin;
+          applyFilters();
+        });
         markersLayer.addLayer(marker);
 
-        L.circleMarker([g.centroid_lat, g.centroid_lon], {
-          radius: 5,
-          color: '#89765C',
-          fillColor: '#89765C',
-          fillOpacity: 0.9,
+        L.circleMarker([r.centroid_lat, r.centroid_lon], {
+          radius: 5 + Math.round(r.score * 8),
+          color,
+          fillColor: color,
+          fillOpacity: r.decision === 'No' ? 0.35 : 0.9,
           weight: 0
         }).addTo(markersLayer);
+
+        // Region around FIXED PIN centroid — opacity/size reflect filter footfall
+        const footShare = (r.est_footfall || 0) / maxFoot;
+        const regionM = 900 + Math.round(footShare * 1600);
+        const fillOp = r.demand > 0 ? (0.04 + footShare * 0.14) : 0.02;
+        const region = L.circle([r.centroid_lat, r.centroid_lon], {
+          radius: regionM,
+          color,
+          weight: r === focus || (focus && r.pin === focus.pin) ? 2 : 1,
+          fillColor: color,
+          fillOpacity: fillOp,
+          interactive: false,
+        }).addTo(map);
+        circleLayers.push(region);
+      }
+
+      // Focus hub: extra catchment rings (still centered on PIN centroid)
+      if (focus && focus.centroid_lat != null && focus.centroid_lon != null) {
+        [[1200, 0.08], [2400, 0.04]].forEach(([rad, opacity]) => {
+          const c = L.circle([focus.centroid_lat, focus.centroid_lon], {
+            radius: rad,
+            color: scoreColor(focus.score),
+            weight: 1.5,
+            fillColor: scoreColor(focus.score),
+            fillOpacity: focus.demand > 0 ? opacity : 0.015,
+            dashArray: focus.decision === 'No' ? '6 8' : null,
+          }).addTo(map);
+          circleLayers.push(c);
+        });
       }
 
       if (!hubs.length) return;
-
-      let lat = 0, lon = 0;
-      hubs.forEach(h => { lat += h.centroid_lat; lon += h.centroid_lon; });
-      lat /= hubs.length; lon /= hubs.length;
-
-      [[1000, 0.07], [2200, 0.045], [3800, 0.025]].forEach(([r, opacity]) => {
-        const c = L.circle([lat, lon], {
-          radius: r, color: '#89765C', weight: 1,
-          fillColor: '#89765C', fillOpacity: opacity
-        }).addTo(map);
-        circleLayers.push(c);
-      });
-
       const bounds = L.latLngBounds(hubs.map(h => [h.centroid_lat, h.centroid_lon]));
       map.fitBounds(bounds.pad(0.45));
       setTimeout(() => map.invalidateSize(), 80);
@@ -1025,6 +1617,8 @@
     });
 
     $('btnClear').addEventListener('click', () => {
+      focusPin = null;
+      lastBriefKey = '';
       Object.keys(selection).forEach(k => { selection[k] = []; });
       document.querySelectorAll('.drop-panel input').forEach(i => { i.checked = false; });
       updateDropSummary('pin', 'All areas');
@@ -1064,7 +1658,10 @@
         let detail = '';
         try {
           const body = await res.json();
-          detail = body.detail || body.message || JSON.stringify(body);
+          detail = SuffaiSession.formatApiDetail(
+            body.detail != null ? body.detail : body.message,
+            JSON.stringify(body)
+          );
         } catch (_) {
           detail = await res.text().catch(() => '');
         }

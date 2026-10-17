@@ -244,26 +244,15 @@
       <div class="brand-mark">SA</div>
       <div>
         <h1>SuffAI Command Center</h1>
-<<<<<<< HEAD
         <p id="shellSubtitle">Geo · Ads Lab · Style · Admin</p>
-=======
-        <p>Geo · Ads Lab · Style · Admin</p>
->>>>>>> main
       </div>
     </div>
 
     <nav class="tabs" aria-label="Sections">
-<<<<<<< HEAD
       <button type="button" class="tab" data-tab="geo" hidden>Geo</button>
       <button type="button" class="tab" data-tab="ads" hidden>Ads Lab</button>
       <button type="button" class="tab" data-tab="style" hidden>Style Assistant</button>
       <button type="button" class="tab" data-tab="admin" hidden>Admin</button>
-=======
-      <button type="button" class="tab active" data-tab="geo">Geo</button>
-      <button type="button" class="tab" data-tab="ads">Ads Lab</button>
-      <button type="button" class="tab" data-tab="style">Style Assistant</button>
-      <button type="button" class="tab" data-tab="admin">Admin</button>
->>>>>>> main
     </nav>
 
     <div class="right">
@@ -273,7 +262,6 @@
   </header>
 
   <div class="frame-wrap">
-<<<<<<< HEAD
     <iframe id="frame-geo" class="hidden" title="Geo" src="about:blank" data-src="./geo.html"></iframe>
     <iframe id="frame-ads" class="hidden" title="Ads Lab" src="about:blank" data-src="./ads_lab.html"></iframe>
     <iframe id="frame-style" class="hidden" title="Style Assistant" src="about:blank" data-src="./style_assistant.html"></iframe>
@@ -282,16 +270,6 @@
 
   <!-- Corner bot (Geo + Ads Lab only — hidden on Style Assistant / Admin / customer) -->
   <button type="button" class="chat-fab" id="chatFab" aria-label="Open assistant" aria-pressed="false" style="display:none">Bot</button>
-=======
-    <iframe id="frame-geo" title="Geo" src="./geo.html"></iframe>
-    <iframe id="frame-ads" class="hidden" title="Ads Lab" src="./ads_lab.html"></iframe>
-    <iframe id="frame-style" class="hidden" title="Style Assistant" src="./style_assistant.html"></iframe>
-    <iframe id="frame-admin" class="hidden" title="Admin" src="./admin.html"></iframe>
-  </div>
-
-  <!-- Corner bot (Geo + Ads Lab only — hidden on Style Assistant / Admin) -->
-  <button type="button" class="chat-fab" id="chatFab" aria-label="Open assistant" aria-pressed="false">Bot</button>
->>>>>>> main
   <aside class="chat-popup" id="chatPopup" aria-label="Dashboard assistant">
     <div class="chat-popup-header">
       Dashboard assistant
@@ -396,21 +374,7 @@
     });
 
     document.querySelectorAll('.tab').forEach(btn => {
-<<<<<<< HEAD
       btn.addEventListener('click', () => activateTab(btn.dataset.tab));
-=======
-      btn.addEventListener('click', () => {
-        const id = btn.dataset.tab;
-        window.__CC_CONTEXT__.active_tab = id;
-        document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b === btn));
-        Object.entries(tabs).forEach(([key, frame]) => {
-          frame.classList.toggle('hidden', key !== id);
-        });
-        // Chat is Geo + Ads only (not Style Assistant / Admin)
-        setChatVisible(id === 'geo' || id === 'ads');
-        if (id === 'geo' || id === 'ads') refreshAllContext();
-      });
->>>>>>> main
     });
 
     document.getElementById('btnLogout').addEventListener('click', () => {

@@ -383,7 +383,15 @@
           headers: { Accept: 'application/json', ...SuffaiSession.authHeaders() },
         });
         const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.detail || `Metrics API returned HTTP ${res.status}`);
+        if (!res.ok) {
+          throw new Error(
+            (window.SuffaiSession && SuffaiSession.formatApiDetail
+              ? SuffaiSession.formatApiDetail(data.detail, null)
+              : null)
+            || (typeof data.detail === 'string' ? data.detail : null)
+            || `Metrics API returned HTTP ${res.status}`
+          );
+        }
         state.metrics = data;
         const f = data.filters || {};
         const pins = (f.pin_codes || Object.keys(data.pin_geo || {})).map(String);
