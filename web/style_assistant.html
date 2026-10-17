@@ -7,6 +7,7 @@
   <script src="./config.js"></script>
   <script src="./session.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Outfit:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
   <style>
@@ -199,6 +200,33 @@
     }
     .err { color: #b91c1c; font-size: 13px; }
     .muted { color: var(--muted); font-size: 12px; }
+
+    /* Campaign preview (brand monitor) */
+    .sim-badge {
+      display: inline-flex; align-items: center; gap: .35rem;
+      border: 1px solid var(--accent); color: #66513B; background: #F7F1E7;
+      border-radius: 999px; padding: .2rem .6rem; font-size: 11px; font-weight: 700;
+    }
+    .phone {
+      width: 340px; max-width: 100%;
+      border: 10px solid #292722; border-radius: 34px;
+      background: #FAF8F4; overflow: hidden;
+      box-shadow: 0 20px 50px rgba(41,39,34,0.18);
+    }
+    .phone-bar { height: 22px; background: #292722; display: flex; justify-content: center; align-items: center; }
+    .phone-bar span { width: 70px; height: 6px; border-radius: 999px; background: #4A4339; }
+    .phone-body { max-height: 640px; overflow-y: auto; padding: .85rem; }
+    .kpi-card { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: .75rem .85rem; }
+    .kpi-card .lbl { font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font-weight: 600; margin: 0; }
+    .kpi-card .val { font-family: 'IBM Plex Mono', monospace; font-size: 19px; margin: .25rem 0 0; }
+    .kpi-card .sub { font-size: 10px; color: var(--muted); margin: .1rem 0 0; }
+    .bar-track { width: 100%; height: 10px; border-radius: 999px; background: var(--sand); border: 1px solid var(--line); overflow: hidden; position: relative; }
+    .bar-fill { height: 100%; background: linear-gradient(90deg, #66513B, var(--accent)); border-radius: 999px; }
+    .timeline { position: relative; height: 34px; }
+    .timeline .track { position: absolute; top: 14px; left: 0; right: 0; height: 6px; border-radius: 999px; background: var(--sand); border: 1px solid var(--line); }
+    .timeline .done { position: absolute; top: 14px; left: 0; height: 6px; border-radius: 999px; background: var(--accent); }
+    .timeline .today { position: absolute; top: 4px; width: 2px; height: 26px; background: #292722; }
+    .chip { display: inline-flex; align-items: center; gap: .3rem; border: 1px solid var(--line); background: var(--sand); border-radius: 999px; padding: .2rem .6rem; font-size: 11px; }
   </style>
 </head>
 <body class="h-screen flex flex-col overflow-hidden">
@@ -208,13 +236,112 @@
 
   <header class="glass z-20 border-b border-[#E4DED3] px-4 py-3 flex-none flex items-center justify-between gap-4">
     <div class="min-w-0">
-      <h1 class="display text-2xl m-0 tracking-wide">Style Assistant</h1>
-      <p class="muted m-0 mt-0.5">Complete outfits · similar picks · your wardrobe</p>
+      <h1 id="pageTitle" class="display text-2xl m-0 tracking-wide">Style Assistant</h1>
+      <p id="pageSubtitle" class="muted m-0 mt-0.5">Complete outfits · similar picks · your wardrobe</p>
     </div>
-    <div id="apiStatus" class="mono text-[11px] px-2 py-1 rounded-full border border-[#E4DED3] bg-[#F0ECE4] text-[#4A4339]">Loading…</div>
+    <div class="flex items-center gap-2">
+      <span id="simBadge" class="sim-badge hidden" title="SuffAI is not connected to ad delivery or conversion tracking. All performance figures are simulated."><i class="fa-solid fa-flask"></i> Simulated campaign</span>
+      <div id="apiStatus" class="mono text-[11px] px-2 py-1 rounded-full border border-[#E4DED3] bg-[#F0ECE4] text-[#4A4339]">Loading…</div>
+    </div>
   </header>
 
-  <main class="flex-1 flex min-h-0 overflow-hidden">
+  <main id="previewMain" class="flex-1 min-h-0 overflow-y-auto hidden">
+    <div class="p-4 sm:p-6 space-y-5">
+      <section class="glass p-4 flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+        <div class="min-w-0">
+          <p class="section-kicker">Campaign monitor</p>
+          <h2 id="pvName" class="display text-2xl m-0 mt-1">Select a launched campaign</h2>
+          <p id="pvMeta" class="muted m-0 mt-1"></p>
+        </div>
+        <label class="block text-[10px] text-[#777066] uppercase tracking-wider font-semibold w-full md:w-80">
+          Launched campaign
+          <select id="pvCampaignSelect" class="field mt-1"><option value="">Loading…</option></select>
+        </label>
+      </section>
+      <p id="pvError" class="err hidden"></p>
+      <p id="pvEmpty" class="muted hidden">No launched campaigns yet. Launch one from the Campaigns tab to see its simulated performance here.</p>
+
+      <div id="pvContent" class="hidden grid grid-cols-1 xl:grid-cols-[360px_minmax(0,1fr)] gap-5 items-start">
+        <section class="space-y-3">
+          <p class="section-kicker">How customers would see it</p>
+          <div class="phone mx-auto">
+            <div class="phone-bar"><span></span></div>
+            <div id="pvFeed" class="phone-body space-y-3"></div>
+          </div>
+          <p class="muted text-center">Fixed preview — not delivered to any customer.</p>
+        </section>
+
+        <div class="space-y-5 min-w-0">
+          <section class="glass p-4 sm:p-5">
+            <div class="flex items-end justify-between gap-2 mb-3">
+              <div>
+                <p class="section-kicker">Performance</p>
+                <h3 class="display text-xl m-0 mt-1">Simulated impact</h3>
+              </div>
+              <span class="sim-badge"><i class="fa-solid fa-flask"></i> Simulated</span>
+            </div>
+            <div id="pvKpis" class="grid grid-cols-2 sm:grid-cols-4 gap-2"></div>
+            <div id="pvChannelsWrap" class="hidden mt-4">
+              <p class="muted m-0 mb-1">By channel (simulated)</p>
+              <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs whitespace-nowrap">
+                  <thead class="text-[10px] uppercase text-[#777066]"><tr><th class="py-1 pr-3">Channel</th><th class="py-1 pr-3">Spend</th><th class="py-1 pr-3">Sent</th><th class="py-1 pr-3">Delivered</th><th class="py-1 pr-3">Reach</th><th class="py-1 pr-3">Clicks</th><th class="py-1 pr-3">Conv.</th><th class="py-1 pr-3">Revenue</th><th class="py-1 pr-3">ROAS</th></tr></thead>
+                  <tbody id="pvChannels"></tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+
+          <section class="glass p-4 sm:p-5">
+            <div class="flex items-end justify-between gap-2 mb-3">
+              <div>
+                <p class="section-kicker">Trends</p>
+                <h3 class="display text-xl m-0 mt-1">Daily delivery</h3>
+              </div>
+              <p class="muted m-0">Solid = delivered to date · dashed = projected</p>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div><p class="muted m-0 mb-1">Impressions &amp; clicks</p><div class="h-56"><canvas id="pvChartDelivery"></canvas></div></div>
+              <div><p class="muted m-0 mb-1">Revenue vs spend (₹)</p><div class="h-56"><canvas id="pvChartRevenue"></canvas></div></div>
+            </div>
+          </section>
+
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <section class="glass p-4 sm:p-5 space-y-3">
+              <p class="section-kicker">Budget pacing</p>
+              <div>
+                <div class="flex justify-between text-xs mb-1"><span>Spend</span><span id="pvSpendLabel" class="mono"></span></div>
+                <div class="bar-track"><div id="pvSpendBar" class="bar-fill" style="width:0%"></div></div>
+              </div>
+              <div>
+                <div class="flex justify-between text-xs mb-1"><span>Schedule</span><span id="pvScheduleLabel" class="mono"></span></div>
+                <div class="timeline"><div class="track"></div><div id="pvTimeDone" class="done" style="width:0%"></div><div id="pvToday" class="today" style="left:0%"></div></div>
+                <div class="flex justify-between muted text-[10px]"><span id="pvStart"></span><span id="pvEnd"></span></div>
+              </div>
+            </section>
+            <section class="glass p-4 sm:p-5">
+              <p class="section-kicker mb-2">Insights</p>
+              <ul id="pvInsights" class="space-y-2 text-sm list-none p-0 m-0"></ul>
+            </section>
+          </div>
+
+          <section class="glass p-4 sm:p-5 space-y-4">
+            <p class="section-kicker">Configuration</p>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              <div class="space-y-3">
+                <div><p class="muted m-0 mb-1">Audience</p><div id="pvAudience" class="flex flex-wrap gap-1.5"></div></div>
+                <div><p class="muted m-0 mb-1">Objective &amp; creative</p><div id="pvCreative" class="text-sm space-y-1"></div></div>
+                <div id="pvSourceWrap" class="hidden"><p class="muted m-0 mb-1">Opportunity source</p><p id="pvSource" class="text-sm m-0"></p></div>
+              </div>
+              <div><p class="muted m-0 mb-1">SKU fit to target PINs</p><div class="h-56"><canvas id="pvChartSkus"></canvas></div></div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <main id="assistantMain" class="flex-1 flex min-h-0 overflow-hidden">
     <aside class="w-80 max-w-[45vw] flex-none border-r border-[#E4DED3] bg-[#F0ECE4]/80 flex flex-col p-4 gap-5 overflow-y-auto">
       <section class="space-y-3">
         <h2 class="text-xs font-bold uppercase tracking-wider flex items-center gap-2">
@@ -646,7 +773,262 @@
     $('userSelect').addEventListener('change', updateRunEnabled);
     $('brandSelect').addEventListener('change', updateRunEnabled);
     $('runBtn').addEventListener('click', generate);
-    loadSelectors();
+    const PAGE_PARAMS = new URLSearchParams(location.search);
+    const PREVIEW_MODE = session.role === 'brand' || PAGE_PARAMS.get('mode') === 'campaign_preview';
+    if (!PREVIEW_MODE) loadSelectors();
+  </script>
+
+  <script>
+    (function campaignPreview() {
+      if (!PREVIEW_MODE) return;
+      const pv = { charts: {}, campaigns: [] };
+      const authHeaders = () => ({ Accept: 'application/json', ...SuffaiSession.authHeaders() });
+      const num = (v) => (v == null ? '—' : Number(v).toLocaleString('en-IN', { maximumFractionDigits: 0 }));
+      const money = (v) => (v == null ? '—' : '₹' + Math.round(Number(v)).toLocaleString('en-IN'));
+      const pct = (v, d = 1) => (v == null ? '—' : Number(v).toFixed(d) + '%');
+
+      $('assistantMain').classList.add('hidden');
+      $('previewMain').classList.remove('hidden');
+      $('simBadge').classList.remove('hidden');
+      $('pageTitle').textContent = 'Style Assistant · Campaign preview';
+      $('pageSubtitle').textContent = 'How your products would appear in the Style feed, with simulated performance';
+
+      function showError(msg) {
+        const el = $('pvError');
+        if (!msg) { el.classList.add('hidden'); el.textContent = ''; return; }
+        el.textContent = msg;
+        el.classList.remove('hidden');
+      }
+
+      async function loadCampaignList(selectId) {
+        try {
+          const res = await fetch(endpoint('/v1/ads-lab/campaigns?status=launched&limit=100'), { headers: authHeaders() });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data.detail || ('HTTP ' + res.status));
+          pv.campaigns = data.campaigns || [];
+          const sel = $('pvCampaignSelect');
+          if (!pv.campaigns.length) {
+            sel.innerHTML = '<option value="">No launched campaigns</option>';
+            $('pvEmpty').classList.remove('hidden');
+            $('apiStatus').textContent = '0 launched';
+            return;
+          }
+          const want = selectId && pv.campaigns.some(c => c.campaign_id === selectId) ? selectId : pv.campaigns[0].campaign_id;
+          sel.innerHTML = pv.campaigns.map(c => {
+            const label = (c.campaign_name || c.campaign_id.slice(0, 8)) + (session.role === 'admin' ? ' · ' + c.brand_name : '');
+            return `<option value="${escapeHtml(c.campaign_id)}" ${c.campaign_id === want ? 'selected' : ''}>${escapeHtml(label)}</option>`;
+          }).join('');
+          $('apiStatus').textContent = `${pv.campaigns.length} launched`;
+          await loadMonitor(want);
+        } catch (e) {
+          console.error('[campaign_preview] list', e);
+          $('apiStatus').textContent = 'API error';
+          showError(e.message || String(e));
+        }
+      }
+
+      async function loadMonitor(campaignId) {
+        if (!campaignId) return;
+        showError('');
+        try {
+          const res = await fetch(endpoint('/v1/ads-lab/campaigns/' + encodeURIComponent(campaignId) + '/monitor'), { headers: authHeaders() });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data.detail || ('HTTP ' + res.status));
+          renderMonitor(data);
+          $('pvContent').classList.remove('hidden');
+          $('pvEmpty').classList.add('hidden');
+        } catch (e) {
+          console.error('[campaign_preview] monitor', e);
+          showError(e.message || String(e));
+        }
+      }
+
+      function skuLabel(s) {
+        const a = s.attributes || {};
+        return [a.color, a.pattern, a.name || a.commodity].filter(Boolean).join(' ') || s.original_filename || 'Product';
+      }
+
+      function renderFeed(c, skus) {
+        const creative = c.creative || {};
+        const heroId = creative.hero_sku_id;
+        const hero = skus.find(s => s.sku_uuid === heroId) || skus[0];
+        const others = skus.filter(s => s !== hero);
+        const cta = creative.cta || 'Shop now';
+        const heroImg = hero ? imgOrPh(hero.image_url, skuLabel(hero)) : '<div class="img-ph">No product</div>';
+        $('pvFeed').innerHTML = `
+          <p class="text-[10px] uppercase tracking-[.2em] text-[#89765C] font-bold m-0">Picked for your wardrobe</p>
+          <article class="look-card" style="width:100%;flex:none">
+            <div class="relative">${heroImg}<span class="score-badge">${escapeHtml(c.brand_name || '')}</span></div>
+            <div class="p-3 space-y-1">
+              <h3 class="display text-lg m-0 leading-tight">${escapeHtml(creative.headline || ('New from ' + (c.brand_name || 'the brand')))}</h3>
+              <p class="muted m-0">${escapeHtml(hero ? skuLabel(hero) : '')}</p>
+              <button type="button" class="btn-buy" disabled title="Preview only">${escapeHtml(cta)}</button>
+            </div>
+          </article>
+          ${others.length ? `<p class="text-[10px] uppercase tracking-[.2em] text-[#89765C] font-bold m-0 pt-1">More from ${escapeHtml(c.brand_name || 'this brand')}</p>
+          <div class="grid grid-cols-2 gap-2">${others.map(s => `
+            <div class="ward-card" style="width:auto;flex:none">${imgOrPh(s.image_url, skuLabel(s))}
+              <div class="p-2"><p class="text-[11px] font-semibold truncate m-0">${escapeHtml(skuLabel(s))}</p></div>
+            </div>`).join('')}</div>` : ''}
+        `;
+      }
+
+      function renderKpis(c) {
+        const i = c.impact || {};
+        const tiles = [
+          ['Reach', num(i.reach), 'unique customers'],
+          ['Impressions', num(i.impressions), i.reach ? 'freq ' + (i.impressions / i.reach).toFixed(1) : ''],
+          ['CTR', pct(i.ctr, 2), i.clicks != null ? num(i.clicks) + ' clicks' : ''],
+          ['Conversions', num(i.conversions), i.clicks ? pct(i.conversions / i.clicks * 100, 1) + ' CVR' : ''],
+          ['Revenue', money(i.revenue), ''],
+          ['Lift', pct(i.lift), 'vs. baseline'],
+          ['ROAS', i.roas == null ? '—' : Number(i.roas).toFixed(1) + 'x', ''],
+          ['Spend', money(i.spend), c.budget_inr ? 'of ' + money(c.budget_inr) : ''],
+        ];
+        $('pvKpis').innerHTML = tiles.map(([l, v, s]) => `<div class="kpi-card"><p class="lbl">${escapeHtml(l)}</p><p class="val">${escapeHtml(v)}</p><p class="sub">${escapeHtml(s)}</p></div>`).join('');
+        const br = i.channel_breakdown && typeof i.channel_breakdown === 'object' ? Object.entries(i.channel_breakdown) : [];
+        $('pvChannelsWrap').classList.toggle('hidden', !br.length);
+        $('pvChannels').innerHTML = br.map(([ch, r]) => `<tr class="border-t border-[#E4DED3]">
+          <td class="py-1 pr-3 font-semibold">${escapeHtml(r.label || ch)}</td>
+          <td class="py-1 pr-3 mono">${escapeHtml(money(r.spend))}</td>
+          <td class="py-1 pr-3 mono">${escapeHtml(r.messages != null ? num(r.messages) : '—')}</td>
+          <td class="py-1 pr-3 mono">${escapeHtml(r.delivered != null ? num(r.delivered) : '—')}</td>
+          <td class="py-1 pr-3 mono">${escapeHtml(num(r.reach))}</td>
+          <td class="py-1 pr-3 mono">${escapeHtml(num(r.clicks))}</td>
+          <td class="py-1 pr-3 mono">${escapeHtml(num(r.conversions))}</td>
+          <td class="py-1 pr-3 mono">${escapeHtml(money(r.revenue))}</td>
+          <td class="py-1 pr-3 mono">${escapeHtml(r.roas == null ? '—' : Number(r.roas).toFixed(1) + 'x')}</td></tr>`).join('');
+      }
+
+      function upsertChart(key, canvasId, config) {
+        if (typeof Chart === 'undefined') return;
+        if (pv.charts[key]) pv.charts[key].destroy();
+        pv.charts[key] = new Chart($(canvasId), config);
+      }
+
+      function splitSeries(delivered, projected, field) {
+        const n = delivered.length;
+        const all = delivered.concat(projected);
+        return {
+          solid: all.map((d, idx) => (idx < n ? d[field] : null)),
+          dashed: all.map((d, idx) => (idx >= n || (n && idx === n - 1) ? d[field] : null)),
+        };
+      }
+
+      function renderCharts(daily) {
+        const delivered = daily.delivered || [];
+        const projected = daily.projected || [];
+        const labels = delivered.concat(projected).map(d => d.day.slice(5));
+        const impr = splitSeries(delivered, projected, 'impressions');
+        const clicks = splitSeries(delivered, projected, 'clicks');
+        const baseOpts = {
+          responsive: true, maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: { legend: { labels: { boxWidth: 10, font: { size: 10 } } } },
+          scales: { x: { ticks: { font: { size: 9 } }, grid: { display: false } }, y: { ticks: { font: { size: 9 } } } },
+        };
+        upsertChart('delivery', 'pvChartDelivery', {
+          type: 'line',
+          data: {
+            labels,
+            datasets: [
+              { label: 'Impressions', data: impr.solid, borderColor: '#89765C', backgroundColor: 'rgba(137,118,92,.15)', fill: true, tension: .3, pointRadius: 0, yAxisID: 'y' },
+              { label: 'Impressions (projected)', data: impr.dashed, borderColor: '#89765C', borderDash: [5, 4], pointRadius: 0, tension: .3, yAxisID: 'y' },
+              { label: 'Clicks', data: clicks.solid, borderColor: '#292722', tension: .3, pointRadius: 0, yAxisID: 'y1' },
+              { label: 'Clicks (projected)', data: clicks.dashed, borderColor: '#292722', borderDash: [5, 4], pointRadius: 0, tension: .3, yAxisID: 'y1' },
+            ],
+          },
+          options: { ...baseOpts, scales: { ...baseOpts.scales, y1: { position: 'right', grid: { display: false }, ticks: { font: { size: 9 } } } } },
+        });
+        const all = delivered.concat(projected);
+        const n = delivered.length;
+        upsertChart('revenue', 'pvChartRevenue', {
+          type: 'bar',
+          data: {
+            labels,
+            datasets: [
+              { label: 'Revenue', data: all.map(d => d.revenue), backgroundColor: all.map((_, i) => (i < n ? '#89765C' : 'rgba(137,118,92,.3)')) },
+              { label: 'Spend', data: all.map(d => d.spend), backgroundColor: all.map((_, i) => (i < n ? '#292722' : 'rgba(41,39,34,.25)')) },
+            ],
+          },
+          options: baseOpts,
+        });
+      }
+
+      function renderPacing(c, daily) {
+        const delivered = daily.delivered || [];
+        const total = delivered.length + (daily.projected || []).length;
+        const spent = delivered.reduce((s, d) => s + d.spend, 0);
+        const budget = Number(c.budget_inr || 0);
+        const spentPct = budget ? Math.min(100, spent / budget * 100) : 0;
+        const timePct = total ? delivered.length / total * 100 : 0;
+        $('pvSpendLabel').textContent = `${money(spent)} / ${money(budget)} (${spentPct.toFixed(0)}%)`;
+        $('pvSpendBar').style.width = spentPct + '%';
+        $('pvScheduleLabel').textContent = `Day ${delivered.length} of ${total}`;
+        $('pvTimeDone').style.width = timePct + '%';
+        $('pvToday').style.left = `calc(${timePct}% - 1px)`;
+        $('pvStart').textContent = c.start_date || '';
+        $('pvEnd').textContent = c.end_date || '';
+      }
+
+      function renderConfig(c, skus) {
+        const pins = c.pin_codes || [];
+        const chips = [
+          ...pins.map(p => 'PIN ' + p),
+          c.age_group ? 'Age ' + c.age_group : 'All ages',
+          c.gender || 'All genders',
+          c.rfm_segment || 'All RFM',
+          c.est_audience != null ? num(c.est_audience) + ' customers' : null,
+        ].filter(Boolean);
+        $('pvAudience').innerHTML = chips.map(x => `<span class="chip">${escapeHtml(x)}</span>`).join('');
+        const creative = c.creative || {};
+        $('pvCreative').innerHTML = `
+          <p class="m-0"><span class="muted">Objective:</span> <b class="capitalize">${escapeHtml(c.objective || '—')}</b></p>
+          <p class="m-0"><span class="muted">Headline:</span> ${escapeHtml(creative.headline || '—')}</p>
+          <p class="m-0"><span class="muted">CTA:</span> ${escapeHtml(creative.cta || '—')}</p>
+          <p class="m-0"><span class="muted">Channels:</span> ${escapeHtml((c.channels || ['in_app']).map(ch => ({ in_app: 'In-app', whatsapp: 'WhatsApp', sms: 'SMS' }[ch] || ch)).join(', '))}</p>
+          <p class="m-0"><span class="muted">Budget:</span> ${money(c.budget_inr)} over ${escapeHtml(c.duration_days || '—')} days</p>
+          <p class="m-0"><span class="muted">Launched:</span> ${escapeHtml((c.launched_at || '').replace('T', ' ').slice(0, 16) || '—')}</p>`;
+        const src = c.source_context;
+        if (src && (src.insight || src.source)) {
+          $('pvSource').textContent = (src.source === 'geo' ? 'Geo Intelligence — ' : '') + (src.insight || 'Created from a Geo opportunity');
+          $('pvSourceWrap').classList.remove('hidden');
+        } else {
+          $('pvSourceWrap').classList.add('hidden');
+        }
+        upsertChart('skus', 'pvChartSkus', {
+          type: 'bar',
+          data: {
+            labels: skus.map(s => skuLabel(s).slice(0, 24)),
+            datasets: [{ label: 'Avg PIN fit', data: skus.map(s => Math.round((s.pin_fit || 0) * 100)), backgroundColor: '#89765C', borderRadius: 4 }],
+          },
+          options: {
+            indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { x: { min: 0, max: 100, ticks: { font: { size: 9 } } }, y: { ticks: { font: { size: 10 } } } },
+          },
+        });
+      }
+
+      function renderMonitor(data) {
+        const c = data.campaign || {};
+        const skus = data.skus || [];
+        $('pvName').textContent = c.campaign_name || 'Campaign';
+        $('pvMeta').textContent = [c.brand_name, c.objective, c.status, `${skus.length} SKU(s)`].filter(Boolean).join(' · ');
+        renderFeed(c, skus);
+        renderKpis(c);
+        renderCharts(data.daily || {});
+        renderPacing(c, data.daily || {});
+        const ins = data.insights || [];
+        $('pvInsights').innerHTML = ins.length
+          ? ins.map(t => `<li class="flex gap-2"><i class="fa-solid fa-lightbulb text-[#89765C] mt-1"></i><span>${escapeHtml(t)}</span></li>`).join('')
+          : '<li class="muted">No insights yet.</li>';
+        renderConfig(c, skus);
+      }
+
+      $('pvCampaignSelect').addEventListener('change', (e) => loadMonitor(e.target.value));
+      loadCampaignList(PAGE_PARAMS.get('campaign_id'));
+    })();
   </script>
 </body>
 </html>

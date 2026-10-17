@@ -346,6 +346,24 @@
       font-weight: 600;
       color: var(--soft);
     }
+    .market-brief .brief-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-top: 0.75rem;
+      flex-wrap: wrap;
+    }
+    .btn-campaign {
+      padding: 0.5rem 0.9rem;
+      border-radius: 8px;
+      border: 1px solid var(--accent);
+      background: var(--accent);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-campaign:hover { background: var(--accent2); }
     .market-brief .brief-meta {
       font-size: 11px;
       color: var(--muted);
@@ -626,6 +644,12 @@
           </div>
           <p class="brief-body muted" id="briefBody">Loading store opportunity summary…</p>
           <div class="brief-err" id="briefErr" hidden></div>
+          <div class="brief-actions">
+            <button type="button" class="btn-campaign" id="btnCreateCampaign" title="Open Ads Lab with this geography and audience pre-filled">
+              Create campaign from this →
+            </button>
+            <span class="brief-meta" id="campaignCtxHint"></span>
+          </div>
         </section>
 
         <div class="store-strip">
@@ -1414,7 +1438,57 @@
       });
     }
 
+    let lastGeoSummary = {};
+
+    function singleOrNull(arr) {
+      return Array.isArray(arr) && arr.length === 1 ? arr[0] : null;
+    }
+
+    function buildCampaignContext() {
+      const s = lastGeoSummary || {};
+      const focus = s.store_focus_pin || null;
+      const pins = selection.pin.length ? selection.pin.slice() : (focus ? [focus] : []);
+      const bits = [];
+      if (s.store_decision && focus) bits.push(`PIN ${focus}: ${s.store_decision} (score ${s.store_score ?? '—'})`);
+      if (s.top_color || s.top_pattern) bits.push(`Audience leans ${[s.top_color, s.top_pattern].filter(Boolean).join(' · ')}`);
+      if (s.top_rfm) bits.push(`Top RFM segment: ${s.top_rfm}`);
+      return {
+        source: 'geo',
+        pins,
+        age_group: singleOrNull(selection.age),
+        gender: singleOrNull(selection.gender),
+        rfm_segment: singleOrNull(selection.rfm),
+        insight: bits.join('. '),
+        summary: {
+          customers: s.customers ?? null,
+          revenue: s.revenue ?? null,
+          top_brand: s.top_brand ?? null,
+          top_rfm: s.top_rfm ?? null,
+          top_color: s.top_color ?? null,
+          top_pattern: s.top_pattern ?? null,
+          store_focus_pin: focus,
+          store_decision: s.store_decision ?? null,
+        },
+        created_at: new Date().toISOString(),
+      };
+    }
+
+    function openCampaignFromGeo() {
+      const ctx = buildCampaignContext();
+      if (!ctx.pins.length) {
+        $('campaignCtxHint').textContent = 'Select at least one PIN (or focus a store) first.';
+        return;
+      }
+      $('campaignCtxHint').textContent = '';
+      try {
+        window.parent.postMessage({ type: 'cc-open-campaign', context: ctx }, '*');
+      } catch (e) {
+        console.error('[geo] cc-open-campaign failed', e);
+      }
+    }
+
     function publishGeoContext(summary) {
+      lastGeoSummary = summary || {};
       if (!window.parent || window.parent === window) return;
       try {
         window.parent.postMessage({
@@ -1520,6 +1594,8 @@
         focusAgentPin(cmd.pin);
       } else if (t === 'run_brief') {
         runAgentBrief();
+      } else if (t === 'create_campaign_from_geo') {
+        openCampaignFromGeo();
       } else {
         return;
       }
@@ -1532,6 +1608,8 @@
         }, '*');
       } catch (_) { /* ignore */ }
     }
+
+    $('btnCreateCampaign').addEventListener('click', openCampaignFromGeo);
 
     window.addEventListener('message', (ev) => {
       const data = ev.data;
