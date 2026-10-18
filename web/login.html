@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <meta name="color-scheme" content="light" />
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="prefetch" href="index.html" />
+  <link rel="prefetch" href="./index.html" />
   <link rel="icon" type="image/png" href="logo.png" />
   <title>SuffAI · Sign in</title>
   <script src="./config.js"></script>
@@ -86,6 +87,12 @@ label{display:block;font-size:10px;letter-spacing:.12em;text-transform:uppercase
 .eye .slash{display:none}.eye[aria-pressed=true] .slash{display:inline}
 button:focus-visible,.eye:focus-visible{outline:3px solid rgba(197,159,176,.7);outline-offset:2px}
 input[aria-invalid=true]{border-color:#c45a5a}
+/* keep browser autofill on-palette instead of the default yellow/blue fill */
+input:-webkit-autofill{-webkit-text-fill-color:#3b2733;-webkit-box-shadow:0 0 0 40px #fff inset;caret-color:#3b2733}
+input:-webkit-autofill:focus{-webkit-box-shadow:0 0 0 40px #fff inset,0 0 0 4px rgba(197,159,176,.35)}
+button[type=submit] .spin{display:none;width:14px;height:14px;margin-right:8px;vertical-align:-2px;border:2px solid rgba(255,255,255,.45);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite}
+button[type=submit].busy .spin{display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
 button[type=submit]:disabled{opacity:.7;cursor:wait;transform:none;box-shadow:none}
 .card{max-height:94dvh;overflow-y:auto}
 @media(prefers-reduced-motion:reduce){
@@ -119,21 +126,24 @@ button[type=submit]:disabled{opacity:.7;cursor:wait;transform:none;box-shadow:no
       <label for="user" style="--k:2">Username</label>
       <input id="user" name="user" autocomplete="username" autocapitalize="none" spellcheck="false" autofocus required style="--k:2" />
       <label for="pass" style="--k:3">Password</label>
-      <div class="pw" style="--k:3"><input id="pass" name="pass" type="password" placeholder=" " autocomplete="current-password" required /><button type="button" class="eye" aria-label="Show password" aria-pressed="false"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><path class="slash" d="M3 3l18 18"/></svg></button></div>
+      <div class="pw" style="--k:3"><input id="pass" name="pass" type="password" placeholder=" " autocomplete="current-password" required /><button type="button" class="eye" aria-label="Show password" aria-pressed="false" aria-controls="pass"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><path class="slash" d="M3 3l18 18"/></svg></button></div>
       <div class="caps" id="caps" aria-live="polite">⇪ Caps Lock is on</div>
-      <button type="submit" style="--k:4">Continue</button>
+      <button type="submit" style="--k:4"><span class="spin" aria-hidden="true"></span><span class="go-txt">Continue</span></button>
     </form>
     <p class="hint" style="--k:5">Use the credentials issued for your brand, customer or admin account.</p>
   </div>
 </div>
 <script>
+    // Served as /login by the Command Center → go to the clean app URL; opened as login.html → index.html
+    const APP_URL = /\.html$/i.test(location.pathname) ? './index.html' : '/';
     // Already signed in → straight to the shell (index.html re-validates the token)
     const existing = SuffaiSession.getSession();
-    if (existing && existing.token) location.replace('./index.html');
+    if (existing && existing.token) location.replace(APP_URL);
 
     const $ = (id) => document.getElementById(id);
     const form = $('form'), err = $('err'), user = $('user'), pass = $('pass'), eye = document.querySelector('.eye');
-    const go = form.querySelector('[type=submit]');
+    const go = form.querySelector('[type=submit]'), goTxt = go.querySelector('.go-txt');
+    const busy = (on) => { go.disabled = on; go.classList.toggle('busy', on); goTxt.textContent = on ? 'Signing in…' : 'Continue'; form.setAttribute('aria-busy', on); };
 
     const clearErr = () => {
       err.classList.remove('show');
@@ -158,42 +168,48 @@ button[type=submit]:disabled{opacity:.7;cursor:wait;transform:none;box-shadow:no
     eye.addEventListener('click', () => {
       const show = pass.type === 'password';
       pass.type = show ? 'text' : 'password';
-      eye.setAttribute('aria-pressed', show);
-      eye.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+      eye.setAttribute('aria-pressed', show); // fixed label + pressed state (changing both double-announces)
       shades();
     });
 
-    function fail(msg) {
+    function fail(msg, field) {
       err.textContent = msg;
       err.classList.remove('show'); void err.offsetWidth; // restart shake on every failed attempt
       err.classList.add('show');
       const logo = $('logo');
       logo.classList.remove('swing'); void logo.offsetWidth; logo.classList.add('swing');
       logo.addEventListener('animationend', () => logo.classList.remove('swing'), { once: true });
-      user.setAttribute('aria-invalid', 'true'); pass.setAttribute('aria-invalid', 'true');
-      pass.select();
+      // flag only the field(s) at fault and put the caret where the fix goes
+      const bad = field ? [field] : [user, pass];
+      bad.forEach((f) => f.setAttribute('aria-invalid', 'true'));
+      if (field) field.focus(); else pass.select();
     }
 
+    let redirecting = false;
     function leave() {
+      redirecting = true; // keep the button locked until the page is gone
       const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
-      if (still) { location.href = './index.html'; return; }
+      if (still) { location.href = APP_URL; return; }
       s.onmousemove = s.onmouseleave = null; a.style.transform = ''; // stop the 3D tilt repainting mid-exit
-      document.activeElement.blur(); stage.classList.remove('priv');
+      if (document.activeElement) document.activeElement.blur(); stage.classList.remove('priv');
       // run the exit; navigate once the veil has covered the page
       stage.classList.add('leaving');
-      setTimeout(() => { location.href = './index.html'; }, 1350);
+      setTimeout(() => { location.href = APP_URL; }, 1350);
     }
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const u = user.value.trim(), p = pass.value;
-      if (!u || !p) { fail('Enter both username and password.'); return; }
-      go.disabled = true; go.textContent = 'Signing in…';
+      if (go.disabled) return; // a sign-in is already in flight
+      if (!u || !p) { fail(!u && !p ? 'Enter both username and password.' : !u ? 'Enter your username.' : 'Enter your password.', !u ? user : pass); return; }
+      if (pass.type !== 'password') eye.click(); // hide it again before the browser offers to save it
+      busy(true);
       try {
         const res = await fetch(SuffaiSession.apiBase() + '/v1/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
           body: JSON.stringify({ username: u, password: p }),
+          signal: AbortSignal.timeout ? AbortSignal.timeout(20000) : undefined, // never leave the button spinning forever
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok || !data.token) {
@@ -202,21 +218,33 @@ button[type=submit]:disabled{opacity:.7;cursor:wait;transform:none;box-shadow:no
             : SuffaiSession.formatApiDetail(data.detail, 'Sign-in is unavailable right now (HTTP ' + res.status + ').'));
           return;
         }
-        SuffaiSession.setSession({
-          token: data.token,
-          role: data.role,
-          username: data.username,
-          brand_name: data.brand_name || null,
-          customer_id: data.customer_id || null,
-          display_name: data.display_name || data.username,
-          allowed_tabs: data.allowed_tabs || [],
-        });
+        if (!(data.allowed_tabs || []).length) {
+          // the shell would clear this session and bounce straight back here; say why instead
+          fail('This account has no Command Center access yet. Contact your admin.');
+          return;
+        }
+        try {
+          SuffaiSession.setSession({
+            token: data.token,
+            role: data.role,
+            username: data.username,
+            brand_name: data.brand_name || null,
+            customer_id: data.customer_id || null,
+            display_name: data.display_name || data.username,
+            allowed_tabs: data.allowed_tabs || [],
+          });
+        } catch (storageErr) { // storage blocked (private mode / full): say so, not "server unreachable"
+          fail(storageErr.message);
+          return;
+        }
         leave();
         return;
-      } catch (_) {
-        fail('Could not reach the server. Check your connection and try again.');
+      } catch (ex) {
+        fail(ex && ex.name === 'TimeoutError'
+          ? 'The server is taking too long to respond. Try again in a moment.'
+          : 'Could not reach the server. Check your connection and try again.');
       } finally {
-        if (!stage.classList.contains('leaving')) { go.disabled = false; go.textContent = 'Continue'; }
+        if (!stage.classList.contains('leaving') && !redirecting) busy(false);
       }
     });
 

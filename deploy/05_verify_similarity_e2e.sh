@@ -115,7 +115,7 @@ fi
 echo ""
 if [[ "$FAIL" -eq 0 ]]; then
   echo "==> ALL CHECKS PASSED"
-  echo "Manual UI: open $CC_URL/login.html  (brand / brand123) → Admin tab"
+  echo "Manual UI: open $CC_URL/login  (brand / brand123) → $CC_URL/admin"
   echo "Optional smoke publish (needs object with user_uuid+pin metadata):"
   echo "  gcloud pubsub topics publish $TOPIC --message='{\"gcs_object_key\":\"garments/USER/560001/test.jpg\",\"gcs_bucket\":\"BUCKET\",\"user_uuid\":\"USER\",\"pin_code\":\"560001\"}'"
   exit 0

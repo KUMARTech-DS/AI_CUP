@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="en" class="h-full bg-[#FAF6EE] text-[#3B2733]">
 <head>
+  <meta name="color-scheme" content="light" />
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SuffAI · Ads Lab</title>
   <script src="./config.js"></script>
   <script src="./session.js"></script>
+  <script src="./select.js" defer></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Outfit:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -20,8 +22,26 @@
     ::-webkit-scrollbar-thumb { background: #DCC3CE; border-radius: 4px; }
     ::-webkit-scrollbar-thumb:hover { background: #6B3A55; }
     
-    .glass-panel { background: #FAF6EE; border: 1px solid #EAD9E0; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,.04); }
-    .holographic-grid { background-color: #FAF6EE; background-image: linear-gradient(#EAD9E0 1px, transparent 1px), linear-gradient(90deg, #EAD9E0 1px, transparent 1px); background-size: 40px 40px; }
+    /* Same surface system as Campaigns: white cards on plain cream, dark wine hero */
+    .glass-panel { background: #FFFFFF; border: 1px solid #EAD9E0; border-radius: 16px; box-shadow: 0 1px 2px rgba(59,39,51,.04), 0 10px 25px rgba(107,58,85,.06); }
+    .holographic-grid { background: radial-gradient(60% 40% at 100% 0%, rgba(197,159,176,.16), transparent 60%), #FAF6EE; }
+    #mainScroll { isolation: isolate; } /* keep deck/sticky-bar z-indexes below the loading overlay, nav tab and modal */
+    #mainScroll > * { scroll-margin-top: 90px; }
+    /* Phones: one page scroll (sidebar, then steps → ranking → campaign) instead of two stacked scroll boxes */
+    @media (max-width: 767px) {
+      body { height: auto !important; min-height: 100vh; overflow-y: auto !important; }
+      body > main, body > main > section, #mainScroll { overflow: visible !important; min-height: 0; }
+      #sidebar { max-height: none !important; overflow: visible !important; }
+      #mainScroll > * { scroll-margin-top: 110px; }
+    }
+    @media (max-width: 767px) { #wizardSteps { margin-left: 40px; } } /* clear the sidebar toggle tab */ /* step jumps land below the sticky step bar, not under it */
+    .lab-hero { position: relative; overflow: hidden; color: #F7EAF0; border-bottom: 1px solid #3E1729;
+      background: radial-gradient(60% 140% at 85% 0%, rgba(224,178,84,.26), transparent 60%), linear-gradient(110deg, #2A0F1F 0%, #4A1A33 55%, #6B3A55 100%); }
+    .lab-hero .lh-ic { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; flex: none; color: #2A0F1F; font-size: 17px; background: linear-gradient(135deg, #F3D58A, #C9A24A); box-shadow: 0 6px 16px rgba(201,162,74,.3); }
+    .lab-hero h1 { color: #fff; }
+    .lab-hero .lh-pill { font-family: Outfit, system-ui, sans-serif; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .1em; padding: .15rem .55rem; border-radius: 999px; color: #F3D58A; background: rgba(255,255,255,.08); border: 1px solid rgba(243,213,138,.45); vertical-align: middle; }
+    .lab-hero p { color: #D9BFCB; }
+    .lab-hero .tag { color: #F1DDE6; background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.18); padding: .35rem .75rem; font-size: 11px; font-weight: 500; }
     
     .upload-zone { border: 2px dashed #6B3A55; transition: all .2s ease; background: #F6EEF0; }
     .upload-zone.dragover { border-color: #3B2733; background: #EAD9E0; }
@@ -194,16 +214,16 @@
     .cr-row { display: grid; grid-template-columns: 58px minmax(0,1fr) auto; gap: 3px 8px; align-items: baseline; font-size: 11px; padding: 4px 0; }
     .cr-row span { color: #8A7480; }
     .cr-row b { font-weight: 600; color: #3B2733; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .cr-row em { font: 500 10px 'IBM Plex Mono', monospace; font-style: normal; color: #A8919C; }
+    .cr-row em { font: 500 10px 'IBM Plex Mono', monospace; font-style: normal; color: #8A7480; }
     .cr-row em.hit { color: #8C6A22; font-weight: 600; }
     .cr-row u { grid-column: 1 / -1; height: 3px; border-radius: 3px; background: #EAD9E0; overflow: hidden; text-decoration: none; }
     .cr-row u::after { content: ''; display: block; height: 100%; width: calc(var(--p, 0) * 1%); background: linear-gradient(90deg, #C59FB0, #C9A24A); border-radius: 3px; }
-    .cr-row small { grid-column: 1 / -1; font-size: 10px; color: #A8919C; }
+    .cr-row small { grid-column: 1 / -1; font-size: 10px; color: #8A7480; }
     .cr-kv { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
     .cr-kv div { padding: 6px 8px; border-radius: 9px; background: #fff; border: 1px solid #EAD9E0; min-width: 0; }
     .cr-kv span { display: block; font-size: 9px; letter-spacing: .08em; text-transform: uppercase; color: #8A7480; }
     .cr-kv b { display: block; font: 600 12px 'IBM Plex Mono', monospace; color: #3B2733; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .cr-scroll-hint { font-size: 9.5px; color: #A8919C; text-align: center; letter-spacing: .06em; }
+    .cr-scroll-hint { font-size: 9.5px; color: #8A7480; text-align: center; letter-spacing: .06em; }
     .cr-card:not(.is-active) .cr-scroll-hint { visibility: hidden; }
     @media (max-width: 640px) { .deck { --cw: 66vw; height: 510px; } .cr-card { height: 420px; } .deck-nav.prev { left: 26px; } .deck-nav.next { left: calc(100% - 26px); } }
 
@@ -222,6 +242,109 @@
     .lb-link:hover { transform: translateY(-2px); box-shadow: 0 12px 26px rgba(201,162,74,.45); }
     .lb-link i { transition: transform .25s ease; } .lb-link:hover i { transform: translateX(3px); }
     .lb-link:focus-visible { outline: 3px solid #F3D58A; outline-offset: 3px; }
+    /* ---- Colour accents for the ranking deck ---- */
+    .deck-canvas { background:
+        radial-gradient(40% 50% at 12% 85%, rgba(20,184,166,.16), transparent 70%),
+        radial-gradient(40% 50% at 88% 15%, rgba(59,130,246,.16), transparent 70%),
+        radial-gradient(60% 55% at 50% 42%, rgba(201,162,74,.10), transparent 70%),
+        radial-gradient(90% 85% at 50% 30%, #4A1A33 0%, #2E0F20 55%, #1C0812 100%); }
+    .cr-card { --band: #8A7480; --band2: #C59FB0; }
+    .cr-card.fit-hi { --band: #15803D; --band2: #4ADE80; }
+    .cr-card.fit-mid { --band: #C2410C; --band2: #FBBF24; }
+    .cr-card.fit-lo { --band: #BE123C; --band2: #FB7185; }
+    .cr-ring, .cr-card.is-active .cr-ring { background: conic-gradient(var(--band2), var(--band) calc(var(--p, 0) * 1%), #EAD9E0 0); }
+    .cr-ring b { color: var(--band); }
+    .cr-bar i, .cr-card.is-active .cr-bar i { background: linear-gradient(90deg, var(--band2), var(--band)); }
+    .cr-card.r2 .cr-rank { background: linear-gradient(135deg, #F3F4F6, #A1A1AA); border-color: #A1A1AA; color: #27272A; }
+    .cr-card.r3 .cr-rank { background: linear-gradient(135deg, #FAD3B0, #B4632B); border-color: #B4632B; color: #3B1A08; }
+    .cr-card .tag.tg-color { background: #E0F2FE; border-color: #BAE6FD; color: #0369A1; }
+    .cr-card .tag.tg-pattern { background: #EDE9FE; border-color: #DDD6FE; color: #6D28D9; }
+    .cr-card .tag.tg-type { background: #CCFBF1; border-color: #99F6E4; color: #0F766E; }
+    .cr-card .tag.tg-material { background: #FEF3C7; border-color: #FDE68A; color: #B45309; }
+    .cr-card .tag.tg-size { background: #E0E7FF; border-color: #C7D2FE; color: #4338CA; }
+    .cr-card .tag.tg-brand { background: #FFE4E6; border-color: #FECDD3; color: #BE123C; }
+    .rank-stat:nth-child(1) i.ic { background: #FEF3C7; color: #B45309; }
+    .rank-stat:nth-child(2) i.ic { background: #E0F2FE; color: #0369A1; }
+    .rank-stat:nth-child(3) i.ic { background: #DCFCE7; color: #15803D; }
+    .rank-stat:nth-child(4) i.ic { background: #EDE9FE; color: #6D28D9; }
+    /* ---- Live demo while a ranking job runs ---- */
+    .demo-stage.ranking .demo-badge { background: rgba(37,99,235,.18); border-color: rgba(96,165,250,.6); color: #BFDBFE; }
+    .demo-stage.ranking .demo-badge::before { background: #60A5FA; }
+    .demo-stage.ranking .cr-media::after { content: ''; position: absolute; inset: 0; z-index: 2; pointer-events: none;
+      background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,.55) 50%, transparent 70%); background-size: 250% 100%; animation: cardShimmer 1.6s linear infinite; }
+    @keyframes cardShimmer { from { background-position: 130% 0; } to { background-position: -130% 0; } }
+    .demo-stage.ranking .cr-media :is(img, svg) { filter: saturate(.55) blur(.4px); }
+    .demo-stage.ranking .cr-ring { background: #EAD9E0; }
+    .demo-stage.ranking .cr-ring b { visibility: hidden; }
+    .demo-stage.ranking .cr-ring::after { content: ''; position: absolute; inset: 0; border-radius: 50%; border: 5px solid transparent; border-top-color: #2563EB; border-right-color: #60A5FA; animation: ringSpin .9s linear infinite; }
+    @keyframes ringSpin { to { transform: rotate(360deg); } }
+    .demo-stage.ranking .cr-bar i { width: 40% !important; background: linear-gradient(90deg, transparent, #2563EB, transparent); animation: barSweep 1.3s ease-in-out infinite; }
+    @keyframes barSweep { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
+    /* No ranks or scores while the job runs — they don't exist yet */
+    .demo-stage.ranking .cr-rank { background: rgba(255,255,255,.94); border-color: #BFDBFE; color: #1D4ED8; }
+    .demo-stage.ranking .cr-rank > * { display: none; }
+    .demo-stage.ranking .cr-rank::after { content: 'Ranking…'; font: 600 11px 'IBM Plex Mono', monospace; letter-spacing: .04em; }
+    .demo-stage.ranking :is(.cr-sub, .cr-tags, .cr-sec, .cr-scroll-hint) { display: none; }
+    .demo-stage.ranking .cr-body::after { content: ''; display: block; height: 64px; border-radius: 8px;
+      background: linear-gradient(#EAD9E0, #EAD9E0) 0 0 / 70% 10px no-repeat, linear-gradient(#EAD9E0, #EAD9E0) 0 22px / 92% 10px no-repeat,
+        linear-gradient(#EAD9E0, #EAD9E0) 0 44px / 55% 10px no-repeat; animation: skel 1.4s ease-in-out infinite; }
+    @keyframes skel { 50% { opacity: .45; } }
+    #demoTitle .spin { display: inline-block; margin-right: .5rem; color: #93C5FD; animation: ringSpin 1.2s linear infinite; }
+    @media (prefers-reduced-motion: reduce) { .demo-stage.ranking .cr-media::after, .demo-stage.ranking .cr-ring::after, .demo-stage.ranking .cr-bar i, #demoTitle .spin { animation: none !important; } }
+    /* Current target (collapsible) */
+    .target > summary { list-style: none; }
+    .target > summary::-webkit-details-marker { display: none; }
+    .target-sum { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; cursor: pointer; }
+    .target-h { font-size: 10px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; color: #6B3A55; margin-right: 4px; }
+    .target-chips { display: contents; }
+    .tchip { display: inline-flex; align-items: center; gap: .35rem; padding: .25rem .65rem; border-radius: 999px; font-size: 11.5px; background: #F6EEF0; border: 1px solid #EAD9E0; color: #552C43; }
+    .tchip i { color: #6B3A55; font-size: 10px; }
+    .tchip.muted { color: #8A7480; }
+    .tchip.warn { background: #FBF1DC; border-color: #E8C27A; color: #8C6A22; }
+    .target-cust { display: inline-flex; align-items: center; gap: .35rem; font-size: 12px; color: #8A7480; }
+    .target-cust b { font: 600 15px 'IBM Plex Mono', monospace; color: #3B2733; }
+    .target-cust i { color: #6B3A55; }
+    .target-chev { margin-left: auto; color: #8A7480; transition: transform .25s; }
+    .target[open] .target-chev { transform: rotate(180deg); }
+    .target[open] > summary { margin-bottom: 14px; }
+    /* Job stages: active stage pulses, done stages tick */
+    .job-stages { display: flex; align-items: flex-start; list-style: none; margin: 0; padding: 4px 0 2px; }
+    .job-stages li[data-stage] { flex: none; width: 110px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 3px; }
+    .job-stages b { font-size: 11px; color: #8A7480; } .job-stages small { font-size: 9.5px; color: #8A7480; }
+    .js-dot { position: relative; width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; background: #F6EEF0; border: 2px solid #EAD9E0; color: #C59FB0; transition: background .3s, border-color .3s, color .3s; }
+    .js-line { flex: 1; height: 3px; margin-top: 18px; border-radius: 3px; background: #EAD9E0; overflow: hidden; position: relative; }
+    .js-line.done { background: #16A34A; }
+    .js-line.active::after { content: ''; position: absolute; inset: 0; width: 40%; background: linear-gradient(90deg, transparent, #2563EB, transparent); animation: lineflow 1.2s linear infinite; }
+    @keyframes lineflow { from { transform: translateX(-100%); } to { transform: translateX(260%); } }
+    .job-stages li.active .js-dot { background: #2563EB; border-color: #2563EB; color: #fff; animation: jsglow 1.6s ease-out infinite; }
+    .job-stages li.active .js-dot i { animation: jsbob 1.6s ease-in-out infinite; }
+    .job-stages li.active b { color: #2563EB; }
+    .job-stages li.done .js-dot { background: #16A34A; border-color: #16A34A; color: #fff; }
+    .job-stages li.done b { color: #16A34A; }
+    .job-stages li.fail .js-dot { background: #DC2626; border-color: #DC2626; color: #fff; }
+    .job-stages li.fail b { color: #DC2626; }
+    @keyframes jsglow { 0% { box-shadow: 0 0 0 0 rgba(37,99,235,.45); } 100% { box-shadow: 0 0 0 14px rgba(37,99,235,0); } }
+    @keyframes jsbob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2px) scale(1.08); } }
+    .job-live { font-size: 12px; color: #2563EB; font-weight: 600; min-height: 1.2em; }
+    .job-live .dots::after { content: ''; animation: dots 1.4s steps(4, end) infinite; }
+    @keyframes dots { 0% { content: ''; } 25% { content: '.'; } 50% { content: '..'; } 75% { content: '...'; } }
+    .job-live.ok { color: #16A34A; } .job-live.bad { color: #DC2626; }
+    #jobStatusTag.live { border-color: #93B4F5; color: #1D4ED8; background: #EEF3FE; }
+    #jobStatusTag.live::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #2563EB; animation: blink 1.2s ease-in-out infinite; }
+    /* Sidebar thumbnails get a scan line while the job works on them */
+    .thumbs.scanning .ph { position: relative; }
+    .thumbs.scanning .ph::after { content: ''; position: absolute; left: 0; right: 0; height: 30%; top: -30%;
+      background: linear-gradient(180deg, transparent, rgba(37,99,235,.28), transparent); animation: scan 1.6s ease-in-out infinite; }
+    @keyframes scan { to { top: 100%; } }
+    @media (prefers-reduced-motion: reduce) { .js-dot, .js-dot i, .js-line::after, .thumbs .ph::after, .job-live .dots::after, #jobStatusTag::before { animation: none !important; } }
+    /* Ranking job: hourglass while running; bar is blue → green (done) / red (failed) */
+    .hourglass { color: #2563EB; font-size: 13px; animation: hourglass 2.4s ease-in-out infinite; }
+    @keyframes hourglass { 0%, 40% { transform: rotate(0); } 50%, 90% { transform: rotate(180deg); } 100% { transform: rotate(360deg); } }
+    .job-bar { background: #2563EB; }
+    .job-bar.running { background-image: linear-gradient(45deg, rgba(255,255,255,.28) 25%, transparent 25%, transparent 50%, rgba(255,255,255,.28) 50%, rgba(255,255,255,.28) 75%, transparent 75%); background-size: 16px 16px; animation: barflow 1s linear infinite; }
+    @keyframes barflow { to { background-position: 16px 0; } }
+    .job-bar.succeeded { background: #16A34A; }
+    .job-bar.failed { background: #DC2626; }
     .lb-link:disabled { opacity: .45; cursor: not-allowed; transform: none; box-shadow: none; }
     .lb-text .lb-note { color: #F3D58A; }
 
@@ -292,12 +415,11 @@
     .sku-pick.disabled { opacity: .5; cursor: not-allowed; }
     .est-tile { background: #FFFFFF; border: 1px solid #EAD9E0; border-radius: 10px; padding: .6rem .7rem; }
     .est-tile .lbl { font-size: 9px; text-transform: uppercase; letter-spacing: .08em; color: #8A7480; font-weight: 600; }
-    .est-tile .val { font-family: 'JetBrains Mono', monospace; font-size: 15px; color: #3B2733; margin-top: .2rem; }
+    .est-tile .val { font-family: 'IBM Plex Mono', monospace; font-size: 15px; color: #3B2733; margin-top: .2rem; }
     .est-tile .rng { font-size: 10px; color: #8A7480; margin-top: .1rem; }
 
-    @media (prefers-reduced-motion: reduce) {
-      .cr-card, .cr-media img, .cr-media svg, .thumb, .deck-glow, .deck-dots i { animation: none !important; transition: none !important; }
-    }
+    /* Same blanket rule as Campaigns: covers spinners, hourglass, bar stripes, skeletons, blink dots, deck */
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
   </style>
 </head>
 <body class="h-screen flex flex-col overflow-hidden">
@@ -305,16 +427,12 @@
     if (!SuffaiSession.requireAuth('ads')) { /* redirected */ }
   </script>
 
-  <header class="glass-panel z-30 border-b border-[#EAD9E0] px-4 py-3 flex-none flex items-center justify-between gap-4">
+  <header class="lab-hero z-30 px-4 sm:px-6 py-3.5 flex-none flex items-center justify-between gap-4">
     <div class="flex items-center gap-3 min-w-0">
-      <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-[#6B3A55] via-[#3B2733] to-[#DCC3CE] p-[2px] flex-none">
-        <div class="bg-[#FAF6EE] w-full h-full rounded-[10px] flex items-center justify-center">
-          <i class="fa-solid fa-ranking-star text-[#6B3A55] text-lg"></i>
-        </div>
-      </div>
+      <span class="lh-ic" aria-hidden="true"><i class="fa-solid fa-ranking-star"></i></span>
       <div class="min-w-0">
-        <h1 class="font-display font-bold text-2xl leading-none text-[#6B3A55]">Ads Lab <span class="align-middle font-sans text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#F6EEF0] text-[#6B3A55] border border-[#EAD9E0]">Segment fit</span></h1>
-        <p class="text-[11px] text-[#8A7480] mt-1">Rank your creatives for a chosen area, age, gender and RFM audience.</p>
+        <h1 class="font-display font-bold text-[1.7rem] leading-none">Ads Lab <span class="lh-pill">Segment fit</span></h1>
+        <p class="text-[12px] mt-1 truncate">Rank your creatives for a chosen area, age, gender and RFM audience.</p>
       </div>
     </div>
     <div id="apiStatus" aria-live="polite" class="tag flex-none hidden sm:inline-flex"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Loading audience data…</div>
@@ -369,13 +487,13 @@
       </button>
       <div id="loadingOverlay" role="status" class="absolute inset-0 z-50 hidden items-center justify-center bg-[#FAF6EE]/80 backdrop-blur-sm"><div class="text-center"><i class="fa-solid fa-circle-notch text-4xl text-[#6B3A55] animate-spin mb-4"></i><p id="loadingText" class="text-sm font-mono text-[#3B2733]">Loading…</p></div></div>
       <div id="mainScroll" class="flex-1 overflow-y-auto p-4 sm:p-6 md:pl-14 space-y-5">
-        <nav id="wizardSteps" class="glass-panel rounded-xl p-2 sticky top-0 z-[80] flex flex-wrap items-center gap-1 bg-[#FAF6EE]" aria-label="Campaign steps">
+        <nav id="wizardSteps" class="glass-panel rounded-xl p-2 sticky top-0 z-[80] flex flex-wrap items-center gap-1 bg-white/95 backdrop-blur" aria-label="Campaign steps">
           <button type="button" class="wiz-step" data-step="opportunity" data-target="stepOpportunity"><span class="wiz-num">1</span><span>Opportunity</span></button>
           <span class="wiz-sep" aria-hidden="true"></span>
           <button type="button" class="wiz-step" data-step="job" data-target="stepJob"><span class="wiz-num">2</span><span>SKUs &amp; ranking job</span></button>
           <span class="wiz-sep" aria-hidden="true"></span>
           <button type="button" class="wiz-step" data-step="runmode" data-target="stepRunMode"><span class="wiz-num">3</span><span>Choose run mode</span></button>
-          <span class="ml-auto tag sim-badge" title="Campaign name, channels, budget and tracking live on the Campaigns tab."><i class="fa-solid fa-bullhorn"></i> Configure on Campaigns</span>
+          <span class="ml-auto tag sim-badge hidden sm:inline-flex" title="Campaign name, channels, budget and tracking live on the Campaigns tab."><i class="fa-solid fa-bullhorn"></i> Configure on Campaigns</span>
         </nav>
 
         <section id="geoContextCard" class="glass-panel rounded-xl p-4 hidden" aria-live="polite">
@@ -389,50 +507,24 @@
           </div>
         </section>
 
-        <section id="stepOpportunity" class="glass-panel rounded-xl p-4 sm:p-5">
-          <div class="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-4">
-            <div class="min-w-0">
-              <p class="text-[10px] uppercase tracking-[.2em] text-[#6B3A55] font-bold">Current target</p>
-              <h2 id="segmentTitle" class="text-lg sm:text-xl font-bold mt-1 text-[#3B2733]">Loading audience…</h2>
-              <p id="profileNote" class="text-xs text-[#8A7480] mt-2 max-w-3xl">Loading the audience profile…</p>
-            </div>
-            <div class="min-w-[150px]">
-              <div class="bg-[#FFFFFF] border border-[#EAD9E0] rounded-lg p-3 shadow-sm">
-                <p class="text-[9px] uppercase tracking-wider text-[#8A7480] font-semibold">Customers</p>
-                <p id="audienceCustomers" class="font-mono text-lg text-[#3B2733] mt-1">—</p>
-              </div>
-              <!-- Hidden fields preserved for JS logic compatibility -->
-              <div class="hidden">
-                <p id="audienceOrders"></p>
-                <p id="audienceRevenue"></p>
-              </div>
-            </div>
+        <details id="stepOpportunity" class="target glass-panel rounded-xl p-4 sm:p-5" open>
+          <summary class="target-sum">
+            <span class="target-h">Current target</span>
+            <span id="segmentTitle" class="target-chips"><span class="tchip muted">Loading audience…</span></span>
+            <span class="target-cust"><i class="fa-solid fa-users"></i><b id="audienceCustomers">—</b> customers</span>
+            <span id="targetWarn" class="tchip warn hidden"></span>
+            <i class="fa-solid fa-chevron-down target-chev" aria-hidden="true"></i>
+          </summary>
+          <!-- kept for JS: coverage text + legacy fields (not shown) -->
+          <div class="hidden">
+            <p id="profileNote"></p><p id="audienceOrders"></p><p id="audienceRevenue"></p>
+            <div id="audienceCoverage"><p id="audienceCoverageTitle"></p><p id="audienceCoverageDetail"></p></div>
+            <div id="tasteCoverage"><p id="tasteCoverageTitle"></p><p id="tasteCoverageDetail"></p></div>
           </div>
-          
-          <div id="audienceCoverage" role="status" aria-live="polite" class="mt-4 rounded-lg border border-[#EAD9E0] bg-[#F6EEF0] p-3">
-            <p id="audienceCoverageTitle" class="text-[11px] font-bold tracking-wide text-[#3B2733]">CHECKING AUDIENCE-COUNT COVERAGE</p>
-            <p id="audienceCoverageDetail" class="text-xs text-[#8A7480] mt-1">Checking whether customer totals match the selected audience.</p>
-          </div>
-          <div id="tasteCoverage" role="status" aria-live="polite" class="mt-3 rounded-lg border border-[#EAD9E0] bg-[#F6EEF0] p-3">
-            <p id="tasteCoverageTitle" class="text-[11px] font-bold tracking-wide text-[#3B2733]">CHECKING GARMENT-PREFERENCE COVERAGE</p>
-            <p id="tasteCoverageDetail" class="text-xs text-[#8A7480] mt-1">Checking whether garment observations match the selected audience.</p>
-          </div>
-          
+
           <!-- Audience Taste Profile - Single Horizontal Scrollable Row (6 Categories) -->
           <div class="mt-4">
-            <div class="flex items-end justify-between gap-3 mb-2">
-              <div>
-                <h3 class="text-xs font-bold uppercase tracking-wider text-[#3B2733]">
-                  Audience Taste Profile
-                </h3>
-                <p class="text-[10px] text-[#8A7480] mt-0.5">
-                  Share of each attribute among garments seen in this audience.
-                </p>
-              </div>
-              <span class="text-[10px] text-[#6B3A55] flex-none font-medium">
-                Scroll horizontally →
-              </span>
-            </div>
+            <h3 class="text-xs font-bold uppercase tracking-wider text-[#3B2733] mb-2">Audience taste profile</h3>
 
             <div id="tasteRail" class="taste-rail" tabindex="0" role="region" aria-label="Horizontally scrollable audience taste categories">
               <div class="taste-card">
@@ -461,7 +553,7 @@
               </div>
             </div>
           </div>
-        </section>
+        </details>
 
         <section id="stepJob" class="glass-panel rounded-xl p-4 sm:p-5 space-y-4">
           <div class="flex items-start justify-between gap-3">
@@ -472,16 +564,24 @@
             <span id="jobStatusTag" class="tag hidden"></span>
           </div>
           <div id="jobCard" class="hidden space-y-3">
+            <ol class="job-stages" id="jobStages" aria-label="Job stages">
+              <li data-stage="0"><span class="js-dot"><i class="fa-solid fa-cloud-arrow-up"></i></span><b>Upload</b><small>SKU images</small></li>
+              <li class="js-line" aria-hidden="true"></li>
+              <li data-stage="1"><span class="js-dot"><i class="fa-solid fa-wand-magic-sparkles"></i></span><b>Extract</b><small>colour · pattern · fabric</small></li>
+              <li class="js-line" aria-hidden="true"></li>
+              <li data-stage="2"><span class="js-dot"><i class="fa-solid fa-ranking-star"></i></span><b>Rank</b><small>against the audience</small></li>
+            </ol>
+            <p class="job-live" id="jobLive" aria-live="polite"></p>
             <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
               <div class="est-tile"><p class="lbl">Customers</p><p id="jobCustomers" class="val">—</p><p class="rng">in target audience</p></div>
               <div class="est-tile"><p class="lbl">Images</p><p id="jobImages" class="val">—</p><p id="jobImagesSub" class="rng">SKUs to rank</p></div>
               <div class="est-tile"><p class="lbl">Garments</p><p id="jobGarments" class="val">—</p><p class="rng">in selected PINs</p></div>
               <div class="est-tile"><p class="lbl">Comparisons</p><p id="jobComparisons" class="val">—</p><p class="rng">image × garment</p></div>
-              <div class="est-tile"><p class="lbl">Est. completion</p><p id="jobEta" class="val">—</p><p id="jobEtaSub" class="rng">—</p></div>
+              <div class="est-tile"><p class="lbl">Est. completion</p><p class="val flex items-center gap-2"><i id="jobHourglass" class="fa-solid fa-hourglass-half hourglass hidden" aria-hidden="true"></i><span id="jobEta">—</span></p><p id="jobEtaSub" class="rng">—</p></div>
             </div>
             <div>
               <div class="flex justify-between text-[10px] text-[#8A7480] mb-1"><span id="jobProgressLabel">Queued</span><span id="jobProgressPct">0%</span></div>
-              <div class="h-2 rounded-full bg-[#F6EEF0] border border-[#EAD9E0] overflow-hidden"><div id="jobProgressBar" class="h-full bg-[#6B3A55] transition-all" style="width:0%"></div></div>
+              <div class="h-2 rounded-full bg-[#F6EEF0] border border-[#EAD9E0] overflow-hidden"><div id="jobProgressBar" class="job-bar h-full transition-all" style="width:0%"></div></div>
             </div>
             <p id="jobError" class="text-xs text-red-700 hidden"></p>
           </div>
@@ -496,11 +596,11 @@
             </div>
           </div>
           <div id="emptyState" class="demo-stage deck-canvas">
-            <span class="demo-badge">Live demo</span>
+            <span class="demo-badge" id="demoBadge">Live demo</span>
             <div id="demoRail"></div>
             <div class="demo-copy">
-              <p class="font-display text-2xl text-[#F7EAF0]">Your SKUs will be ranked like this</p>
-              <p class="text-xs text-[#C9A9B8] mt-1">Pick a brand and audience, upload SKU images, then <strong class="text-[#F3D58A]">Extract &amp; rank</strong>. Hover any card to bring it to the centre.</p>
+              <p id="demoTitle" class="font-display text-2xl text-[#F7EAF0]">Your SKUs will be ranked like this</p>
+              <p id="demoSub" class="text-xs text-[#C9A9B8] mt-1">Pick a brand and audience, upload SKU images, then <strong class="text-[#F3D58A]">Extract &amp; rank</strong>. Hover any card to bring it to the centre.</p>
             </div>
           </div>
           <div id="rankStats" class="rank-stats hidden" aria-live="polite"></div>
@@ -528,7 +628,7 @@
   </main>
 
   <div id="createdModal" class="fixed inset-0 z-[60] hidden items-center justify-center bg-[#3B2733]/40 backdrop-blur-sm p-4" role="dialog" aria-modal="true" aria-labelledby="createdTitle">
-    <div class="glass-panel bg-[#FAF6EE] max-w-md w-full p-6 space-y-4">
+    <div class="glass-panel bg-white max-w-md w-full p-6 space-y-4">
       <div class="flex items-start gap-3">
         <div class="h-10 w-10 rounded-full bg-[#F6EEF0] border border-[#6B3A55] flex items-center justify-center flex-none"><i class="fa-solid fa-check text-[#6B3A55]"></i></div>
         <div>
@@ -538,8 +638,8 @@
       </div>
       <div class="flex flex-col sm:flex-row gap-2 justify-end">
         <button id="createdCloseBtn" type="button" class="px-3 py-2 border border-[#EAD9E0] bg-white rounded-lg text-xs font-bold text-[#3B2733] hover:border-[#6B3A55]">View ranking</button>
-        <button id="created3pBtn" type="button" class="px-3 py-2 bg-[#6B3A55] hover:bg-[#552C43] rounded-lg text-xs font-bold text-white"><i class="fa-solid fa-file-csv mr-1"></i>Run on other platforms (3P)</button>
-        <button id="created1pBtn" type="button" class="px-3 py-2 bg-[#6B3A55] hover:bg-[#552C43] rounded-lg text-xs font-bold text-white"><i class="fa-solid fa-bullhorn mr-1"></i>Set up on SuffAI (1P)</button>
+        <button id="created3pBtn" type="button" class="px-3 py-2 border border-[#6B3A55] bg-white rounded-lg text-xs font-bold text-[#6B3A55] hover:bg-[#F6EEF0]"><i class="fa-solid fa-file-csv mr-1"></i>Run on other platforms (3P)</button>
+        <button id="created1pBtn" type="button" class="px-3 py-2 rounded-lg text-xs font-bold text-[#2A0F1F] bg-gradient-to-br from-[#F3D58A] to-[#C9A24A] shadow-[0_8px_20px_rgba(201,162,74,.35)] hover:brightness-105"><i class="fa-solid fa-bullhorn mr-1"></i>Set up on SuffAI (1P)</button>
       </div>
     </div>
   </div>
@@ -641,12 +741,12 @@
 
     /* Audience dropdowns: checkbox lists with "Select all", backed by hidden multi-selects (the source of truth). */
     const FILTER_DROPDOWNS = [
-      ['filterArea', 'msArea', 'Select PIN codes', 'PINs'],
-      ['filterAge', 'msAge', 'All age groups', 'age groups'],
-      ['filterGender', 'msGender', 'All genders', 'genders'],
-      ['filterRfm', 'msRfm', 'All RFM segments', 'RFM segments'],
+      ['filterArea', 'msArea', 'Select PIN codes', 'PIN codes'],
+      ['filterAge', 'msAge', 'All age groups', 'Age bucket'],
+      ['filterGender', 'msGender', 'All genders', 'Gender'],
+      ['filterRfm', 'msRfm', 'All RFM segments', 'RFM segment'],
     ];
-    function syncFilterDropdown(selId, msId, emptyText) {
+    function syncFilterDropdown(selId, msId, emptyText, label) {
       const opts = Array.from($(selId).options).filter(o => o.value);
       const el = $(msId);
       const sig = opts.map(o => o.value).join('\u0001');
@@ -661,23 +761,29 @@
       const picked = opts.filter(o => o.selected);
       const all = el.querySelector('input[data-all]');
       if (all) { all.checked = picked.length > 0 && picked.length === opts.length; all.indeterminate = picked.length > 0 && picked.length < opts.length; }
-      el.querySelector('summary').textContent = !picked.length ? emptyText
+      const sum = el.querySelector('summary');
+      sum.textContent = !picked.length ? emptyText
         : (opts.length > 1 && picked.length === opts.length) ? `All selected (${picked.length})`
         : picked.length <= 2 ? picked.map(o => o.textContent).join(', ') : `${picked.length} selected`;
+      if (label) sum.setAttribute('aria-label', `${label}: ${sum.textContent}`);
     }
-    function syncFilterDropdowns() { FILTER_DROPDOWNS.forEach(([sel, ms, empty]) => syncFilterDropdown(sel, ms, empty)); }
-    FILTER_DROPDOWNS.forEach(([selId, msId, emptyText]) => {
+    function syncFilterDropdowns() { FILTER_DROPDOWNS.forEach(([sel, ms, empty, label]) => syncFilterDropdown(sel, ms, empty, label)); }
+    FILTER_DROPDOWNS.forEach(([selId, msId, emptyText, label]) => {
       $(msId).addEventListener('change', (e) => {
         const opts = Array.from($(selId).options).filter(o => o.value);
         if (e.target.dataset.all) opts.forEach(o => { o.selected = e.target.checked; });
         else if (e.target.dataset.i != null) opts[Number(e.target.dataset.i)].selected = e.target.checked;
         else return;
-        syncFilterDropdown(selId, msId, emptyText);
+        syncFilterDropdown(selId, msId, emptyText, label);
         $(selId).dispatchEvent(new Event('change'));
       });
     });
     document.addEventListener('click', (e) => {
       document.querySelectorAll('details.ms[open]').forEach(d => { if (!d.contains(e.target)) d.removeAttribute('open'); });
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      document.querySelectorAll('details.ms[open]').forEach(d => { d.removeAttribute('open'); if (d.contains(document.activeElement)) d.querySelector('summary').focus(); });
     });
     function labelForPin(pin) {
       const obj = state.metrics?.pin_geo?.[String(pin)];
@@ -759,7 +865,8 @@
       didAutoScroll = true;
       // The ranking section: its title, then the live demo (or the ranked deck)
       // offset clears the sticky campaign-steps bar
-      autoScrollTo($('mainScroll'), $('emptyState').parentElement, $('wizardSteps').offsetHeight + 12);
+      const pad = parseFloat(getComputedStyle($('mainScroll')).paddingTop) || 0; // the sticky bar sits below the scroll padding
+      autoScrollTo($('mainScroll'), $('emptyState').parentElement, $('wizardSteps').offsetHeight + pad + 14);
     }
     async function loadMetrics() {
       try {
@@ -802,7 +909,10 @@
         console.error('[ads_lab] unable to load metrics', e);
         setApiStatus(false, 'Audience data unavailable');
         $('profileNote').textContent = `Could not load the audience profile: ${e.message}`;
-        $('creativeGrid').innerHTML = '';
+        $('segmentTitle').innerHTML = '<span class="tchip warn"><i class="fa-solid fa-triangle-exclamation"></i>Audience data unavailable</span>';
+        $('targetWarn').textContent = 'Refresh the page to retry';
+        $('targetWarn').classList.remove('hidden');
+        const ms = $('msArea').querySelector('summary'); if (ms) ms.textContent = 'Areas unavailable';
       }
     }
 
@@ -1054,6 +1164,20 @@
 
     function fmtNumber(n) { return n === null || n === undefined || !Number.isFinite(Number(n)) ? '—' : Number(n).toLocaleString('en-IN', {maximumFractionDigits:0}); }
     
+    function renderTargetChips(f) {
+      const pins = f.pin_codes || [];
+      const chips = [
+        f.brand_name ? ['fa-tag', f.brand_name] : ['fa-tag', 'No brand', 'muted'],
+        ['fa-location-dot', !pins.length ? 'No PIN' : (pins.length <= 2 ? pins.map(labelForPin).join(', ') : pins.length + ' PINs'), pins.length ? '' : 'muted'],
+        ['fa-cake-candles', f.age_group || 'All ages'],
+        ['fa-venus-mars', displayGender(f.gender)],
+        ['fa-gem', f.rfm_segment || 'All RFM'],
+      ];
+      $('segmentTitle').innerHTML = chips.map(([ic, t, cls]) => `<span class="tchip ${cls || ''}"><i class="fa-solid ${ic}"></i>${esc(t)}</span>`).join('');
+    }
+    try { if (localStorage.getItem('suffai_ads_target') === 'closed') $('stepOpportunity').open = false; } catch (_) {}
+    $('stepOpportunity').addEventListener('toggle', () => { try { localStorage.setItem('suffai_ads_target', $('stepOpportunity').open ? 'open' : 'closed'); } catch (_) {} });
+
     function updateBrandUploadLabel() {
       const name = ($('filterBrand').value || '').trim();
       const el = $('brandUploadLabel');
@@ -1065,12 +1189,16 @@
       if (!state.metrics) return;
       const filters = currentFilters();
       state.profile = createProfile(filters);
-      $('segmentTitle').textContent = filtersLabel(filters);
+      renderTargetChips(filters);
       $('staleNote').classList.toggle('hidden', !state.rankedKey || state.rankedKey === JSON.stringify(filters));
       const stats = audienceStats(filters);
       $('audienceCustomers').textContent = fmtNumber(stats.customers);
       renderCoverage(stats);
       renderTasteCoverage(state.profile, filters);
+      const warn = stats.coverage === 'empty-segment' ? 'No customers for this combination'
+        : (!state.profile.cellCount ? 'No garment data for this audience' : '');
+      $('targetWarn').textContent = warn;
+      $('targetWarn').classList.toggle('hidden', !warn);
       $('profileNote').textContent = `Taste profile: ${state.profile.label} · based on ${state.profile.cellCount} audience group${state.profile.cellCount === 1 ? '' : 's'}.`;
       
       renderTastePercentages('insightColors', state.profile.distributions.color);
@@ -1089,7 +1217,7 @@
       if (!window.parent || window.parent === window) return;
       try {
         const filters = currentFilters();
-        const ranked = makeRankedAssets().slice(0, 20).map(row => ({
+        const ranked = (rankingReady() ? makeRankedAssets() : []).slice(0, 20).map(row => ({
           filename: row.asset?.file?.name || '',
           rank: row.rank,
           score: row.fit?.score ?? null,
@@ -1176,7 +1304,8 @@
           attributes: s.attributes || {},
           rank: s.rank,
           rank_score: s.rank_score != null ? Number(s.rank_score) : (s.pin_fit != null ? Math.round(Number(s.pin_fit) * 100) : null),
-          error: s.process_status === 'failed' ? 'Could not be ranked' : null,
+          sim_fit: s.sim_fit, attr_fit: s.attr_fit, freq_coverage: s.freq_coverage, pin_fit: s.pin_fit,
+          error: s.process_status === 'failed' || !s.extract_ok ? (s.compare_error || s.extract_error || 'Could not be ranked') : null,
         }));
         if (c.source_context && typeof c.source_context === 'object') {
           state.sourceContext = c.source_context;
@@ -1244,6 +1373,7 @@
 
     window.addEventListener('message', (ev) => {
       const data = ev.data;
+      if (ev.source !== window.parent || window.parent === window) return; // only the AURA shell (parent frame) talks to us
       if (!data || typeof data !== 'object') return;
       if (data.type === 'cc-context-request') {
         if (state.metrics) refreshForFilters();
@@ -1344,8 +1474,10 @@
     }
     /* ---------- Ranking deck (shared by real results and the demo) ---------- */
     function cardHTML(c) {
+      c = { ...c, rank: esc(c.rank) };
       const p = c.score ?? 0;
-      return `<article class="cr-card ${c.top ? 'top' : ''}" role="listitem" aria-label="Rank ${c.rank}: ${esc(c.name)}, fit ${c.score === null ? 'not scored' : c.score + ' of 100'}">
+      const band = c.score == null ? '' : c.score >= 75 ? 'fit-hi' : c.score >= 50 ? 'fit-mid' : 'fit-lo';
+      return `<article class="cr-card ${c.top ? 'top' : ''} ${band} ${c.rank <= 3 ? 'r' + c.rank : ''}" role="listitem" aria-label="Rank ${c.rank}: ${esc(c.name)}, fit ${c.score === null ? 'not scored' : c.score + ' of 100'}">
           <div class="cr-media" ${c.bg ? `style="--bg:${c.bg}"` : ''}>${c.media}
             <span class="cr-rank"><b>#${c.rank}</b>${c.top ? '<em>Top fit</em>' : ''}</span>
             <span class="cr-status ${c.bad ? 'bad' : ''}">${esc(c.status)}</span>
@@ -1354,7 +1486,7 @@
           <div class="cr-body">
             <div><h4 class="cr-name" title="${esc(c.name)}">${esc(c.name)}</h4><p class="cr-sub">Rank #${c.rank}${c.of ? ` of ${c.of}` : ''} · Segment fit${c.score === null ? '' : ` ${c.score}/100`}</p></div>
             <div class="cr-bar" style="--p:${p}"><i></i></div>
-            <div class="cr-tags">${c.tags.length ? c.tags.map(t => `<span class="tag">${esc(t)}</span>`).join('') : '<span class="text-xs text-[#8A7480]">No normalized attributes returned</span>'}</div>
+            <div class="cr-tags">${c.tags.length ? c.tags.map(t => `<span class="tag tg-${esc(String(t).split(':')[0].trim().toLowerCase())}">${esc(t)}</span>`).join('') : '<span class="text-xs text-[#8A7480]">No normalized attributes returned</span>'}</div>
             <p class="cr-scroll-hint">Scroll for details <i class="fa-solid fa-arrow-down"></i></p>
             <div class="cr-sec"><h5>Why this rank</h5><p>${esc(c.reason)}</p></div>
             ${c.breakdown && c.breakdown.length ? `<div class="cr-sec"><h5>Audience match by attribute</h5>${c.breakdown.map(b => `<div class="cr-row"><span>${esc(b.label)}</span><b title="${esc(b.value)}">${esc(b.value)}</b><em class="${b.rank && b.rank <= 3 ? 'hit' : ''}">${b.rank ? `#${b.rank} · ${b.share}%` : 'not seen'}</em><u style="--p:${b.fill}"></u>${b.rank !== 1 && b.top ? `<small>Audience favours ${esc(b.top)}</small>` : ''}</div>`).join('')}</div>` : ''}
@@ -1436,6 +1568,8 @@
       });
       root.addEventListener('pointerenter', () => { st.inside = true; play(); });
       root.addEventListener('pointerleave', () => { st.inside = false; clearTimeout(st.hoverT); play(); });
+      root.addEventListener('focusin', () => { st.inside = true; play(); });
+      root.addEventListener('focusout', (e) => { if (!root.contains(e.relatedTarget)) { st.inside = root.matches(':hover'); play(); } });
       stage.addEventListener('click', (e) => {
         const card = e.target.closest('.cr-card');
         if (card && !card.classList.contains('is-active')) { clearTimeout(st.hoverT); go(st.cards.indexOf(card), true); }
@@ -1444,8 +1578,8 @@
       nextBtn.addEventListener('click', () => go(st.i + 1));
       root.addEventListener('keydown', (e) => {
         if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); go(st.i + (e.key === 'ArrowRight' ? 1 : -1)); }
-        if (e.key === 'Home') go(0);
-        if (e.key === 'End') go(st.cards.length - 1);
+        if (e.key === 'Home') { e.preventDefault(); go(0); }
+        if (e.key === 'End') { e.preventDefault(); go(st.cards.length - 1); }
       });
       let swipeX = null;
       root.addEventListener('pointerdown', (e) => { if (e.pointerType !== 'mouse') swipeX = e.clientX; });
@@ -1496,14 +1630,16 @@
     function cardSignals(row) {
       const c = row.camp || {}, fmt = (v) => v === null || v === undefined || v === '' ? '—' : (Number.isFinite(Number(v)) ? String(Math.round(Number(v) * 100) / 100) : String(v));
       const out = [];
-      if (row.camp) out.push(['Similarity fit', fmt(c.sim_fit)], ['Attribute fit', fmt(c.attr_fit)], ['Freq. coverage', fmt(c.freq_coverage)], ['Rank score', fmt(c.rank_score)]);
+      if (row.camp) out.push(['Similarity fit', fmt(c.sim_fit)], ['Attribute fit', fmt(c.attr_fit)], ['Freq. coverage', fmt(c.freq_coverage)], ['PIN fit', fmt(c.pin_fit)], ['Rank score', fmt(c.rank_score)]);
       if (row.attrs.confidence) out.push(['Extraction conf.', fmt(row.attrs.confidence)]);
-      return out;
+      return out.filter(([, v]) => v !== '—'); // the detail API may omit some signals; don't show empty tiles
     }
 
     const deck = makeDeck($('creativeGrid'), { loop: true, autoplay: 3200, label: 'Ranked creative cards' });
+    // The deck + matrix show results only once Extract & rank has produced scores.
+    function rankingReady() { return state.campaignItems.length > 0; }
     function renderCreatives() {
-      const list = makeRankedAssets();
+      const list = rankingReady() ? makeRankedAssets() : [];
       $('rankCount').textContent = `${list.length} creative${list.length === 1 ? '' : 's'}`;
       $('emptyState').classList.toggle('hidden', list.length > 0);
       $('creativeGrid').classList.toggle('hidden', !list.length);
@@ -1543,7 +1679,7 @@
     async function stashCampaignThumbs() {
       const f = currentFilters();
       if (lockedBrand) f.brand_name = lockedBrand;
-      const list = makeRankedAssets().slice(0, 12);
+      const list = makeRankedAssets().slice(0, 30); // every uploaded SKU (rank order) for the phone preview
       const thumbs = await Promise.all(list.map(r => thumbOf(r.asset.src)));
       const draft = {
         v: 1, created_at: new Date().toISOString(), campaign_id: state.campaign?.campaign_id || null,
@@ -1625,8 +1761,8 @@
         const a = row.attrs; const taste = extractedTags(a).join(' · ') || '—';
         const pins = f.pin_codes || (f.pin_code ? [f.pin_code] : []);
         const pinLabel = !pins.length ? 'No PIN' : (pins.length <= 2 ? pins.map(labelForPin).join(', ') : pins.length + ' PINs');
-        return `<tr><td class="px-4 py-3 font-mono ${row.rank === 1 ? 'text-[#6B3A55] font-bold' : 'text-[#8A7480]'}">#${row.rank}</td><td class="px-4 py-3 text-[#3B2733] font-medium">${esc(row.asset.file.name)}</td><td class="px-4 py-3">${esc(pinLabel)}</td><td class="px-4 py-3">${esc(f.age_group || 'All ages')}</td><td class="px-4 py-3">${esc(displayGender(f.gender))}</td><td class="px-4 py-3">${esc(f.rfm_segment || 'All RFM')}</td><td class="px-4 py-3 whitespace-normal min-w-[220px]">${esc(taste)}</td><td class="px-4 py-3 text-right font-mono ${row.fit.score === null ? 'text-[#8A7480]' : 'text-[#6B3A55] font-bold'}">${row.fit.score === null ? 'N/A' : row.fit.score + '/100'}</td></tr>`;
-      }).join('') : '<tr><td colspan="8" class="px-4 py-8 text-center text-[#8A7480]">Upload images to populate the matrix.</td></tr>';
+        return `<tr><td class="px-4 py-3 font-mono ${row.rank === 1 ? 'text-[#6B3A55] font-bold' : 'text-[#8A7480]'}">#${esc(row.rank)}</td><td class="px-4 py-3 text-[#3B2733] font-medium">${esc(row.asset.file.name)}</td><td class="px-4 py-3">${esc(pinLabel)}</td><td class="px-4 py-3">${esc(f.age_group || 'All ages')}</td><td class="px-4 py-3">${esc(displayGender(f.gender))}</td><td class="px-4 py-3">${esc(f.rfm_segment || 'All RFM')}</td><td class="px-4 py-3 whitespace-normal min-w-[220px]">${esc(taste)}</td><td class="px-4 py-3 text-right font-mono ${row.fit.score === null ? 'text-[#8A7480]' : 'text-[#6B3A55] font-bold'}">${row.fit.score === null ? 'N/A' : row.fit.score + '/100'}</td></tr>`;
+      }).join('') : '<tr><td colspan="8" class="px-4 py-8 text-center text-[#8A7480]">Run Extract &amp; rank to see the ranking.</td></tr>';
     }
 
     function readAsDataUrl(file) {
@@ -1733,7 +1869,7 @@
       const f = currentFilters();
       if (lockedBrand) f.brand_name = lockedBrand;
       if (!f.brand_name) { showRunError('Enter a brand name to run the campaign.'); $('filterBrand').focus(); return; }
-      if (!f.pin_codes.length) { showRunError('Select at least one PIN code.'); $('msArea').open = true; return; }
+      if (!f.pin_codes.length) { showRunError('Select at least one PIN code.'); setTimeout(() => { $('msArea').open = true; $('msArea').querySelector('summary')?.focus(); }); return; }
       showRunError('');
       setLoading(true, 'Uploading SKU images · scheduling ranking job…');
       try {
@@ -1781,12 +1917,15 @@
       $('jobGarments').textContent = fmtNumber(job.total_garments);
       $('jobComparisons').textContent = fmtNumber(job.comparisons);
       const done = job.status === 'succeeded' || job.status === 'failed';
-      $('jobEta').textContent = done ? 'Done' : '~' + fmtDuration(job.eta_seconds);
+      renderJobStages(job);
+      $('jobHourglass').classList.toggle('hidden', done);
+      startEtaCountdown(done ? null : job.eta_seconds, job.status === 'failed' ? 'Failed' : 'Done');
       $('jobEtaSub').textContent = done
         ? (job.finished_at ? 'finished ' + String(job.finished_at).replace('T', ' ').slice(0, 16) : '')
         : 'initial estimate ' + fmtDuration(job.est_seconds);
       const pct = Math.max(0, Math.min(100, Number(job.progress_pct) || 0));
-      $('jobProgressBar').style.width = pct + '%';
+      $('jobProgressBar').style.width = (job.status === 'failed' ? Math.max(pct, 100) : pct) + '%';
+      $('jobProgressBar').className = 'job-bar h-full transition-all ' + (job.status === 'succeeded' ? 'succeeded' : job.status === 'failed' ? 'failed' : 'running');
       $('jobProgressPct').textContent = Math.round(pct) + '%';
       $('jobProgressLabel').textContent = job.stage === 'personalising'
         ? `All images ranked · saving Style Assistant picks for ${fmtNumber(job.total_customers)} customer(s)`
@@ -1801,19 +1940,78 @@
       updateWizard();
     }
 
+    const DEMO_COPY = { badge: $('demoBadge').textContent, title: $('demoTitle').innerHTML, sub: $('demoSub').innerHTML };
+    function setDemoRanking(on, total) {
+      $('emptyState').classList.toggle('ranking', on);
+      $('demoBadge').textContent = on ? 'Ranking in progress' : DEMO_COPY.badge;
+      $('demoTitle').innerHTML = on ? '<i class="fa-solid fa-circle-notch spin"></i>Ranking your SKUs…' : DEMO_COPY.title;
+      $('demoSub').innerHTML = on
+        ? `Comparing ${total || 'your'} SKU image${total === 1 ? '' : 's'} with what this audience wears. Your ranked cards will appear here.`
+        : DEMO_COPY.sub;
+    }
+
+    function renderJobStages(job) {
+      const total = Number(job.total_images) || 0, processed = Number(job.processed_images) || 0;
+      // 0 upload/queued → 1 extracting + comparing images → 2 final ranking → 3 all done
+      const stage = job.status === 'succeeded' ? 3 : job.status === 'queued' ? 0 : (total && processed >= total ? 2 : 1);
+      const failed = job.status === 'failed';
+      const failAt = failed ? Math.min(2, total && processed >= total ? 2 : 1) : -1;
+      document.querySelectorAll('#jobStages li[data-stage]').forEach(li => {
+        const k = Number(li.dataset.stage);
+        li.className = failed ? (k < failAt ? 'done' : k === failAt ? 'fail' : '') : (k < stage ? 'done' : k === stage ? 'active' : '');
+      });
+      document.querySelectorAll('#jobStages .js-line').forEach((line, i) => {
+        const cur = failed ? failAt : stage;
+        line.className = 'js-line ' + (i < cur ? 'done' : i === cur && !failed ? 'active' : '');
+      });
+      const live = $('jobLive');
+      live.className = 'job-live' + (failed ? ' bad' : stage === 3 ? ' ok' : '');
+      live.innerHTML = failed ? '<i class="fa-solid fa-circle-xmark"></i> The job stopped — see the error below.'
+        : stage === 3 ? '<i class="fa-solid fa-circle-check"></i> Ranking ready.'
+        : stage === 0 ? '<span class="dots">Uploading your SKUs and queueing the job</span>'
+        : stage === 1 ? `<span class="dots">Extracting attributes and comparing image ${Math.min(processed + 1, total)} of ${total} against the audience</span>`
+        : '<span class="dots">Ranking SKUs for this audience</span>';
+      $('jobStatusTag').classList.toggle('live', !(failed || stage === 3));
+      $('thumbs').classList.toggle('scanning', !(failed || stage === 3));
+      setDemoRanking(!(failed || stage === 3), total);
+    }
+
+    // Remaining time ticks every second between polls (each poll re-syncs it to the server's ETA).
+    let etaTimer = null;
+    function startEtaCountdown(seconds, doneLabel) {
+      clearInterval(etaTimer);
+      if (seconds == null) { $('jobEta').textContent = doneLabel; return; }
+      const end = Date.now() + Math.max(0, Number(seconds) || 0) * 1000;
+      const tick = () => {
+        const left = Math.round((end - Date.now()) / 1000);
+        const m = Math.floor(left / 60), sec = String(left % 60).padStart(2, '0');
+        $('jobEta').textContent = left > 0 ? (m ? `${m}m ${sec}s` : `${left}s`) + ' left' : 'Finishing…';
+      };
+      tick();
+      etaTimer = setInterval(tick, 1000);
+    }
+
+    let pollSeq = 0; // bumped by every new poll/schedule; an in-flight response with an old seq is ignored
     function scheduleJobPoll(jobId, delay = JOB_POLL_MS) {
-      clearTimeout(jobTimer);
+      clearTimeout(jobTimer); pollSeq++;
       jobTimer = setTimeout(() => pollJob(jobId), delay);
     }
 
     async function pollJob(jobId) {
       if (!jobId) return;
+      clearTimeout(jobTimer);
+      const seq = ++pollSeq;
       try {
         const res = await fetch(endpoint('/v1/ads-lab/campaign-jobs/' + encodeURIComponent(jobId)), {
           headers: { Accept: 'application/json', ...SuffaiSession.authHeaders() },
         });
         const data = await res.json().catch(() => ({}));
-        if (res.status === 404 || res.status === 401 || res.status === 403) { rememberJob(''); return; }
+        if (seq !== pollSeq) return;
+        if (res.status === 404 || res.status === 401 || res.status === 403) {
+          rememberJob(''); clearInterval(etaTimer);
+          if (state.job) { $('jobEta').textContent = '—'; $('jobHourglass').classList.add('hidden'); }
+          return;
+        }
         if (!res.ok) throw new Error(apiError(data, 'HTTP ' + res.status));
         const job = data.job;
         renderJob(job);
@@ -1835,7 +2033,7 @@
         scheduleJobPoll(jobId);
       } catch (e) {
         console.error('[ads_lab] job poll failed', e);
-        scheduleJobPoll(jobId, JOB_POLL_MS * 2);
+        if (seq === pollSeq) scheduleJobPoll(jobId, JOB_POLL_MS * 2);
       }
     }
 
@@ -1874,15 +2072,9 @@
       m.classList.remove('flex');
     }
 
-    function audienceLabel(c) {
-      const pins = c.pin_codes || [];
-      const pinBit = !pins.length ? 'No PIN' : (pins.length <= 2 ? pins.join(', ') : pins.length + ' PINs');
-      return [pinBit, c.age_group || 'All ages', displayGender(c.gender), c.rfm_segment || 'All RFM'].join(' × ');
-    }
-
     function scrollToStep(id) {
       const el = $(id);
-      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (el) el.scrollIntoView({ behavior: reduceMotion.matches ? 'auto' : 'smooth', block: 'start' });
     }
 
     function campaignReady() {

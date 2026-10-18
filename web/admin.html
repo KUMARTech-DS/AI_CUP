@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en" class="h-full">
 <head>
+  <meta name="color-scheme" content="light" />
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SuffAI Admin — Intelligence</title>
@@ -8,42 +9,123 @@
   <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
   <script src="./config.js"></script>
   <script src="./session.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Outfit:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet" />
+  <script src="./select.js" defer></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Outfit:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
   <style>
     :root {
+      color-scheme: light;
       --cream: #faf6ee;
       --panel: #ffffff;
       --raised: #f6eef0;
       --line: #ead9e0;
+      --line-soft: #f3e9ed;
       --muted: #8a7480;
       --ink: #3b2733;
       --plum: #6b3a55;
       --plum-dk: #552c43;
       --mauve: #c59fb0;
+      --wine: #2a0f1f;
+      --wine-2: #4a1a33;
+      --gold: #c9a24a;
+      --gold-lt: #f3d58a;
+      --bad: #a3301f;
+      --ease: cubic-bezier(.22, .8, .24, 1);
+      --shadow: 0 1px 2px rgba(59, 39, 51, .04), 0 8px 24px rgba(107, 58, 85, .06);
+      --shadow-up: 0 2px 4px rgba(59, 39, 51, .05), 0 16px 34px rgba(107, 58, 85, .12);
     }
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
     body {
       margin: 0;
       min-height: 100vh;
       font-family: Outfit, system-ui, sans-serif;
       color: var(--ink);
       background:
-        radial-gradient(ellipse 70% 40% at 0% 0%, rgba(197, 159, 176, 0.18), transparent 60%),
+        radial-gradient(ellipse 70% 40% at 100% 0%, rgba(197, 159, 176, 0.16), transparent 60%),
         var(--cream);
+      -webkit-font-smoothing: antialiased;
     }
-    h1 { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 700; color: var(--plum); }
+    h1 { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 700; }
     h2 { color: var(--ink); }
-    :focus-visible { outline: 3px solid rgba(197, 159, 176, 0.7); outline-offset: 2px; }
+    :focus-visible { outline: 3px solid rgba(201, 162, 74, .6); outline-offset: 2px; }
+    input, button, select { font-family: inherit; }
+
+    /* ---------- Hero ---------- */
+    .hero {
+      position: relative; overflow: hidden; color: #f7eaf0; padding: 24px 28px 20px;
+      background: radial-gradient(60% 120% at 85% 0%, rgba(224, 178, 84, .26), transparent 60%),
+                  linear-gradient(110deg, var(--wine) 0%, var(--wine-2) 55%, var(--plum) 100%);
+    }
+    .hero::after { /* soft fabric weave */
+      content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .06;
+      background-image: repeating-linear-gradient(45deg, #fff 0 1px, transparent 1px 12px), repeating-linear-gradient(-45deg, #fff 0 1px, transparent 1px 12px);
+    }
+    .hero-in { position: relative; z-index: 1; max-width: 1320px; margin: 0 auto; }
+    .hero-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+    .eyebrow { display: inline-flex; align-items: center; gap: .45rem; font-size: 10px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; color: var(--gold-lt); margin: 0 0 6px; }
+    .hero h1 { font-size: clamp(1.9rem, 3vw, 2.6rem); line-height: 1.05; color: #fff; margin: 0; }
+    .hero-sub { font-size: 13px; color: #d9bfcb; margin: 8px 0 0; max-width: 640px; line-height: 1.5; }
+    .trust { display: flex; gap: 8px; flex-wrap: wrap; }
+    .trust span {
+      display: inline-flex; align-items: center; gap: .45rem; padding: .45rem .75rem; border-radius: 999px; font-size: 11.5px; font-weight: 500;
+      color: #f1dde6; background: rgba(255, 255, 255, .07); border: 1px solid rgba(255, 255, 255, .14);
+    }
+    .trust i { color: var(--gold-lt); font-size: 11px; }
+
+    /* Tab bar stays pinned so sections can be switched from anywhere on the page */
+    .tabnav {
+      position: sticky; top: 0; z-index: 40; padding: 0 28px;
+      background: linear-gradient(110deg, var(--wine) 0%, var(--wine-2) 55%, var(--plum) 100%);
+      border-top: 1px solid rgba(255, 255, 255, .08); box-shadow: 0 8px 20px rgba(42, 15, 31, .16);
+    }
+    .tabbar {
+      position: relative; display: flex; gap: 2px; max-width: 1320px; margin: 0 auto; overflow-x: auto; scrollbar-width: none;
+    }
+    .tabbar::-webkit-scrollbar { display: none; }
+    .tabbar button {
+      position: relative; display: inline-flex; align-items: center; gap: .55rem; flex: none;
+      background: none; border: none; cursor: pointer; white-space: nowrap;
+      padding: .95rem 1.1rem; font-size: 13.5px; font-weight: 600; color: #d9bfcb; transition: color .2s;
+    }
+    .tabbar button i { font-size: 13px; opacity: .8; transition: color .2s, opacity .2s; }
+    .tabbar button:hover { color: #fff; }
+    .tabbar button[aria-selected=true] { color: #fff; }
+    .tabbar button[aria-selected=true] i { color: var(--gold-lt); opacity: 1; }
+    .tabbar button:focus-visible { outline-offset: -3px; border-radius: 10px; }
+    .tab-ink { /* gold underline that slides to the active tab */
+      position: absolute; left: 0; bottom: 0; height: 3px; width: 0; border-radius: 3px 3px 0 0; pointer-events: none;
+      background: linear-gradient(90deg, var(--gold-lt), var(--gold)); transition: transform .35s var(--ease), width .35s var(--ease);
+    }
+
+    /* ---------- Layout ---------- */
+    .wrap { max-width: 1320px; margin: 0 auto; padding: 22px 28px 64px; }
+    .sec-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 0 0 14px; }
+    .sec-head h2 { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 1.7rem; font-weight: 700; color: var(--ink); margin: 0; line-height: 1.1; }
+    .sec-head p { margin: 4px 0 0; font-size: 12.5px; color: var(--muted); max-width: 680px; }
     .card {
       border: 1px solid var(--line);
       background: var(--panel);
       border-radius: 16px;
       padding: 1.1rem 1.25rem;
-      box-shadow: 0 8px 24px rgba(107, 58, 85, 0.06);
+      box-shadow: var(--shadow);
     }
-    .kpi-val { font-family: 'IBM Plex Mono', monospace; font-size: 1.6rem; color: var(--plum); font-weight: 500; }
-    .kpi-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
-    input, button, select { font-family: inherit; }
+    .card-h { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+    .card-h h2 { display: flex; align-items: center; gap: .5rem; font-size: 14.5px; font-weight: 600; margin: 0; }
+    .card-h h2 > i { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; font-size: 11.5px; color: var(--plum); background: var(--raised); flex: none; }
+    .card-h p { margin: 3px 0 0 34px; font-size: 11.5px; color: var(--muted); line-height: 1.4; }
+
+    /* ---------- Filter bar ---------- */
+    form.filters {
+      position: relative; z-index: 25; display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end;
+      padding: .9rem 1.1rem; margin-bottom: 18px; background: rgba(255, 255, 255, .92); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    }
+    .f-title { display: flex; align-items: center; gap: .5rem; align-self: center; padding-right: 12px; margin-right: 2px; border-right: 1px solid var(--line); font-size: 12px; font-weight: 700; color: var(--plum); letter-spacing: .04em; }
+    .f-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
     .lbl { display: flex; flex-direction: column; gap: 0.3rem; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 600; color: var(--muted); }
+    .search { position: relative; display: block; }
+    .search i { position: absolute; left: .75rem; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 12px; pointer-events: none; }
+    .search input { padding-left: 2rem !important; min-width: 220px; }
     input[type=text], input:not([type]) {
       background: var(--panel);
       border: 1.5px solid var(--line);
@@ -54,89 +136,210 @@
       outline: 0;
       text-transform: none;
       letter-spacing: normal;
+      transition: border-color .15s, box-shadow .15s;
     }
     input:focus { border-color: var(--plum); box-shadow: 0 0 0 3px rgba(197, 159, 176, 0.35); }
+    input[type=checkbox] { accent-color: var(--plum); width: 15px; height: 15px; }
+    .check {
+      display: inline-flex; align-items: center; gap: .45rem; padding: .5rem .8rem; border: 1.5px solid var(--line); border-radius: 10px;
+      font-size: 13px; font-weight: 500; color: var(--ink); background: var(--panel); cursor: pointer; text-transform: none; letter-spacing: normal;
+    }
+    .check:has(input:checked) { border-color: var(--plum); background: var(--raised); color: var(--plum); }
     select.sel {
       background: var(--panel); border: 1.5px solid var(--line); color: var(--ink); border-radius: 10px;
       padding: 0.55rem 0.8rem; font-size: 13px; min-width: 150px; text-transform: none; letter-spacing: normal; font-weight: 500;
     }
     select.sel:focus { border-color: var(--plum); outline: 0; box-shadow: 0 0 0 3px rgba(197, 159, 176, 0.35); }
     button.primary {
-      background: var(--plum);
-      border: none;
-      color: #fff;
-      font-weight: 600;
-      font-size: 13px;
-      padding: 0.6rem 1.1rem;
-      border-radius: 10px;
-      cursor: pointer;
+      display: inline-flex; align-items: center; gap: .45rem;
+      background: linear-gradient(135deg, var(--plum), var(--plum-dk));
+      border: none; color: #fff; font-weight: 600; font-size: 13px; padding: 0.62rem 1.15rem; border-radius: 10px; cursor: pointer;
+      box-shadow: 0 6px 16px rgba(107, 58, 85, .25); transition: transform .2s var(--ease), box-shadow .2s;
     }
-    button.primary:hover { background: var(--plum-dk); }
-    button.primary:disabled { opacity: 0.6; cursor: wait; }
+    button.primary:hover { transform: translateY(-1px); box-shadow: 0 10px 22px rgba(107, 58, 85, .32); }
+    button.primary:disabled { opacity: 0.6; cursor: wait; transform: none; }
+    button.reset { background: none; border: 0; padding: .5rem .4rem; font-size: 12.5px; font-weight: 600; color: var(--muted); cursor: pointer; border-radius: 8px; }
+    button.reset:hover { color: var(--plum); background: var(--raised); }
     button.ghost {
+      display: inline-flex; align-items: center; gap: .35rem;
       background: var(--panel); border: 1.5px solid var(--line); color: var(--plum);
-      font-size: 12px; font-weight: 600; padding: 0.35rem 0.7rem; border-radius: 8px; cursor: pointer;
+      font-size: 12px; font-weight: 600; padding: 0.35rem 0.75rem; border-radius: 999px; cursor: pointer; transition: border-color .15s, background .15s;
     }
-    button.ghost:hover { border-color: var(--plum); }
-    button.ghost:disabled { opacity: 0.5; cursor: default; }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    th {
-      text-align: left;
-      color: var(--muted);
-      font-size: 10px;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      padding: 0.65rem 0.5rem;
-      border-bottom: 1px solid var(--line);
-      background: var(--raised);
-    }
-    td { padding: 0.7rem 0.5rem; border-bottom: 1px solid var(--line); color: var(--ink); vertical-align: top; }
-    tbody tr:hover td { background: rgba(246, 238, 240, 0.6); }
-    tr.detail-row:hover td { background: transparent; }
-    .num { text-align: right; font-family: 'IBM Plex Mono', monospace; }
-    .mono { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--plum); }
-    .err {
-      padding: 0.65rem 0.8rem; border-radius: 10px; font-size: 13px;
-      background: rgba(180, 60, 60, 0.08); border: 1px solid rgba(180, 60, 60, 0.3); color: #a03a3a;
-    }
-    .muted { color: var(--muted); font-size: 12px; }
-    .tabbar { display: flex; gap: 0.35rem; flex-wrap: wrap; border-bottom: 1px solid var(--line); margin-bottom: 1.25rem; }
-    .tabbar button {
-      background: none; border: none; padding: 0.7rem 1rem; font-size: 14px; font-weight: 600; color: var(--muted);
-      border-bottom: 3px solid transparent; cursor: pointer; margin-bottom: -1px;
-    }
-    .tabbar button[aria-selected=true] { color: var(--plum); border-bottom-color: var(--plum); }
-    .chart { width: 100%; height: 300px; }
-    .chart.sm { height: 240px; }
-    .chart.lg { height: 380px; }
-    .badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 0.15rem 0.55rem; border-radius: 999px; white-space: nowrap; }
-    .sim { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #9a6b1e; background: #fbf0dc; border-radius: 6px; padding: 0.1rem 0.4rem; }
+    button.ghost:hover { border-color: var(--plum); background: var(--raised); }
+    button.ghost:disabled { opacity: 0.45; cursor: default; background: var(--panel); border-color: var(--line); }
+
+    /* status pill next to Apply */
+    [data-status], #uniqStatus { font-size: 11.5px; color: var(--muted); }
+    [data-status]:not(:empty), #uniqStatus:not(:empty) { display: inline-flex; align-items: center; gap: .4rem; }
+    [data-status]:not(:empty)::before, #uniqStatus:not(:empty)::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #3f7d3b; box-shadow: 0 0 0 3px rgba(63, 125, 59, .15); }
+    section[data-loading] [data-status]::before { background: var(--gold); box-shadow: 0 0 0 3px rgba(201, 162, 74, .2); animation: pulse 1s ease-in-out infinite; }
+    @keyframes pulse { 50% { opacity: .35; } }
+
+    /* multi-select */
     details.ms { position: relative; }
     details.ms > summary {
       list-style: none; cursor: pointer; background: var(--panel); border: 1.5px solid var(--line); border-radius: 10px;
-      padding: 0.55rem 0.8rem; font-size: 13px; color: var(--ink); text-transform: none; letter-spacing: normal; font-weight: 500;
-      min-width: 150px; max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      padding: 0.55rem 2rem 0.55rem 0.8rem; font-size: 13px; color: var(--ink); text-transform: none; letter-spacing: normal; font-weight: 500;
+      min-width: 150px; max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; position: relative; transition: border-color .15s;
     }
+    details.ms > summary::after {
+      content: '\f078'; font-family: 'Font Awesome 6 Free'; font-weight: 900; font-size: 9px; color: var(--muted);
+      position: absolute; right: .8rem; top: 50%; transform: translateY(-50%); transition: transform .18s;
+    }
+    details.ms > summary:hover { border-color: var(--mauve); }
     details.ms > summary::-webkit-details-marker { display: none; }
-    details.ms[open] > summary { border-color: var(--plum); }
+    details.ms[open] > summary { border-color: var(--plum); box-shadow: 0 0 0 3px rgba(197, 159, 176, .35); }
+    details.ms[open] > summary::after { transform: translateY(-50%) rotate(180deg); color: var(--plum); }
     details.ms .ms-pop {
-      position: absolute; z-index: 30; top: calc(100% + 4px); left: 0; min-width: 220px; max-height: 280px; overflow: auto;
-      background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 0.4rem; box-shadow: 0 12px 28px rgba(107,58,85,0.15);
+      position: absolute; z-index: 30; top: calc(100% + 6px); left: 0; min-width: 230px; max-height: 300px; overflow: auto;
+      background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 0.35rem; box-shadow: 0 16px 36px rgba(59, 39, 51, .18);
+      animation: pop .12s ease-out;
     }
+    @keyframes pop { from { opacity: 0; transform: translateY(-4px); } }
     details.ms label.opt {
-      display: flex; gap: 0.5rem; align-items: center; padding: 0.3rem 0.4rem; border-radius: 6px; font-size: 13px; color: var(--ink);
+      display: flex; gap: 0.55rem; align-items: center; padding: 0.42rem 0.55rem; border-radius: 8px; font-size: 13px; color: var(--ink);
       text-transform: none; letter-spacing: normal; font-weight: 400; cursor: pointer;
     }
     details.ms label.opt:hover { background: var(--raised); }
-    details.ms label.opt.all { font-weight: 600; border-bottom: 1px solid var(--line); border-radius: 6px 6px 0 0; margin-bottom: 0.2rem; }
-    .bar-track { background: var(--raised); border-radius: 6px; height: 10px; overflow: hidden; }
-    .bar-fill { background: var(--plum); height: 100%; }
-    .item-card { border: 1px solid var(--line); border-radius: 14px; padding: 0.85rem 1rem; background: var(--panel); }
-    .kv { display: grid; grid-template-columns: auto 1fr; gap: 0.15rem 0.75rem; font-size: 12px; }
+    details.ms label.opt:has(input:checked) { color: var(--plum); font-weight: 500; }
+    details.ms label.opt.all { font-weight: 600; border-bottom: 1px solid var(--line); border-radius: 8px 8px 0 0; margin-bottom: 0.2rem; }
+
+    /* ---------- KPI tiles ---------- */
+    .kpi { position: relative; display: flex; gap: 12px; align-items: flex-start; overflow: hidden; transition: transform .2s var(--ease), box-shadow .2s; }
+    .kpi:hover { transform: translateY(-2px); box-shadow: var(--shadow-up); }
+    .kpi .ic { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; flex: none; font-size: 15px; color: var(--plum); background: var(--raised); }
+    .kpi > div:last-child { min-width: 0; flex: 1; }
+    .kpi.feature { color: #f7eaf0; border-color: #3e1729; background: radial-gradient(80% 140% at 100% 0%, rgba(224, 178, 84, .25), transparent 60%), linear-gradient(120deg, var(--wine), var(--wine-2) 60%, var(--plum)); }
+    .kpi.feature .ic { color: var(--wine); background: linear-gradient(135deg, var(--gold-lt), var(--gold)); }
+    .kpi.feature .kpi-label { color: #d9bfcb; }
+    .kpi.feature .kpi-val { color: #fff; }
+    .kpi-val { font-family: 'IBM Plex Mono', monospace; font-size: 1.6rem; line-height: 1.15; color: var(--plum); font-weight: 500; margin-top: 2px; overflow-wrap: anywhere; }
+    .kpi-label { font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
+    .kpi-text { font-size: 13px; margin-top: 4px; line-height: 1.5; }
+
+    /* loading shimmer */
+    section[data-loading] .kpi-val, section[data-loading] .kpi-text, details[data-loading] .kpi-val {
+      color: transparent !important; border-radius: 6px; min-width: 80px; display: inline-block;
+      background: linear-gradient(90deg, #f1e6ea 25%, #faf5f7 50%, #f1e6ea 75%); background-size: 200% 100%; animation: shimmer 1.2s linear infinite;
+    }
+    section[data-loading] .kpi.feature .kpi-val { background: linear-gradient(90deg, rgba(255,255,255,.08) 25%, rgba(255,255,255,.2) 50%, rgba(255,255,255,.08) 75%); background-size: 200% 100%; }
+    section[data-loading] .chart, section[data-loading] tbody, section[data-loading] .cards { opacity: .5; transition: opacity .2s; }
+    @keyframes shimmer { to { background-position: -200% 0; } }
+
+    /* ---------- Tables ---------- */
+    .tbl { border: 1px solid var(--line); border-radius: 12px; overflow: auto; }
+    .tbl table th:first-child, .tbl table td:first-child { padding-left: .9rem; }
+    .tbl table th:last-child, .tbl table td:last-child { padding-right: .9rem; }
+    .tbl tbody tr:last-child td { border-bottom: 0; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th {
+      position: sticky; top: 0; z-index: 1;
+      text-align: left; color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600;
+      padding: 0.7rem 0.6rem; border-bottom: 1px solid var(--line); background: #fbf7f8; white-space: nowrap;
+    }
+    td { padding: 0.75rem 0.6rem; border-bottom: 1px solid var(--line-soft); color: var(--ink); vertical-align: top; }
+    tbody tr { transition: background .12s; }
+    tbody tr:hover td { background: rgba(246, 238, 240, 0.55); }
+    tr.detail-row td { background: #fcf9fa; }
+    tr.detail-row:hover td { background: #fcf9fa; }
+    .num { text-align: right; font-family: 'IBM Plex Mono', monospace; }
+    .mono { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--plum); }
+    .who { display: flex; align-items: center; gap: .65rem; }
+    .av { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; flex: none; font-size: 11.5px; font-weight: 600; color: var(--plum); background: linear-gradient(135deg, #f6eef0, #ead9e0); }
+
+    /* ---------- Feedback ---------- */
+    .err {
+      display: flex; gap: .6rem; align-items: flex-start;
+      padding: 0.75rem 0.9rem; border-radius: 12px; font-size: 13px;
+      background: rgba(163, 48, 31, 0.06); border: 1px solid rgba(163, 48, 31, 0.25); color: var(--bad);
+    }
+    .err::before { content: '\f071'; font-family: 'Font Awesome 6 Free'; font-weight: 900; font-size: 13px; margin-top: 1px; }
+    .err.hidden { display: none; }
+    .muted { color: var(--muted); font-size: 12px; }
+    .empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .5rem; min-height: 120px; height: 100%; padding: 1rem; text-align: center; color: var(--muted); font-size: 12.5px; }
+    .empty i { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; font-size: 16px; color: var(--mauve); background: var(--raised); }
+    .cards > .empty, td > .empty { grid-column: 1 / -1; min-height: 100px; }
+
+    /* ---------- Charts & cards ---------- */
+    .chart { width: 100%; height: 300px; }
+    .chart.sm { height: 240px; }
+    .chart.lg { height: 380px; }
+    .badge { display: inline-flex; align-items: center; gap: .35rem; font-size: 11px; font-weight: 600; padding: 0.18rem 0.6rem; border-radius: 999px; white-space: nowrap; }
+    .badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .75; }
+    .sim { display: inline-flex; align-items: center; gap: .25rem; font-size: 9.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #9a6b1e; background: #fbf0dc; border: 1px solid #f0dcae; border-radius: 6px; padding: 0.08rem 0.4rem; vertical-align: middle; }
+    .bar-track { background: var(--raised); border-radius: 6px; height: 8px; overflow: hidden; }
+    .bar-fill { background: linear-gradient(90deg, var(--plum), var(--mauve)); height: 100%; border-radius: 6px; }
+    .item-card { border: 1px solid var(--line); border-radius: 14px; padding: 0.95rem 1.05rem; background: var(--panel); transition: transform .2s var(--ease), box-shadow .2s, border-color .2s; }
+    .cards > .item-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-up); border-color: #dcc3cd; }
+    .kv { display: grid; grid-template-columns: auto 1fr; gap: 0.3rem 0.85rem; font-size: 12.5px; }
     .kv dt { color: var(--muted); }
-    .kv dd { margin: 0; color: var(--ink); }
-    .pager { display: flex; gap: 0.5rem; align-items: center; justify-content: flex-end; margin-top: 0.75rem; }
-    details.section > summary { cursor: pointer; font-weight: 600; color: var(--plum); }
+    .kv dd { margin: 0; color: var(--ink); min-width: 0; overflow-wrap: anywhere; }
+    .pager { display: flex; gap: 0.5rem; align-items: center; justify-content: flex-end; margin-top: 0.9rem; }
+    details.section > summary { display: flex; align-items: center; gap: .6rem; cursor: pointer; list-style: none; font-weight: 600; color: var(--ink); font-size: 14.5px; }
+    details.section > summary::-webkit-details-marker { display: none; }
+    details.section > summary::after { content: '\f078'; font-family: 'Font Awesome 6 Free'; font-weight: 900; font-size: 11px; color: var(--muted); margin-left: auto; transition: transform .2s; }
+    details.section[open] > summary::after { transform: rotate(180deg); }
+    details.section > summary > i { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; font-size: 11.5px; color: var(--plum); background: var(--raised); }
+    .note { display: flex; gap: .55rem; align-items: flex-start; padding: .7rem .9rem; border-radius: 12px; font-size: 12px; color: #8c6a22; background: #fdf7e9; border: 1px solid #f0dcae; }
+    .note:empty { display: none; }
+    .note::before { content: '\f05a'; font-family: 'Font Awesome 6 Free'; font-weight: 900; }
+
+    /* Tab switch: the panel's blocks rise in one after another */
+    main.wrap { min-height: 100vh; }
+    section.enter > * { animation: fadeUp .42s var(--ease) both; }
+    section.enter > *:nth-child(2) { animation-delay: .04s; }
+    section.enter > *:nth-child(3) { animation-delay: .08s; }
+    section.enter > *:nth-child(4) { animation-delay: .12s; }
+    section.enter > *:nth-child(5) { animation-delay: .16s; }
+    section.enter > *:nth-child(n+6) { animation-delay: .2s; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } }
+    section[data-loading] .chart:empty { border-radius: 12px; background: linear-gradient(90deg, #f6eef0 25%, #fbf7f8 50%, #f6eef0 75%); background-size: 200% 100%; animation: shimmer 1.2s linear infinite; }
+
+    /* Customer detail panel */
+    .detail { padding: .5rem 0 .25rem; animation: fadeUp .35s var(--ease) both; }
+    .dcard { display: flex; flex-direction: column; }
+    .dcard .kpi-label { display: flex; align-items: center; gap: .45rem; }
+    .dcard .kpi-label i { color: var(--mauve); font-size: 11px; }
+    .chart.svc { height: 320px; }
+    .chart.mom { height: 440px; }
+    .stat { padding: .55rem .7rem; border-radius: 10px; background: var(--raised); }
+    .stat .mono { font-size: 17px; }
+    table.compact th { position: static; padding: .45rem .5rem; }
+    table.compact td { padding: .45rem .5rem; }
+    @media (max-width: 760px) {
+      .hero { padding: 18px 16px 16px; }
+      .tabnav { padding: 0 8px; }
+      .wrap { padding: 16px 16px 48px; }
+      form.filters { position: static; }
+      .f-title { display: none; }
+      .f-actions { margin-left: 0; width: 100%; }
+      .search input { min-width: 0; width: 100%; }
+      .lbl { flex: 1 1 140px; }
+      .kpi { padding: .85rem .9rem; gap: 10px; }
+      .kpi .ic { width: 34px; height: 34px; font-size: 13px; }
+      .kpi-val { font-size: 1.2rem; overflow-wrap: normal; }
+      details.ms > summary { max-width: none; }
+      details.ms .ms-pop { min-width: 100%; max-width: calc(100vw - 32px); } /* never push past the viewport */
+      .card-h p { margin-left: 0; }
+    }
+    /* Phones: the customer directory becomes a stack of cards, so the details panel opens full width (no sideways clipping) */
+    @media (max-width: 760px) {
+      #tab-customers .tbl { border: 0; overflow: visible; border-radius: 0; }
+      #tab-customers .tbl table, #tab-customers .tbl tbody { display: block; }
+      #tab-customers .tbl thead { display: none; }
+      #custBody tr[data-cid] { display: grid; grid-template-columns: 1fr 1fr; gap: .55rem .9rem; padding: .85rem .9rem; margin-bottom: .6rem; border: 1px solid var(--line); border-radius: 14px; background: #fff; box-shadow: var(--shadow); }
+      #custBody tr[data-cid] td { display: block; padding: 0; border: 0; text-align: left; background: none !important; min-width: 0; }
+      #custBody tr[data-cid] td[data-label]::before { content: attr(data-label); display: block; margin-bottom: .1rem; font: 600 9.5px Outfit, system-ui, sans-serif; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+      #custBody tr[data-cid] td:first-child, #custBody tr[data-cid] td:last-child { grid-column: 1 / -1; }
+      #custBody tr[data-cid] td:last-child .ghost { width: 100%; justify-content: center; padding: .5rem; }
+      #custBody tr.detail-row { display: block; margin: -.35rem 0 .9rem; }
+      #custBody tr.detail-row > td { display: block; padding: 0; border: 0; }
+      #custBody tr > td[colspan] { display: block; border: 0; }
+      .chart.mom { height: 320px; }
+      .badge { white-space: normal; max-width: 100%; line-height: 1.25; } /* long RFM tiers wrap inside narrow cards */
+      .chart.svc { height: 280px; }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
   </style>
 </head>
 <body>
@@ -144,57 +347,74 @@
     if (!SuffaiSession.requireAuth('admin')) { /* redirected */ }
   </script>
 
-  <div class="max-w-7xl mx-auto px-5 py-8">
-    <div class="mb-4">
-      <h1 class="text-3xl m-0">Admin intelligence</h1>
-      <p class="muted mt-1 mb-0">Real BigQuery customers, orders and garments plus Cloud SQL campaigns. Missing fields show "No data". Phones are masked; each reveal is logged.</p>
+  <header class="hero">
+    <div class="hero-in">
+      <div class="hero-row">
+        <div>
+          <p class="eyebrow"><i class="fa-solid fa-shield-halved"></i> Central admin</p>
+          <h1>Admin intelligence</h1>
+          <p class="hero-sub">Real BigQuery customers, orders and garments plus Cloud SQL campaigns, in one place. Missing fields show "No data".</p>
+        </div>
+        <div class="trust" aria-label="Data handling">
+          <span><i class="fa-solid fa-database"></i> Real data only</span>
+          <span><i class="fa-solid fa-mask"></i> No phone numbers shown</span>
+          <span><i class="fa-solid fa-lock"></i> Admin access only</span>
+        </div>
+      </div>
     </div>
-
-    <div class="tabbar" role="tablist">
-      <button role="tab" data-tab="customers" aria-selected="true">Customer Intelligence</button>
-      <button role="tab" data-tab="garments" aria-selected="false">Wardrobe &amp; Garments</button>
-      <button role="tab" data-tab="brands" aria-selected="false">Brands Intelligence</button>
-      <button role="tab" data-tab="campaigns" aria-selected="false">Campaigns Management</button>
+  </header>
+  <nav class="tabnav">
+    <div class="tabbar" role="tablist" aria-label="Admin sections">
+      <button role="tab" id="tabbtn-customers" aria-controls="tab-customers" data-tab="customers" aria-selected="true"><i class="fa-solid fa-users" aria-hidden="true"></i>Customer Intelligence</button>
+      <button role="tab" id="tabbtn-garments" aria-controls="tab-garments" data-tab="garments" aria-selected="false" tabindex="-1"><i class="fa-solid fa-shirt" aria-hidden="true"></i>Wardrobe &amp; Garments</button>
+      <button role="tab" id="tabbtn-brands" aria-controls="tab-brands" data-tab="brands" aria-selected="false" tabindex="-1"><i class="fa-solid fa-chart-pie" aria-hidden="true"></i>Brands Intelligence</button>
+      <button role="tab" id="tabbtn-campaigns" aria-controls="tab-campaigns" data-tab="campaigns" aria-selected="false" tabindex="-1"><i class="fa-solid fa-bullhorn" aria-hidden="true"></i>Campaigns Management</button>
+      <span class="tab-ink" aria-hidden="true"></span>
     </div>
+  </nav>
 
+  <main class="wrap">
     <!-- ============ Tab 1: Customers ============ -->
-    <section id="tab-customers" role="tabpanel">
-      <form class="card mb-4 flex flex-wrap gap-3 items-end" id="custFilters">
+    <section id="tab-customers" role="tabpanel" aria-labelledby="tabbtn-customers">
+      <div class="sec-head"><div><h2>Customer intelligence</h2><p>Who your customers are, how they're tiered and how they spend. Open any row for the full profile.</p></div></div>
+      <form class="card filters" id="custFilters">
+        <span class="f-title"><i class="fa-solid fa-sliders"></i> Filters</span>
         <label class="lbl">Name or phone
-          <input id="custQ" type="text" placeholder="e.g. Priya or 98450" maxlength="80" autocomplete="off" />
+          <span class="search"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><input id="custQ" type="text" placeholder="e.g. Priya or 98450" maxlength="80" autocomplete="off" /></span>
         </label>
         <div class="lbl">Brand<details class="ms" id="custBrand"></details></div>
         <div class="lbl">PIN code<details class="ms" id="custPin"></details></div>
         <div class="lbl">RFM tier<details class="ms" id="custRfm"></details></div>
-        <label class="lbl" style="flex-direction:row;align-items:center;gap:0.4rem;padding-bottom:0.6rem">
-          <input type="checkbox" id="custQualified" /> Qualified only
-        </label>
-        <button type="submit" class="primary">Apply</button>
-        <span class="muted self-center" data-status="customers" aria-live="polite"></span>
+        <label class="check"><input type="checkbox" id="custQualified" /> Qualified only</label>
+        <div class="f-actions">
+          <span class="muted" data-status="customers" aria-live="polite"></span>
+          <button type="button" class="reset" data-reset>Reset</button>
+          <button type="submit" class="primary"><i class="fa-solid fa-filter"></i> Apply</button>
+        </div>
       </form>
       <div class="err mb-4 hidden" data-error="customers" role="alert"></div>
 
-      <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
-        <div class="card"><div class="kpi-label">Total customers</div><div class="kpi-val" id="kCustTotal">—</div></div>
-        <div class="card"><div class="kpi-label" id="kQualLabel" title="">Qualified users</div><div class="kpi-val" id="kCustQual">—</div></div>
-        <div class="card"><div class="kpi-label">Cohort size</div><div class="kpi-val" id="kCohort">—</div></div>
-        <div class="card"><div class="kpi-label">Cohort spend</div><div class="kpi-val" id="kCohortSpend">—</div></div>
-        <div class="card"><div class="kpi-label">Avg orders</div><div class="kpi-val" id="kAvgOrders">—</div></div>
+      <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 mb-4">
+        <div class="card kpi feature"><span class="ic"><i class="fa-solid fa-users"></i></span><div><div class="kpi-label">Total customers</div><div class="kpi-val" id="kCustTotal">—</div></div></div>
+        <div class="card kpi"><span class="ic"><i class="fa-solid fa-circle-check"></i></span><div><div class="kpi-label" id="kQualLabel" title="">Qualified users</div><div class="kpi-val" id="kCustQual">—</div></div></div>
+        <div class="card kpi"><span class="ic"><i class="fa-solid fa-people-group"></i></span><div><div class="kpi-label">Cohort size</div><div class="kpi-val" id="kCohort">—</div></div></div>
+        <div class="card kpi"><span class="ic"><i class="fa-solid fa-indian-rupee-sign"></i></span><div><div class="kpi-label">Cohort spend</div><div class="kpi-val" id="kCohortSpend">—</div></div></div>
+        <div class="card kpi"><span class="ic"><i class="fa-solid fa-receipt"></i></span><div><div class="kpi-label">Avg orders</div><div class="kpi-val" id="kAvgOrders">—</div></div></div>
       </div>
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-        <div class="card"><h2 class="text-base font-semibold m-0 mb-2">RFM tier breakdown</h2><div class="chart" id="chRfm"></div></div>
-        <div class="card"><h2 class="text-base font-semibold m-0 mb-2">Age × gender spread</h2><div class="chart" id="chAgeGender"></div></div>
+        <div class="card"><div class="card-h"><div><h2><i class="fa-solid fa-ranking-star"></i>RFM tier breakdown</h2><p>Share of the cohort in each recency-frequency-monetary tier.</p></div></div><div class="chart" id="chRfm"></div></div>
+        <div class="card"><div class="card-h"><div><h2><i class="fa-solid fa-venus-mars"></i>Age × gender spread</h2><p>Customers per age band, stacked by gender.</p></div></div><div class="chart" id="chAgeGender"></div></div>
       </div>
 
       <div class="card">
-        <div class="flex items-center justify-between mb-2">
-          <h2 class="text-base font-semibold m-0">Customer directory</h2>
+        <div class="card-h">
+          <div><h2><i class="fa-solid fa-address-book"></i>Customer directory</h2><p>Open Details for a customer's full profile, wardrobe and spending.</p></div>
           <span class="muted" id="custCount"></span>
         </div>
-        <div class="overflow-x-auto">
+        <div class="tbl">
           <table>
             <thead><tr>
-              <th>Name</th><th>Phone</th><th>PIN</th><th>RFM</th><th>Tag</th>
+              <th>Name</th><th>PIN</th><th>RFM</th><th>Tag</th>
               <th class="num">Orders</th><th class="num">Spend</th><th>Last order</th><th></th>
             </tr></thead>
             <tbody id="custBody"></tbody>
@@ -205,64 +425,69 @@
     </section>
 
     <!-- ============ Tab 2: Garments ============ -->
-    <section id="tab-garments" role="tabpanel" hidden>
-      <form class="card mb-4 flex flex-wrap gap-3 items-end" id="garFilters">
+    <section id="tab-garments" role="tabpanel" aria-labelledby="tabbtn-garments" hidden>
+      <div class="sec-head"><div><h2>Wardrobe &amp; garments</h2><p>What sits in customers' wardrobes: categories, fabrics, patterns and the size curve.</p></div></div>
+      <form class="card filters" id="garFilters">
+        <span class="f-title"><i class="fa-solid fa-sliders"></i> Filters</span>
         <div class="lbl">Brand<details class="ms" id="garBrand"></details></div>
         <div class="lbl">PIN code<details class="ms" id="garPin"></details></div>
         <div class="lbl">Commodity<details class="ms" id="garCommodity"></details></div>
         <div class="lbl">Fabric<details class="ms" id="garFabric"></details></div>
         <div class="lbl">Pattern<details class="ms" id="garPattern"></details></div>
         <div class="lbl">Size<details class="ms" id="garSize"></details></div>
-        <button type="submit" class="primary">Apply</button>
-        <span class="muted self-center" data-status="garments" aria-live="polite"></span>
+        <div class="f-actions">
+          <span class="muted" data-status="garments" aria-live="polite"></span>
+          <button type="button" class="reset" data-reset>Reset</button>
+          <button type="submit" class="primary"><i class="fa-solid fa-filter"></i> Apply</button>
+        </div>
       </form>
       <div class="err mb-4 hidden" data-error="garments" role="alert"></div>
 
       <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-        <div class="card"><div class="kpi-label">Garments (filtered)</div><div class="kpi-val" id="kGarTotal">—</div></div>
-        <div class="card"><div class="kpi-label">Tracked in wardrobes</div><div class="kpi-val" id="kGarTracked">—</div></div>
-        <div class="card"><div class="kpi-label">Top fabrics</div><div class="text-sm mt-1" id="kGarFabrics">—</div></div>
-        <div class="card"><div class="kpi-label">Dominant patterns</div><div class="text-sm mt-1" id="kGarPatterns">—</div></div>
+        <div class="card kpi feature"><span class="ic"><i class="fa-solid fa-shirt"></i></span><div><div class="kpi-label">Garments (filtered)</div><div class="kpi-val" id="kGarTotal">—</div></div></div>
+        <div class="card kpi"><span class="ic"><i class="fa-solid fa-box-archive"></i></span><div><div class="kpi-label">Tracked in wardrobes</div><div class="kpi-val" id="kGarTracked">—</div></div></div>
+        <div class="card kpi"><span class="ic"><i class="fa-solid fa-layer-group"></i></span><div><div class="kpi-label">Top fabrics</div><div class="kpi-text" id="kGarFabrics">—</div></div></div>
+        <div class="card kpi"><span class="ic"><i class="fa-solid fa-shapes"></i></span><div><div class="kpi-label">Dominant patterns</div><div class="kpi-text" id="kGarPatterns">—</div></div></div>
       </div>
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
-        <div class="card lg:col-span-2"><h2 class="text-base font-semibold m-0 mb-2">Category × fabric</h2><div class="chart" id="chComFab"></div></div>
-        <div class="card"><h2 class="text-base font-semibold m-0 mb-2">Pattern mix</h2><div class="chart" id="chPattern"></div></div>
+        <div class="card lg:col-span-2"><div class="card-h"><div><h2><i class="fa-solid fa-table-cells"></i>Category × fabric</h2><p>Garments per category, stacked by fabric.</p></div></div><div class="chart" id="chComFab"></div></div>
+        <div class="card"><div class="card-h"><div><h2><i class="fa-solid fa-swatchbook"></i>Pattern mix</h2><p>Share of each pattern.</p></div></div><div class="chart" id="chPattern"></div></div>
       </div>
-      <div class="card mb-4"><h2 class="text-base font-semibold m-0 mb-2">Size curve</h2><div class="chart sm" id="chSize"></div></div>
+      <div class="card mb-4"><div class="card-h"><div><h2><i class="fa-solid fa-ruler"></i>Size curve</h2><p>How demand spreads across sizes.</p></div></div><div class="chart sm" id="chSize"></div></div>
 
       <div class="card mb-4">
-        <div class="flex items-center justify-between mb-3">
-          <h2 class="text-base font-semibold m-0">Garments</h2>
+        <div class="card-h">
+          <div><h2><i class="fa-solid fa-grip"></i>Garments</h2><p>Every garment matching the filters, with its owner and attributes.</p></div>
           <span class="muted" id="garCount"></span>
         </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3" id="garCards"></div>
+        <div class="cards grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3" id="garCards"></div>
         <div class="pager" id="garPager"></div>
       </div>
 
       <details class="card section" id="uniqueSection">
-        <summary>Image-deduplicated garments (similarity service)</summary>
-        <form class="mt-3 mb-3 flex flex-wrap gap-3 items-end" id="uniqFilters">
+        <summary><i class="fa-solid fa-fingerprint"></i>Image-deduplicated garments <span class="muted" style="font-weight:400">· similarity service</span></summary>
+        <form class="mt-4 mb-4 flex flex-wrap gap-3 items-end" id="uniqFilters">
           <label class="lbl">Brand<select id="uniqBrand" class="sel"><option value="">All brands</option></select></label>
           <label class="lbl">PIN code<select id="uniqPin" class="sel"><option value="">All PINs</option></select></label>
-          <button type="submit" class="primary">Apply</button>
+          <button type="submit" class="primary"><i class="fa-solid fa-filter"></i> Apply</button>
           <span class="muted self-center" id="uniqStatus" aria-live="polite"></span>
         </form>
         <div class="err mb-3 hidden" id="uniqErr" role="alert"></div>
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-          <div class="card"><div class="kpi-label">Unique garments</div><div class="kpi-val" id="kpiUnique">—</div></div>
-          <div class="card"><div class="kpi-label">Total observations</div><div class="kpi-val" id="kpiObs">—</div></div>
-          <div class="card"><div class="kpi-label">Unique users</div><div class="kpi-val" id="kpiUsers">—</div></div>
+          <div class="card kpi"><span class="ic"><i class="fa-solid fa-fingerprint"></i></span><div><div class="kpi-label">Unique garments</div><div class="kpi-val" id="kpiUnique">—</div></div></div>
+          <div class="card kpi"><span class="ic"><i class="fa-solid fa-eye"></i></span><div><div class="kpi-label">Total observations</div><div class="kpi-val" id="kpiObs">—</div></div></div>
+          <div class="card kpi"><span class="ic"><i class="fa-solid fa-user"></i></span><div><div class="kpi-label">Unique users</div><div class="kpi-val" id="kpiUsers">—</div></div></div>
         </div>
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
           <div><h3 class="text-sm font-semibold m-0 mb-2">By PIN</h3>
-            <table><thead><tr><th>PIN</th><th class="num">Unique</th><th class="num">Observations</th></tr></thead><tbody id="byPin"></tbody></table>
+            <div class="tbl"><table><thead><tr><th>PIN</th><th class="num">Unique</th><th class="num">Observations</th></tr></thead><tbody id="byPin"></tbody></table></div>
             <div class="pager" id="byPinPager"></div></div>
           <div><h3 class="text-sm font-semibold m-0 mb-2">By brand</h3>
-            <table><thead><tr><th>Brand</th><th class="num">Unique</th><th class="num">Observations</th></tr></thead><tbody id="byBrand"></tbody></table>
+            <div class="tbl"><table><thead><tr><th>Brand</th><th class="num">Unique</th><th class="num">Observations</th></tr></thead><tbody id="byBrand"></tbody></table></div>
             <div class="pager" id="byBrandPager"></div></div>
         </div>
         <h3 class="text-sm font-semibold m-0 mb-2">Recent unique garments</h3>
-        <div class="overflow-x-auto">
+        <div class="tbl">
           <table><thead><tr><th>Garment ID</th><th>Brand</th><th>GCS key</th><th class="num">Observations</th><th>Created</th></tr></thead>
             <tbody id="listBody"></tbody></table>
         </div>
@@ -271,69 +496,79 @@
     </section>
 
     <!-- ============ Tab 3: Brands ============ -->
-    <section id="tab-brands" role="tabpanel" hidden>
-      <form class="card mb-4 flex flex-wrap gap-3 items-end" id="brFilters">
+    <section id="tab-brands" role="tabpanel" aria-labelledby="tabbtn-brands" hidden>
+      <div class="sec-head"><div><h2>Brands intelligence</h2><p>Market share, co-ownership and taste across brands, so you can see who leads and where.</p></div></div>
+      <form class="card filters" id="brFilters">
+        <span class="f-title"><i class="fa-solid fa-sliders"></i> Filters</span>
         <div class="lbl">Brands<details class="ms" id="brBrands"></details></div>
         <div class="lbl">Hubs / PINs<details class="ms" id="brPin"></details></div>
         <div class="lbl">Customer tier<details class="ms" id="brRfm"></details></div>
         <div class="lbl">Commodity<details class="ms" id="brCommodity"></details></div>
         <div class="lbl" title="Derived from each garment's gender field">Menu catalog<details class="ms" id="brMenu"></details></div>
-        <button type="submit" class="primary">Apply</button>
-        <span class="muted self-center" data-status="brands" aria-live="polite"></span>
+        <div class="f-actions">
+          <span class="muted" data-status="brands" aria-live="polite"></span>
+          <button type="button" class="reset" data-reset>Reset</button>
+          <button type="submit" class="primary"><i class="fa-solid fa-filter"></i> Apply</button>
+        </div>
       </form>
       <div class="err mb-4 hidden" data-error="brands" role="alert"></div>
 
-      <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
-        <div class="card"><div class="kpi-label">Wardrobe items</div><div class="kpi-val" id="kBrItems">—</div></div>
-        <div class="card"><div class="kpi-label">Brands</div><div class="kpi-val" id="kBrCount">—</div></div>
-        <div class="card"><div class="kpi-label">Leader</div><div class="text-lg font-semibold mt-1" id="kBrLeader">—</div></div>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+        <div class="card kpi feature"><span class="ic"><i class="fa-solid fa-boxes-stacked"></i></span><div><div class="kpi-label">Wardrobe items</div><div class="kpi-val" id="kBrItems">—</div></div></div>
+        <div class="card kpi"><span class="ic"><i class="fa-solid fa-tags"></i></span><div><div class="kpi-label">Brands</div><div class="kpi-val" id="kBrCount">—</div></div></div>
+        <div class="card kpi"><span class="ic"><i class="fa-solid fa-crown"></i></span><div><div class="kpi-label">Leader</div><div class="kpi-text text-lg font-semibold" id="kBrLeader">—</div></div></div>
       </div>
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-        <div class="card"><h2 class="text-base font-semibold m-0 mb-2">Market share ranking</h2><div class="chart lg" id="chShare"></div></div>
-        <div class="card"><h2 class="text-base font-semibold m-0 mb-2">Wardrobe overlap (brand → commodity)</h2><div class="chart lg" id="chTreemap"></div></div>
-        <div class="card"><h2 class="text-base font-semibold m-0 mb-2">Brand co-ownership (customers owning both)</h2><div class="chart lg" id="chOverlap"></div></div>
-        <div class="card"><h2 class="text-base font-semibold m-0 mb-2">Taste sunburst (menu → commodity → colour)</h2><div class="chart lg" id="chSunburst"></div>
+        <div class="card"><div class="card-h"><div><h2><i class="fa-solid fa-chart-bar"></i>Market share ranking</h2><p>Top 15 brands by share of wardrobe items.</p></div></div><div class="chart lg" id="chShare"></div></div>
+        <div class="card"><div class="card-h"><div><h2><i class="fa-solid fa-border-all"></i>Wardrobe overlap</h2><p>Each brand split into the commodities customers own.</p></div></div><div class="chart lg" id="chTreemap"></div></div>
+        <div class="card"><div class="card-h"><div><h2><i class="fa-solid fa-link"></i>Brand co-ownership</h2><p>Customers who own both brands. Darker means more overlap.</p></div></div><div class="chart lg" id="chOverlap"></div></div>
+        <div class="card"><div class="card-h"><div><h2><i class="fa-solid fa-sun"></i>Taste sunburst</h2><p>Menu → commodity → colour.</p></div></div><div class="chart lg" id="chSunburst"></div>
           <p class="muted m-0" id="brMenuNote"></p></div>
-        <div class="card"><h2 class="text-base font-semibold m-0 mb-2">Size demand matrix</h2><div class="chart" id="chSizeMatrix"></div></div>
-        <div class="card"><h2 class="text-base font-semibold m-0 mb-2">Regional skew across hubs</h2><div class="chart" id="chRegional"></div></div>
+        <div class="card"><div class="card-h"><div><h2><i class="fa-solid fa-ruler-combined"></i>Size demand matrix</h2><p>Items per commodity and size.</p></div></div><div class="chart" id="chSizeMatrix"></div></div>
+        <div class="card"><div class="card-h"><div><h2><i class="fa-solid fa-map-location-dot"></i>Regional skew across hubs</h2><p>Brand mix per PIN hub.</p></div></div><div class="chart" id="chRegional"></div></div>
       </div>
       <div class="card">
-        <h2 class="text-base font-semibold m-0 mb-3">Brand deep dives</h2>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" id="brCards"></div>
+        <div class="card-h"><div><h2><i class="fa-solid fa-magnifying-glass-chart"></i>Brand deep dives</h2><p>Reach, catalogue and taste for each brand.</p></div></div>
+        <div class="cards grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" id="brCards"></div>
         <div class="pager" id="brPager"></div>
       </div>
     </section>
 
     <!-- ============ Tab 4: Campaigns ============ -->
-    <section id="tab-campaigns" role="tabpanel" hidden>
-      <form class="card mb-4 flex flex-wrap gap-3 items-end" id="cmpFilters">
+    <section id="tab-campaigns" role="tabpanel" aria-labelledby="tabbtn-campaigns" hidden>
+      <div class="sec-head"><div><h2>Campaigns management</h2><p>Every brand campaign with its status, audience and outcome. Delivery outcomes are simulated.</p></div></div>
+      <form class="card filters" id="cmpFilters">
+        <span class="f-title"><i class="fa-solid fa-sliders"></i> Filters</span>
         <div class="lbl">Brand<details class="ms" id="cmpBrand"></details></div>
         <div class="lbl">Status<details class="ms" id="cmpStatus"></details></div>
         <div class="lbl">PIN code<details class="ms" id="cmpPin"></details></div>
         <div class="lbl">RFM<details class="ms" id="cmpRfm"></details></div>
-        <button type="submit" class="primary">Apply</button>
-        <span class="muted self-center" data-status="campaigns" aria-live="polite"></span>
+        <div class="f-actions">
+          <span class="muted" data-status="campaigns" aria-live="polite"></span>
+          <button type="button" class="reset" data-reset>Reset</button>
+          <button type="submit" class="primary"><i class="fa-solid fa-filter"></i> Apply</button>
+        </div>
       </form>
       <div class="err mb-4 hidden" data-error="campaigns" role="alert"></div>
 
       <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-        <div class="card"><div class="kpi-label">Campaigns</div><div class="kpi-val" id="kCmpTotal">—</div></div>
-        <div class="card"><div class="kpi-label">Active</div><div class="kpi-val" id="kCmpActive">—</div></div>
-        <div class="card"><div class="kpi-label">Avg conversion <span class="sim">Simulated</span></div><div class="kpi-val" id="kCmpConv">—</div></div>
-        <div class="card"><div class="kpi-label">Total redemptions <span class="sim">Simulated</span></div><div class="kpi-val" id="kCmpRed">—</div></div>
+        <div class="card kpi feature"><span class="ic"><i class="fa-solid fa-bullhorn"></i></span><div><div class="kpi-label">Campaigns</div><div class="kpi-val" id="kCmpTotal">—</div></div></div>
+        <div class="card kpi"><span class="ic"><i class="fa-solid fa-bolt"></i></span><div><div class="kpi-label">Active</div><div class="kpi-val" id="kCmpActive">—</div></div></div>
+        <div class="card kpi"><span class="ic"><i class="fa-solid fa-percent"></i></span><div><div class="kpi-label">Avg conversion <span class="sim">Simulated</span></div><div class="kpi-val" id="kCmpConv">—</div></div></div>
+        <div class="card kpi"><span class="ic"><i class="fa-solid fa-ticket"></i></span><div><div class="kpi-label">Total redemptions <span class="sim">Simulated</span></div><div class="kpi-val" id="kCmpRed">—</div></div></div>
       </div>
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-        <div class="card"><h2 class="text-base font-semibold m-0 mb-2">Redemptions by brand <span class="sim">Simulated</span></h2><div class="chart" id="chRedemptions"></div></div>
-        <div class="card"><h2 class="text-base font-semibold m-0 mb-2">Status split by brand</h2><div class="chart" id="chStatus"></div></div>
+        <div class="card"><div class="card-h"><div><h2><i class="fa-solid fa-ticket"></i>Redemptions by brand <span class="sim">Simulated</span></h2><p>Simulated offer redemptions per brand.</p></div></div><div class="chart" id="chRedemptions"></div></div>
+        <div class="card"><div class="card-h"><div><h2><i class="fa-solid fa-list-check"></i>Status split by brand</h2><p>Campaigns per brand by lifecycle status.</p></div></div><div class="chart" id="chStatus"></div></div>
       </div>
-      <p class="muted mb-3" id="cmpNote"></p>
+      <p class="note mb-4" id="cmpNote"></p>
       <div class="card mb-4">
-        <div class="flex items-center justify-between mb-3">
-          <h2 class="text-base font-semibold m-0">Campaigns</h2>
+        <div class="card-h">
+          <div><h2><i class="fa-solid fa-rectangle-list"></i>Campaigns</h2><p>Cards show the essentials. Open All columns for the full table.</p></div>
           <button type="button" class="ghost" id="btnAllCols" aria-expanded="false">All columns</button>
         </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" id="cmpCards"></div>
-        <div class="overflow-x-auto mt-4" id="cmpTableWrap" hidden>
+        <div class="cards grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" id="cmpCards"></div>
+        <div class="tbl mt-4" id="cmpTableWrap" hidden>
           <table>
             <thead><tr>
               <th>Created</th><th>Brand</th><th>Name</th><th>Status</th><th>Run mode</th><th>Channels</th><th>Objective</th>
@@ -348,22 +583,25 @@
         <div class="pager" id="cmpPager"></div>
       </div>
     </section>
-  </div>
+  </main>
 
   <script>
     // ---------------- shared helpers ----------------
     const apiBase = () => (window.DASHBOARD_API || '').replace(/\/$/, '');
     const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const fmt = (n) => (n == null || n === '' ? '—' : Number.isFinite(Number(n)) ? Number(n).toLocaleString() : esc(n));
-    const money = (v) => (v == null || v === '' ? '—' : '₹' + Math.round(Number(v)).toLocaleString());
+    const money = (v) => (v == null || v === '' || !Number.isFinite(Number(v)) ? '—' : '₹' + Math.round(Number(v)).toLocaleString());
+    const compact = (v) => Intl.NumberFormat('en-IN', { notation: 'compact', maximumFractionDigits: 1 }).format(v);
     const nd = (v) => (v == null || v === '' ? '<span class="muted">No data</span>' : esc(v));
-    const NO_DATA = '<div class="muted">No data for these filters</div>';
+    const NO_DATA = '<div class="empty"><i class="fa-regular fa-folder-open" aria-hidden="true"></i>No data for these filters</div>';
     const PALETTE = ['#6b3a55', '#c59fb0', '#a8577e', '#e3b7a0', '#7d8fb3', '#9bb59a', '#d9a441', '#5c7a8a', '#b07a9a', '#8a7480'];
+    const initials = (name) => String(name || '?').trim().split(/\s+/).slice(0, 2).map(w => w.charAt(0)).join('').toUpperCase() || '?';
 
     async function api(path, params, opts) {
       const q = params ? new URLSearchParams(Object.entries(params).filter(([, v]) => v !== '' && v != null && v !== false)).toString() : '';
       const res = await fetch(apiBase() + path + (q ? '?' + q : ''), {
         method: (opts && opts.method) || 'GET',
+        signal: opts && opts.signal,
         headers: { Accept: 'application/json', ...SuffaiSession.authHeaders() },
       });
       const data = await res.json().catch(() => ({}));
@@ -382,11 +620,31 @@
       el.classList.toggle('hidden', !msg);
       if (msg) console.error('[admin]', tab, msg);
     }
+    // One load per tab at a time: a newer Apply / page / Reset aborts the older request so a slow
+    // stale response can never overwrite fresher results. fn(signal) must pass signal to api().
+    const inflight = {};
     async function run(tab, fn) {
+      const sec = document.getElementById('tab-' + tab);
+      const btn = sec && sec.querySelector('form.filters button[type=submit]');
+      if (inflight[tab]) inflight[tab].abort();
+      const ctl = inflight[tab] = new AbortController();
       setStatus(tab, 'Loading…');
       setError(tab, '');
-      try { await fn(); setStatus(tab, 'Updated ' + new Date().toLocaleTimeString()); }
-      catch (e) { setError(tab, e.message || String(e)); setStatus(tab, ''); }
+      if (sec) sec.dataset.loading = '1';
+      if (btn) btn.disabled = true;
+      try { await fn(ctl.signal); if (!ctl.signal.aborted) setStatus(tab, 'Updated ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })); }
+      catch (e) {
+        if (ctl.signal.aborted) return; // superseded by a newer load
+        setError(tab, e.message || String(e)); setStatus(tab, '');
+        if (sec) sec.querySelectorAll('.chart:empty, .cards:empty').forEach(el => { el.innerHTML = '<div class="empty"><i class="fa-solid fa-plug-circle-xmark" aria-hidden="true"></i>Couldn\'t load this. Try Apply again.</div>'; });
+      }
+      finally {
+        if (inflight[tab] === ctl) {
+          delete inflight[tab];
+          if (sec) delete sec.dataset.loading;
+          if (btn) btn.disabled = false;
+        }
+      }
     }
 
     const charts = {};
@@ -399,10 +657,48 @@
         el.innerHTML = NO_DATA;
         return;
       }
-      if (!charts[id] || charts[id].isDisposed()) { el.innerHTML = ''; charts[id] = echarts.init(el); }
-      charts[id].setOption({ color: PALETTE, textStyle: { fontFamily: 'Outfit, system-ui, sans-serif' }, ...option }, true);
+      // Re-init when the element was replaced (e.g. a customer detail panel closed and reopened)
+      if (charts[id] && (charts[id].isDisposed() || charts[id].getDom() !== el)) { charts[id].dispose(); delete charts[id]; }
+      if (!charts[id]) { el.innerHTML = ''; charts[id] = echarts.init(el); }
+      charts[id].setOption(themed(option), true);
     }
-    window.addEventListener('resize', () => Object.values(charts).forEach(c => c && !c.isDisposed() && c.resize()));
+    // One look for every chart: dark tooltip, quiet axes, rounded bars, separated pie slices.
+    function themed(option) {
+      const axis = (a) => ({
+        ...a,
+        axisLine: { lineStyle: { color: '#ead9e0' } }, axisTick: { show: false },
+        splitLine: { lineStyle: { color: '#f3e9ed', type: 'dashed' } }, nameTextStyle: { color: '#8a7480' },
+        axisLabel: { color: '#8a7480', fontSize: 11, ...(a.axisLabel || {}) },
+      });
+      const axes = (a) => (a == null ? a : Array.isArray(a) ? a.map(axis) : axis(a));
+      const horizontal = option.yAxis && !Array.isArray(option.yAxis) && option.yAxis.type === 'category';
+      const series = (option.series || []).map(s => {
+        if (s.type === 'bar' && !s.stack) return { barMaxWidth: 34, ...s, itemStyle: { borderRadius: horizontal ? [0, 6, 6, 0] : [6, 6, 0, 0], ...(s.itemStyle || {}) } };
+        if (s.type === 'bar') return { barMaxWidth: 34, ...s };
+        if (s.type === 'pie') return { ...s, itemStyle: { borderColor: '#fff', borderWidth: 2, borderRadius: 6, ...(s.itemStyle || {}) }, label: { color: '#3b2733', ...(s.label || {}) } };
+        if (s.type === 'line') return { symbolSize: 6, ...s, lineStyle: { width: 2.5, ...(s.lineStyle || {}) } };
+        return s;
+      });
+      return {
+        color: PALETTE,
+        textStyle: { fontFamily: 'Outfit, system-ui, sans-serif', color: '#3b2733' },
+        ...option,
+        tooltip: option.tooltip && {
+          backgroundColor: 'rgba(42, 15, 31, .94)', borderWidth: 0, padding: [8, 12],
+          textStyle: { color: '#fff', fontSize: 12 }, extraCssText: 'border-radius:10px;box-shadow:0 10px 24px rgba(42,15,31,.25);',
+          ...option.tooltip,
+        },
+        legend: option.legend && { icon: 'roundRect', itemWidth: 10, itemHeight: 10, itemGap: 14, textStyle: { color: '#3b2733', fontSize: 11.5 }, ...option.legend },
+        xAxis: axes(option.xAxis), yAxis: axes(option.yAxis),
+        series,
+      };
+    }
+    // Dispose charts whose element left the DOM (closed detail rows, re-rendered tables).
+    function pruneCharts() {
+      for (const [id, c] of Object.entries(charts)) if (c.isDisposed() || !c.getDom().isConnected) { c.dispose(); delete charts[id]; }
+    }
+    const resizeCharts = () => { pruneCharts(); Object.values(charts).forEach(c => c.resize()); };
+    window.addEventListener('resize', resizeCharts);
 
     // Multi-select built on <details>; keeps selections across option refreshes.
     function msRender(id, label, options) {
@@ -438,13 +734,20 @@
     document.addEventListener('click', (e) => {
       document.querySelectorAll('details.ms[open]').forEach(d => { if (!d.contains(e.target)) d.removeAttribute('open'); });
     });
+    // Escape closes an open multi-select and returns focus to its toggle
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      const d = e.target.closest && e.target.closest('details.ms[open]');
+      if (d) { d.removeAttribute('open'); d.querySelector('summary').focus(); }
+    });
 
     function pager(elId, total, page, size, onPage) {
       const el = document.getElementById(elId);
-      const pages = Math.max(1, Math.ceil(total / size));
+      const pages = Math.max(1, Math.ceil((Number(total) || 0) / (size || PAGE_SIZE)));
+      if (pages <= 1) { el.innerHTML = ''; return; }
       el.innerHTML = '<span class="muted">Page ' + page + ' of ' + pages + '</span>'
-        + '<button type="button" class="ghost" data-p="' + (page - 1) + '"' + (page <= 1 ? ' disabled' : '') + '>Previous</button>'
-        + '<button type="button" class="ghost" data-p="' + (page + 1) + '"' + (page >= pages ? ' disabled' : '') + '>Next</button>';
+        + '<button type="button" class="ghost" data-p="' + (page - 1) + '"' + (page <= 1 ? ' disabled' : '') + '><i class="fa-solid fa-chevron-left" aria-hidden="true"></i> Previous</button>'
+        + '<button type="button" class="ghost" data-p="' + (page + 1) + '"' + (page >= pages ? ' disabled' : '') + '>Next <i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button>';
       el.querySelectorAll('button').forEach(b => b.addEventListener('click', () => onPage(Number(b.dataset.p))));
     }
     const PAGE_SIZE = 10;
@@ -476,24 +779,62 @@
     // ---------------- tabs ----------------
     const loaders = {};
     const loaded = new Set();
+    const tabBtns = [...document.querySelectorAll('.tabbar button[data-tab]')];
+    const tabInk = document.querySelector('.tab-ink');
+    const hero = document.querySelector('.hero');
+    let currentTab = null;
+    function moveInk() {
+      const b = tabBtns.find(x => x.getAttribute('aria-selected') === 'true');
+      if (!b) return;
+      tabInk.style.width = b.offsetWidth + 'px';
+      tabInk.style.transform = 'translateX(' + b.offsetLeft + 'px)';
+    }
     function showTab(name) {
       if (!document.getElementById('tab-' + name)) name = 'customers';
-      document.querySelectorAll('.tabbar button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === name)));
-      document.querySelectorAll('section[role=tabpanel]').forEach(s => { s.hidden = s.id !== 'tab-' + name; });
+      if (name === currentTab) return;
+      currentTab = name;
+      tabBtns.forEach(b => {
+        const on = b.dataset.tab === name;
+        b.setAttribute('aria-selected', String(on));
+        b.tabIndex = on ? 0 : -1;
+        if (on) b.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      });
+      moveInk();
+      // Land at the top of the new section instead of mid-page where the last one was scrolled
+      if (window.scrollY > hero.offsetHeight) window.scrollTo({ top: hero.offsetHeight, behavior: 'auto' });
+      document.querySelectorAll('section[role=tabpanel]').forEach(s => {
+        const on = s.id === 'tab-' + name;
+        s.hidden = !on;
+        s.classList.remove('enter');
+        if (on) { void s.offsetWidth; s.classList.add('enter'); }
+      });
       if (!loaded.has(name)) { loaded.add(name); loaders[name](); }
-      else setTimeout(() => Object.values(charts).forEach(c => c && !c.isDisposed() && c.resize()), 0);
+      else requestAnimationFrame(resizeCharts);
       history.replaceState(null, '', '#' + name);
     }
-    document.querySelectorAll('.tabbar button').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
+    tabBtns.forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
+    // Arrow keys / Home / End move between tabs (WAI-ARIA tabs pattern)
+    document.querySelector('.tabbar').addEventListener('keydown', (e) => {
+      const i = tabBtns.indexOf(document.activeElement);
+      if (i < 0) return;
+      const to = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: tabBtns.length - 1 }[e.key];
+      if (to == null) return;
+      e.preventDefault();
+      const b = tabBtns[(to + tabBtns.length) % tabBtns.length];
+      b.focus();
+      showTab(b.dataset.tab);
+    });
+    window.addEventListener('resize', moveInk);
+    window.addEventListener('hashchange', () => showTab(location.hash.slice(1)));
+    document.fonts && document.fonts.ready.then(moveInk);
 
     // ---------------- Tab 1: customers ----------------
-    let custPage = 1;
     function custParams() {
       return { q: document.getElementById('custQ').value.trim(), rfm: msCsv('custRfm'), pin: msCsv('custPin'), brand: msCsv('custBrand') };
     }
-    async function loadCustomerOverview() {
+    async function loadCustomerOverview(signal) {
       const p = custParams();
-      const o = await api('/v1/admin/intel/customers-overview', { rfm: p.rfm, pin: p.pin, brand: p.brand });
+      const o = await api('/v1/admin/intel/customers-overview', { rfm: p.rfm, pin: p.pin, brand: p.brand }, { signal });
       msRender('custBrand', 'brands', o.options.brands || []);
       msRender('custRfm', 'tiers', o.options.rfm_segments);
       msRender('custPin', 'PINs', o.options.pin_codes);
@@ -515,72 +856,63 @@
         series: genders.map(g => ({ name: g, type: 'bar', stack: 'g', data: ag.series[g] })),
       } : null);
     }
-    async function loadCustomerPage(page) {
-      custPage = page || 1;
+    async function loadCustomerPage(page, signal) {
       const p = custParams();
-      const data = await api('/v1/admin/intel/customers', { ...p, qualified: document.getElementById('custQualified').checked ? 'true' : '', page: custPage, size: PAGE_SIZE });
-      document.getElementById('custCount').textContent = fmt(data.total) + ' customers';
+      const data = await api('/v1/admin/intel/customers', { ...p, qualified: document.getElementById('custQualified').checked ? 'true' : '', page: page || 1, size: PAGE_SIZE }, { signal });
+      document.getElementById('custCount').textContent = fmt(data.total) + (data.total === 1 ? ' customer' : ' customers');
       const body = document.getElementById('custBody');
       body.innerHTML = data.items.length ? data.items.map(c => `<tr data-cid="${esc(c.customer_id)}">
-          <td><div class="font-semibold">${esc(c.name)}</div><div class="mono">${esc(c.short_id)}</div></td>
-          <td><span class="mono" data-phone>${esc(c.phone_masked)}</span>
-            ${c.has_phone ? '<button type="button" class="ghost ml-1" data-reveal>Reveal</button>' : ''}</td>
-          <td>${nd(c.pin_code)}</td>
-          <td>${rfmBadge(c.rfm_segment)}</td>
-          <td class="muted">${esc(c.tag)}</td>
-          <td class="num">${fmt(c.orders)}</td>
-          <td class="num">${money(c.spend)}</td>
-          <td>${nd(c.last_order)}</td>
+          <td><div class="who"><span class="av" aria-hidden="true">${esc(initials(c.name))}</span><div><div class="font-semibold">${esc(c.name)}</div><div class="mono">${esc(c.short_id)}</div></div></div></td>
+          <td data-label="PIN">${nd(c.pin_code)}</td>
+          <td data-label="RFM">${rfmBadge(c.rfm_segment)}</td>
+          <td data-label="Tag" class="muted">${esc(c.tag)}</td>
+          <td data-label="Orders" class="num">${fmt(c.orders)}</td>
+          <td data-label="Spend" class="num">${money(c.spend)}</td>
+          <td data-label="Last order">${nd(c.last_order)}</td>
           <td><button type="button" class="ghost" data-expand aria-expanded="false">Details</button></td>
-        </tr>`).join('') : '<tr><td colspan="9" class="muted">No data for these filters</td></tr>';
-      pager('custPager', data.total, data.page, data.size, (pg) => run('customers', () => loadCustomerPage(pg)));
+        </tr>`).join('') : '<tr><td colspan="8">' + NO_DATA + '</td></tr>';
+      pruneCharts(); // detail-row charts that were just replaced
+      pager('custPager', data.total, data.page, data.size, (pg) => run('customers', (sig) => loadCustomerPage(pg, sig)));
     }
     document.getElementById('custBody').addEventListener('click', async (e) => {
       const tr = e.target.closest('tr[data-cid]');
       if (!tr) return;
       const cid = tr.dataset.cid;
-      if (e.target.matches('[data-reveal]')) {
-        const btn = e.target;
-        btn.disabled = true;
-        try {
-          const r = await api('/v1/admin/intel/customers/' + encodeURIComponent(cid) + '/reveal-phone', null, { method: 'POST' });
-          tr.querySelector('[data-phone]').textContent = r.phone;
-          btn.remove();
-        } catch (err) { setError('customers', err.message); btn.disabled = false; }
-        return;
-      }
       if (e.target.matches('[data-expand]')) {
         const btn = e.target;
         const next = tr.nextElementSibling;
         if (next && next.classList.contains('detail-row')) {
-          next.remove(); btn.setAttribute('aria-expanded', 'false'); btn.textContent = 'Details';
+          next.remove(); pruneCharts(); btn.setAttribute('aria-expanded', 'false'); btn.textContent = 'Details';
           return;
         }
         btn.setAttribute('aria-expanded', 'true'); btn.textContent = 'Hide';
         const row = document.createElement('tr');
         row.className = 'detail-row';
-        row.innerHTML = '<td colspan="9"><div class="muted">Loading profile…</div></td>';
+        row.innerHTML = '<td colspan="8"><div class="empty"><i class="fa-solid fa-circle-notch fa-spin" aria-hidden="true"></i>Loading profile…</div></td>';
         tr.after(row);
         try {
           const d = (await api('/v1/admin/intel/customers/' + encodeURIComponent(cid))).customer;
-          renderCustomerDetail(row.firstElementChild, d);
+          if (row.isConnected) renderCustomerDetail(row.firstElementChild, d); // closed / re-paged meanwhile
         } catch (err) { row.firstElementChild.innerHTML = '<div class="err">' + esc(err.message) + '</div>'; }
       }
     });
+    let detailSeq = 0;
     function renderCustomerDetail(td, d) {
-      const uid = 'cd' + d.short_id.replace(/[^a-z0-9]/gi, '');
+      const uid = 'cd' + (++detailSeq); // unique per open, so reopened panels never collide with old ids
       const dm = d.demographics;
       const bars = (arr) => (arr.length ? arr.map(c => `<div class="mb-2"><div class="flex justify-between text-xs"><span>${esc(c.value)}</span><span class="muted">${c.share}%</span></div>
           <div class="bar-track"><div class="bar-fill" style="width:${Math.min(100, c.share)}%"></div></div></div>`).join('') : NO_DATA);
-      td.innerHTML = `<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 py-2">
-        <div class="item-card"><div class="kpi-label mb-2">Profile</div>
+      const topSize = d.sizes.reduce((a, s) => (!a || s.share > a.share ? s : a), null);
+      td.innerHTML = `<div class="detail">
+      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div class="item-card dcard"><div class="kpi-label mb-2"><i class="fa-solid fa-id-card"></i>Profile</div>
           <dl class="kv">
             <dt>Customer</dt><dd class="mono">${esc(dm.short_id)}</dd>
             <dt>PIN</dt><dd>${nd(dm.pin_code)}</dd>
             <dt>Age group</dt><dd>${nd(dm.age_group)}</dd>
             <dt>Gender</dt><dd>${nd(dm.gender)}</dd>
             <dt>RFM</dt><dd>${rfmBadge(d.rfm_segment)}</dd>
-            <dt>Tag</dt><dd>${esc(d.tag)}</dd>
+            <dt>Tag</dt><dd>${nd(d.tag)}</dd>
             <dt>Menus</dt><dd>${dm.menus.length ? esc(dm.menus.join(', ')) : '<span class="muted">No data</span>'}</dd>
             <dt>LTV</dt><dd>${money(dm.ltv)}</dd>
             <dt>AOV</dt><dd>${money(dm.aov)}</dd>
@@ -588,51 +920,54 @@
             <dt>First order</dt><dd>${nd(dm.first_order)}</dd>
             <dt>Last order</dt><dd>${nd(dm.last_order)}</dd>
           </dl></div>
-        <div class="item-card"><div class="kpi-label mb-2">Top commodities</div>
-          ${d.top_commodities.length ? '<div class="grid grid-cols-2 gap-2 mb-3">' + d.top_commodities.map(c => `<div><div class="mono" style="font-size:16px">${c.share}%</div><div class="text-xs">${esc(c.value)}</div></div>`).join('') + '</div>' : NO_DATA}
-          <div class="kpi-label mb-2 mt-2">Colour preference</div>${bars(d.colors)}</div>
-        <div class="item-card"><div class="kpi-label mb-2">Size / fit</div>
-          ${d.sizes.length ? '<table><thead><tr><th>Size</th><th class="num">Items</th><th class="num">Share</th></tr></thead><tbody>' + d.sizes.map(s => `<tr><td>${esc(s.value)}</td><td class="num">${s.count}</td><td class="num">${s.share}%</td></tr>`).join('') + '</tbody></table>' : NO_DATA}
-          <div class="kpi-label mb-1 mt-3">Service split</div><div class="chart sm" id="${uid}svc"></div></div>
-        <div class="item-card lg:col-span-2"><div class="kpi-label mb-2">Garment attributes (${fmt(d.garment_count)} items${d.garment_count > d.garments.length ? ', showing ' + d.garments.length : ''})</div>
-          <div class="overflow-x-auto">${d.garments.length ? '<table><thead><tr><th>Garment</th><th>Commodity</th><th>Brand</th><th>Colour</th><th>Pattern</th><th>Size</th><th>Fabric</th></tr></thead><tbody id="' + uid + 'gb"></tbody></table>' : NO_DATA}</div>
+        <div class="item-card dcard"><div class="kpi-label mb-2"><i class="fa-solid fa-star"></i>Top commodities</div>
+          ${d.top_commodities.length ? '<div class="grid grid-cols-2 gap-2 mb-3">' + d.top_commodities.map(c => `<div class="stat"><div class="mono">${c.share}%</div><div class="text-xs">${esc(c.value)}</div></div>`).join('') + '</div>' : NO_DATA}
+          <div class="kpi-label mb-2 mt-2"><i class="fa-solid fa-palette"></i>Colour preference</div>${bars(d.colors)}</div>
+        <div class="item-card dcard"><div class="kpi-label mb-2"><i class="fa-solid fa-ruler"></i>Size / fit</div>
+          ${topSize ? `<div class="stat mb-3"><div class="mono">${esc(topSize.value)}</div><div class="text-xs">Most owned size · ${topSize.share}%</div></div>` : ''}
+          ${d.sizes.length ? '<table class="compact"><thead><tr><th>Size</th><th class="num">Items</th><th class="num">Share</th></tr></thead><tbody>' + d.sizes.map(s => `<tr><td>${esc(s.value)}</td><td class="num">${s.count}</td><td class="num">${s.share}%</td></tr>`).join('') + '</tbody></table>' : NO_DATA}</div>
+        <div class="item-card dcard"><div class="kpi-label mb-2"><i class="fa-solid fa-jug-detergent"></i>Service split</div><div class="chart svc" id="${uid}svc"></div></div>
+      </div>
+      <div class="grid grid-cols-1 xl:grid-cols-5 gap-4 mt-4">
+        <div class="item-card dcard xl:col-span-3"><div class="kpi-label mb-2"><i class="fa-solid fa-shirt"></i>Garment attributes (${fmt(d.garment_count)} items${d.garment_count > d.garments.length ? ', showing ' + d.garments.length : ''})</div>
+          <div class="overflow-x-auto">${d.garments.length ? '<table class="compact"><thead><tr><th>Garment</th><th>Commodity</th><th>Brand</th><th>Colour</th><th>Pattern</th><th>Size</th><th>Fabric</th></tr></thead><tbody id="' + uid + 'gb"></tbody></table>' : NO_DATA}</div>
           <div class="pager" id="${uid}gp"></div></div>
-        <div class="item-card"><div class="kpi-label mb-2">Recent orders</div>
-          ${d.recent_orders.length ? '<table><thead><tr><th>Date</th><th>Service</th><th class="num">Items</th><th class="num">Amount</th></tr></thead><tbody>' + d.recent_orders.map(o => `<tr><td>${nd(o.date)}</td><td>${esc(o.service)}</td><td class="num">${fmt(o.clothes)}</td><td class="num">${money(o.amount)}</td></tr>`).join('') + '</tbody></table>' : NO_DATA}</div>
-        <div class="item-card lg:col-span-3"><div class="kpi-label mb-1">Spending momentum</div><div class="chart" id="${uid}mom"></div></div>
-      </div>`;
+        <div class="item-card dcard xl:col-span-2"><div class="kpi-label mb-2"><i class="fa-solid fa-chart-line"></i>Spending momentum</div><div class="chart mom" id="${uid}mom"></div></div>
+      </div></div>`;
       if (d.garments.length) {
         clientPage(uid + 'gp', d.garments, (chunk) => {
           document.getElementById(uid + 'gb').innerHTML = chunk.map(g => `<tr><td class="mono">${esc((g.garment_id || '').slice(0, 8)) || '—'}</td><td>${nd(g.commodity)}</td><td>${nd(g.brand)}</td><td>${nd(g.color)}</td><td>${nd(g.pattern)}</td><td>${nd(g.size)}</td><td>${nd(g.material)}</td></tr>`).join('');
         });
       }
       chart(uid + 'svc', d.service_split.length ? {
-        tooltip: { trigger: 'item' }, legend: { bottom: 0, type: 'scroll' },
-        series: [{ type: 'pie', radius: ['35%', '65%'], data: d.service_split.map(s => ({ name: s.value, value: s.count })) }],
+        tooltip: { trigger: 'item', formatter: (p) => esc(p.name) + ': ' + fmt(p.value) + (p.value === 1 ? ' order' : ' orders') + ' (' + p.percent + '%)' },
+        legend: { bottom: 0, type: 'scroll', formatter: (n) => (n.length > 16 ? n.slice(0, 15) + '…' : n) },
+        series: [{ type: 'pie', radius: ['42%', '70%'], center: ['50%', '44%'], label: { show: false }, labelLine: { show: false },
+          emphasis: { label: { show: true, fontSize: 12, fontWeight: 600, formatter: '{d}%' } },
+          data: d.service_split.map(s => ({ name: s.value, value: s.count })) }],
       } : null);
       chart(uid + 'mom', d.momentum.length ? {
-        tooltip: { trigger: 'axis' }, legend: { bottom: 0 }, grid: { left: 56, right: 56, top: 16, bottom: 48 },
+        tooltip: { trigger: 'axis' }, legend: { bottom: 0, type: 'scroll' }, grid: { left: 52, right: 44, top: 28, bottom: 52 },
         xAxis: { type: 'category', data: d.momentum.map(m => m.month) },
-        yAxis: [{ type: 'value', name: '₹' }, { type: 'value', name: 'Orders' }],
+        yAxis: [{ type: 'value', name: '₹', axisLabel: { formatter: compact } }, { type: 'value', name: 'Orders', minInterval: 1, splitLine: { show: false } }],
         series: [
-          { name: 'Monthly spend', type: 'bar', data: d.momentum.map(m => m.spend) },
-          { name: 'Cumulative spend', type: 'line', smooth: true, areaStyle: { opacity: 0.15 }, data: d.momentum.map(m => m.cumulative_spend) },
-          { name: 'Orders', type: 'line', yAxisIndex: 1, data: d.momentum.map(m => m.orders) },
+          { name: 'Monthly spend', type: 'bar', data: d.momentum.map(m => m.spend), tooltip: { valueFormatter: money } },
+          { name: 'Cumulative spend', type: 'line', smooth: true, areaStyle: { opacity: 0.15 }, data: d.momentum.map(m => m.cumulative_spend), tooltip: { valueFormatter: money } },
+          { name: 'Orders', type: 'line', yAxisIndex: 1, data: d.momentum.map(m => m.orders), tooltip: { valueFormatter: fmt } },
         ],
       } : null);
+      // The panel sits in a table cell whose width settles after first paint; re-measure then.
+      requestAnimationFrame(() => [uid + 'svc', uid + 'mom'].forEach(id => charts[id] && !charts[id].isDisposed() && charts[id].resize()));
     }
-    loaders.customers = () => run('customers', async () => { await loadCustomerOverview(); await loadCustomerPage(1); });
-    document.getElementById('custFilters').addEventListener('submit', (e) => {
-      e.preventDefault();
-      run('customers', async () => { await loadCustomerOverview(); await loadCustomerPage(1); });
-    });
+    loaders.customers = () => run('customers', async (sig) => { await loadCustomerOverview(sig); await loadCustomerPage(1, sig); });
+    document.getElementById('custFilters').addEventListener('submit', (e) => { e.preventDefault(); loaders.customers(); });
 
     // ---------------- Tab 2: garments ----------------
-    async function loadGarments(page) {
+    async function loadGarments(page, signal) {
       const data = await api('/v1/admin/intel/garments', {
         commodity: msCsv('garCommodity'), brand: msCsv('garBrand'), pin: msCsv('garPin'), fabric: msCsv('garFabric'),
         pattern: msCsv('garPattern'), garment_size: msCsv('garSize'), page: page || 1, size: PAGE_SIZE,
-      });
+      }, { signal });
       const o = data.options;
       msRender('garBrand', 'brands', o.brand);
       msRender('garPin', 'PINs', o.pin_codes || []);
@@ -647,7 +982,7 @@
       const cf = data.commodity_fabric;
       const fabrics = Object.keys(cf.series || {});
       chart('chComFab', cf.commodities.length && fabrics.length ? {
-        tooltip: { trigger: 'axis' }, legend: { bottom: 0, type: 'scroll' }, grid: { left: 48, right: 16, top: 16, bottom: 56 },
+        tooltip: { trigger: 'axis' }, legend: { bottom: 0, type: 'scroll' }, grid: { left: 48, right: 16, top: 16, bottom: 84 },
         xAxis: { type: 'category', data: cf.commodities, axisLabel: { interval: 0, rotate: 20 } }, yAxis: { type: 'value' },
         series: fabrics.map(f => ({ name: f, type: 'bar', stack: 'f', data: cf.series[f] })),
       } : null);
@@ -669,10 +1004,10 @@
             <dt>Brand</dt><dd>${nd(g.brand)}</dd><dt>Colour</dt><dd>${nd(g.color)}</dd>
             <dt>Pattern</dt><dd>${nd(g.pattern)}</dd><dt>Size</dt><dd>${nd(g.size)}</dd><dt>Fabric</dt><dd>${nd(g.material)}</dd>
           </dl></div>`).join('') : NO_DATA;
-      pager('garPager', data.total, data.page, data.size, (pg) => run('garments', () => loadGarments(pg)));
+      pager('garPager', data.total, data.page, data.size, (pg) => run('garments', (sig) => loadGarments(pg, sig)));
     }
-    loaders.garments = () => run('garments', () => loadGarments(1));
-    document.getElementById('garFilters').addEventListener('submit', (e) => { e.preventDefault(); run('garments', () => loadGarments(1)); });
+    loaders.garments = () => run('garments', (sig) => loadGarments(1, sig));
+    document.getElementById('garFilters').addEventListener('submit', (e) => { e.preventDefault(); loaders.garments(); });
 
     function fillSelect(id, values, allLabel) {
       const sel = document.getElementById(id);
@@ -683,7 +1018,7 @@
     }
     function rows(tbody, data, cols) {
       if (!data.length) {
-        tbody.innerHTML = '<tr><td colspan="' + cols.length + '" class="muted">No data for these filters</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="' + cols.length + '">' + NO_DATA + '</td></tr>';
         return;
       }
       tbody.innerHTML = data.map(r => '<tr>' + cols.map(([fn, kind]) => {
@@ -693,7 +1028,9 @@
         return '<td>' + esc(v ?? '—') + '</td>';
       }).join('') + '</tr>').join('');
     }
+    let uniqSeq = 0;
     async function loadUnique() {
+      const seq = ++uniqSeq;
       const status = document.getElementById('uniqStatus');
       const err = document.getElementById('uniqErr');
       status.textContent = 'Loading…';
@@ -705,6 +1042,7 @@
           api('/v1/admin/unique-summary', { pin, brand }),
           api('/v1/admin/unique-garments', { pin, brand, limit: 200 }).catch(() => null),
         ]);
+        if (seq !== uniqSeq) return; // a newer Apply is in flight
         const k = summary.kpis || {};
         document.getElementById('kpiUnique').textContent = fmt(k.unique_garments);
         document.getElementById('kpiObs').textContent = fmt(k.total_observations);
@@ -730,8 +1068,9 @@
           document.getElementById('listBody').innerHTML = '<tr><td colspan="5" class="muted">Recent garments are unavailable right now.</td></tr>';
           document.getElementById('listPager').innerHTML = '';
         }
-        status.textContent = 'Updated ' + new Date().toLocaleTimeString();
+        status.textContent = 'Updated ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       } catch (e) {
+        if (seq !== uniqSeq) return;
         err.textContent = 'Could not load garment stats: ' + (e.message || e) + '. The similarity service may be unavailable.';
         err.classList.remove('hidden');
         status.textContent = '';
@@ -744,10 +1083,10 @@
     document.getElementById('uniqFilters').addEventListener('submit', (e) => { e.preventDefault(); loadUnique(); });
 
     // ---------------- Tab 3: brands ----------------
-    async function loadBrands() {
+    async function loadBrands(signal) {
       const d = await api('/v1/admin/intel/brands', {
         brands: msCsv('brBrands'), pin: msCsv('brPin'), rfm: msCsv('brRfm'), commodity: msCsv('brCommodity'), menu: msCsv('brMenu'),
-      });
+      }, { signal });
       const o = d.options;
       msRender('brBrands', 'brands', o.brands);
       msRender('brPin', 'hubs', o.pin_codes);
@@ -781,7 +1120,7 @@
         series: [{ type: 'heatmap', data: heat, label: { show: ov.brands.length <= 8 } }],
       } : null);
       chart('chSunburst', d.sunburst.length ? {
-        tooltip: {}, series: [{ type: 'sunburst', data: d.sunburst, radius: ['12%', '92%'], label: { rotate: 'radial', fontSize: 10 } }],
+        tooltip: {}, series: [{ type: 'sunburst', data: d.sunburst, radius: ['12%', '92%'], label: { rotate: 'radial', fontSize: 10, minAngle: 9 } }],
       } : null);
       const sm = d.size_matrix;
       const smRows = Object.keys(sm.series || {});
@@ -789,8 +1128,8 @@
       smRows.forEach((c, i) => sm.series[c].forEach((v, j) => smHeat.push([j, i, v])));
       chart('chSizeMatrix', sm.sizes.length && smRows.length ? {
         tooltip: { formatter: (p) => esc(smRows[p.value[1]]) + ' · ' + esc(sm.sizes[p.value[0]]) + ': ' + p.value[2] },
-        grid: { left: 100, right: 24, top: 8, bottom: 64 },
-        xAxis: { type: 'category', data: sm.sizes }, yAxis: { type: 'category', data: smRows },
+        grid: { left: 136, right: 24, top: 8, bottom: 64 },
+        xAxis: { type: 'category', data: sm.sizes }, yAxis: { type: 'category', data: smRows, axisLabel: { width: 126, overflow: 'truncate' } },
         visualMap: { min: 0, max: Math.max(1, ...smHeat.map(h => h[2])), orient: 'horizontal', left: 'center', bottom: 0, inRange: { color: ['#faf6ee', '#c59fb0', '#6b3a55'] } },
         series: [{ type: 'heatmap', data: smHeat, label: { show: true } }],
       } : null);
@@ -852,8 +1191,8 @@
         <td class="mono">${c.status === 'launched' ? `<a href="./index.html?tab=campaigns&amp;campaign_id=${encodeURIComponent(c.campaign_id)}" target="_top">${esc(c.campaign_id)}</a>` : esc(c.campaign_id || '')}</td>
       </tr>`;
     }
-    async function loadCampaigns() {
-      const d = await api('/v1/admin/intel/campaigns', { brand: msCsv('cmpBrand'), status: msCsv('cmpStatus'), pin: msCsv('cmpPin'), rfm: msCsv('cmpRfm') });
+    async function loadCampaigns(signal) {
+      const d = await api('/v1/admin/intel/campaigns', { brand: msCsv('cmpBrand'), status: msCsv('cmpStatus'), pin: msCsv('cmpPin'), rfm: msCsv('cmpRfm') }, { signal });
       const o = d.options;
       msRender('cmpBrand', 'brands', o.brands);
       msRender('cmpStatus', 'statuses', o.statuses);
@@ -899,6 +1238,18 @@
       e.target.setAttribute('aria-expanded', String(!wrap.hidden));
       e.target.textContent = wrap.hidden ? 'All columns' : 'Hide table';
     });
+
+    // Filters render "All" until their options arrive (and stay usable if the load fails).
+    document.querySelectorAll('details.ms:empty').forEach(d => { d.innerHTML = '<summary>All</summary><div class="ms-pop"><div class="muted p-2">No options yet</div></div>'; });
+
+    // Reset clears a tab's filters and reloads it.
+    document.querySelectorAll('form.filters [data-reset]').forEach(b => b.addEventListener('click', () => {
+      const form = b.closest('form');
+      form.querySelectorAll('input[type=checkbox]').forEach(i => { i.checked = false; i.indeterminate = false; });
+      form.querySelectorAll('input[type=text]').forEach(i => { i.value = ''; });
+      form.querySelectorAll('details.ms').forEach(d => { d.removeAttribute('open'); if (d.dataset.label) msSummary(d); });
+      form.requestSubmit();
+    }));
 
     showTab((location.hash || '#customers').slice(1));
   </script>

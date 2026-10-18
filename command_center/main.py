@@ -21,7 +21,7 @@ from fastapi import FastAPI, File, Form, Header, HTTPException, Query, Request, 
 from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from urllib.parse import urlencode
@@ -97,9 +97,8 @@ def _count_extraction_jobs() -> Optional[int]:
         log.debug("DATABASE_URL not set; skipping extraction_jobs count")
         return None
     try:
-        import psycopg2  # type: ignore
-
-        with psycopg2.connect(dsn) as conn:
+        # psycopg2's own `with conn` only commits; brand_camp.connect() also closes the connection.
+        with brand_camp.connect() as conn:
             with conn.cursor() as cur:
                 cur.execute("SELECT COUNT(*) FROM extraction_jobs")
                 row = cur.fetchone()
@@ -143,11 +142,7 @@ def compute_metrics() -> dict[str, Any]:
     except HTTPException:
         raise
     except Exception as exc:
-        log.exception("BigQuery metrics failed project=%s dataset=%s", project, dataset)
-        raise HTTPException(
-            503,
-            f"BigQuery metrics failed (check tables/IAM): {exc}",
-        ) from exc
+        raise _masked_http(503, f"BigQuery metrics failed project={project} dataset={dataset}") from exc
 
     payload = agg.build(customers, orders, commodities, pin_pop)
     jobs_n = _count_extraction_jobs()
@@ -665,28 +660,37 @@ def metrics(
     authorization: Optional[str] = Header(default=None),
     x_session_token: Optional[str] = Header(default=None, alias="X-Session-Token"),
 ):
-    """Geo metrics from BQ. Auth headers optional (brand masking when session present)."""
+    """Geo metrics from BQ (brand/admin session; brand role gets Competitors masking)."""
+    sess = _geo_session(request, authorization, x_session_token)
+    brand = str(sess.get("brand_name") or "").strip()
+    if sess.get("role") == "brand" and not brand:
+        raise HTTPException(403, "Brand session missing brand_name")
     try:
         payload = compute_metrics()
     except HTTPException:
         raise
     except Exception as exc:
         raise _masked_http(500, "metrics endpoint unexpected error") from exc
-
-    # Optional session: brand role gets Competitors masking
-    try:
-        token = _token_from_request(request, authorization, x_session_token)
-        sess = auth_acl.get_session(token) if token else None
-        if sess and sess.get("role") == "brand" and sess.get("brand_name"):
-            payload = auth_acl.mask_metrics_for_brand(payload, str(sess["brand_name"]))
-    except Exception as exc:
-        # Never fail metrics on session parse — log and return unmasked payload
-        log.warning("metrics session mask skipped: %s", exc)
+    if sess.get("role") == "brand":
+        try:
+            payload = auth_acl.mask_metrics_for_brand(payload, brand)
+        except Exception as exc:
+            # Fail closed: never hand a brand login unmasked competitor data.
+            raise _masked_http(500, "metrics brand masking failed") from exc
     return payload
 
 
 @app.post("/v1/ads-lab/extract")
-async def ads_lab_extract(files: list[UploadFile] = File(...)):
+async def ads_lab_extract(
+    request: Request,
+    files: list[UploadFile] = File(...),
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None, alias="X-Session-Token"),
+):
+    try:
+        camp_svc.require_campaign_role(_require_session(request, authorization, x_session_token))
+    except camp_svc.ServiceError as exc:
+        raise _svc_http(exc) from exc
     extraction_url = (os.getenv("EXTRACTION_URL") or "").rstrip("/")
     bucket = os.getenv("GCS_IMAGE_BUCKET") or ""
     if not extraction_url:
@@ -1505,9 +1509,7 @@ def geo_brief(
     Gemini store decision + Market brief for Geo.
     Payload must be aggregates only (brand vs competitor share, commodities, footfall).
     """
-    token = _token_from_request(request, authorization, x_session_token)
-    sess = auth_acl.get_session(token) if token else None
-    return geo_brief_core(body, sess)
+    return geo_brief_core(body, _geo_session(request, authorization, x_session_token))
 
 
 def geo_brief_core(body: GeoBriefRequest, sess: Optional[dict[str, Any]]) -> dict[str, Any]:
@@ -1799,9 +1801,18 @@ aura_agent.configure(geo_brief=_aura_geo_brief)
 
 
 @app.post("/v1/chat")
-def chat(body: chatbot.ChatRequest):
-    """Dashboard Q&A from metrics.json summary + Geo/Ads UI filters (read-only)."""
-    return chatbot.run_chat(body, METRICS_JSON)
+def chat(
+    body: chatbot.ChatRequest,
+    request: Request,
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None, alias="X-Session-Token"),
+):
+    """Dashboard Q&A from metrics.json summary + Geo/Ads UI filters (read-only; brand/admin session)."""
+    sess = _geo_session(request, authorization, x_session_token)
+    brand = str(sess.get("brand_name") or "").strip() if sess.get("role") == "brand" else None
+    if sess.get("role") == "brand" and not brand:
+        raise HTTPException(403, "Brand session missing brand_name")
+    return chatbot.run_chat(body, METRICS_JSON, brand_name=brand)
 
 
 @app.post("/v1/agent/chat")
@@ -1845,10 +1856,53 @@ def agent_uploads_clear(
     return aura_agent.clear_uploads(sess)
 
 
+# Clean page URLs: /geo, /ads-lab, … serve the app shell (it picks the tab from the path); /login the sign-in page.
+SHELL_PATHS = ("geo", "ads-lab", "campaigns", "style-assistant", "admin")
+
+
+def _page(name: str) -> FileResponse:
+    return FileResponse(WEB_DIR / name, media_type="text/html", headers={"Cache-Control": "no-cache"})
+
+
+def _with_query(path: str, request: Request) -> str:
+    return path + ("?" + request.url.query if request.url.query else "")
+
+
+def _shell_page():
+    return _page("index.html")
+
+
+for _p in SHELL_PATHS:
+    app.add_api_route(f"/{_p}", _shell_page, methods=["GET"], include_in_schema=False)
+
+
+@app.get("/login", include_in_schema=False)
+def login_page():
+    return _page("login.html")
+
+
+@app.get("/index.html", include_in_schema=False)
+def legacy_shell(request: Request):
+    # Old links (index.html#campaigns, ?tab=…&campaign_id=…): the browser keeps the #fragment across the redirect
+    return RedirectResponse(_with_query("/", request), status_code=301)
+
+
+@app.get("/login.html", include_in_schema=False)
+def legacy_login(request: Request):
+    return RedirectResponse(_with_query("/login", request), status_code=301)
+
+
+@app.get("/{page}/", include_in_schema=False)
+def trailing_slash(page: str, request: Request):
+    if page in SHELL_PATHS or page == "login":
+        return RedirectResponse(_with_query(f"/{page}", request), status_code=301)
+    raise HTTPException(404, "Not found")
+
+
 @app.get("/")
 def root():
-    if (WEB_DIR / "login.html").exists():
-        return RedirectResponse(url="/login.html")
+    if (WEB_DIR / "index.html").exists():
+        return _shell_page()  # signed out → the shell sends you to /login
     return {
         "service": "suffai-command-center",
         "endpoints": [

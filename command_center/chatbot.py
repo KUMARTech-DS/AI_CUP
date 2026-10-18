@@ -199,8 +199,8 @@ def _env_bool(name: str, default: bool = False) -> bool:
     return v.strip().lower() in {"1", "true", "yes", "on"}
 
 
-def slim_metrics_json(metrics_path: Path) -> dict[str, Any]:
-    """Build a small summary from web/metrics.json for the chat model."""
+def slim_metrics_json(metrics_path: Path, brand_name: Optional[str] = None) -> dict[str, Any]:
+    """Build a small summary from web/metrics.json for the chat model (other brands masked for brand logins)."""
     if not metrics_path.is_file():
         log.error("metrics summary file missing path=%s", metrics_path)
         return {"error": "metrics_unavailable"}
@@ -209,6 +209,10 @@ def slim_metrics_json(metrics_path: Path) -> dict[str, Any]:
     except Exception as exc:
         log.exception("Failed to read metrics.json")
         return {"error": "metrics_unavailable"}
+    if brand_name:
+        import auth_acl
+
+        raw = auth_acl.mask_metrics_for_brand(raw, brand_name)
 
     customers = raw.get("customer_cells") or []
     garments = raw.get("garment_cells") or []
@@ -391,6 +395,8 @@ def call_vertex_chat(
 def run_chat(
     body: ChatRequest,
     metrics_path: Path,
+    *,
+    brand_name: Optional[str] = None,
 ) -> Union[dict[str, Any], JSONResponse]:
     """Handle dashboard Q&A: metrics.json + UI filters → Gemini."""
     request_id = uuid.uuid4().hex[:12]
@@ -423,7 +429,7 @@ def run_chat(
     filter_ctx = sanitize_filter_context(body.filter_context)
     if not filter_ctx and isinstance(body.context, dict):
         filter_ctx = sanitize_filter_context(body.context.get("filter_context"))
-    metrics_summary = slim_metrics_json(metrics_path)
+    metrics_summary = slim_metrics_json(metrics_path, brand_name)
     context = {
         "metrics_json": metrics_summary,
         "ui": ui_ctx,

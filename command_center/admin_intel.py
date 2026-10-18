@@ -615,7 +615,8 @@ def map_status(c: dict, *, today: Optional[date] = None) -> str:
         if end is None:
             start = _date(c.get("start_date")) or _date(c.get("launched_at"))
             days = c.get("duration_days")
-            end = start + timedelta(days=int(days)) if start and days else None
+            # Inclusive end, same as brand_campaign.update_campaign_config (start + days - 1).
+            end = start + timedelta(days=int(days) - 1) if start and days else None
         return "Completed" if end and today > end else "Active"
     start = _date(c.get("start_date"))
     if status == "configured" and start and start > today:

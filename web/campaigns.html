@@ -1,12 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <meta name="color-scheme" content="light" />
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SuffAI · Campaigns</title>
   <script src="./config.js"></script>
   <script src="./session.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="./select.js" defer></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Outfit:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
@@ -132,6 +134,8 @@
     .side { position: sticky; top: 16px; display: flex; flex-direction: column; gap: 16px; }
     .side { max-height: calc(100vh - 32px); overflow-y: auto; scrollbar-width: none; padding-bottom: 4px; }
     .side::-webkit-scrollbar { display: none; }
+    /* Stacked layout: no nested scroll box with a hidden scrollbar */
+    @media (max-width: 1080px) { .side { max-height: none; overflow: visible; } }
     .pv { padding: 0; background: none; border: 0; box-shadow: none; }
     .pv-head { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
     .pv-head h3 { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--plum); }
@@ -240,24 +244,11 @@
     .em-card p { color: #555; line-height: 1.45; white-space: pre-wrap; }
     .em-foot { font-size: 9px; color: #999; margin-top: 10px; text-align: center; }
     .bubble { max-width: 88%; padding: 8px 10px; border-radius: 14px 14px 14px 4px; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.08); line-height: 1.45; white-space: pre-wrap; word-break: break-word; }
-    .sms .bubble { background: #E9E9EB; }
-    .wa { background: #EFE7DD; min-height: 100%; }
-    .wa .bubble { background: #fff; }
-    .wa .bubble img { margin-bottom: 6px; }
     .wa-btn { display: block; text-align: center; margin-top: 6px; padding: 7px; border-radius: 10px; background: #fff; color: #128C7E; font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
-    .push { background: linear-gradient(160deg, #4A1A33, #1C0812); min-height: 100%; color: #fff; }
-    .push .time { text-align: center; font: 300 46px Outfit; margin: 26px 0 2px; }
-    .push .date { text-align: center; font-size: 11px; opacity: .8; margin-bottom: 18px; }
     .ntf { display: flex; gap: 8px; padding: 10px; border-radius: 16px; background: rgba(255,255,255,.88); color: #222; backdrop-filter: blur(10px); }
     .ntf .app { width: 26px; height: 26px; border-radius: 7px; background: var(--plum); color: var(--gold-lt); display: grid; place-items: center; font-size: 12px; flex: none; }
     .ntf b { display: block; font-size: 12px; } .ntf p { font-size: 11px; color: #444; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
     .ntf img { width: 42px; height: 42px; border-radius: 8px; object-fit: cover; flex: none; background: #F3E3EA; }
-    .inapp { background: rgba(20,6,13,.55); min-height: 100%; display: grid; place-items: center; padding: 18px; }
-    .modal { background: #fff; border-radius: 18px; overflow: hidden; text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,.35); }
-    .modal .pv-img { border-radius: 0; }
-    .modal div { padding: 12px; }
-    .modal h4 { font-family: 'Cormorant Garamond', serif; font-size: 19px; color: var(--ink); }
-    .modal p { color: #555; font-size: 11.5px; margin-top: 4px; }
     .pv-note { font-size: 11px; color: var(--muted); text-align: center; margin-top: 12px; }
 
     .sum { padding: 16px 18px; }
@@ -275,7 +266,12 @@
 
     /* History */
     .hist { margin-top: 24px; overflow: hidden; }
-    .hist-head { padding: 16px 20px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+    .hist-head { padding: 16px 20px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+    #histBody tr:not(.active):hover td { background: #FFFBF6; }
+    .unavail { display: grid; justify-items: center; gap: 6px; color: var(--muted); }
+    .unavail i { font-size: 20px; color: var(--mauve, #C59FB0); }
+    .unavail b { color: var(--ink); font-size: 13.5px; }
+    .unavail .link { margin-top: 2px; }
     .hist-head h2 { font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
     .tbl-wrap { overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
@@ -384,10 +380,12 @@
     .filters button { padding: .3rem .7rem; border-radius: 999px; font-size: 11.5px; border: 1px solid var(--line); background: #fff; color: var(--muted); }
     .filters button[aria-pressed="true"] { background: var(--plum); border-color: var(--plum); color: #fff; }
     tr.active td { background: #FBF5F7; }
+    .pcard { position: relative; }
+    .pc-rank { position: absolute; top: 5px; left: 5px; z-index: 1; font: 600 9px 'IBM Plex Mono', monospace; padding: .1rem .35rem; border-radius: 999px; background: rgba(20,6,13,.6); color: #fff; }
     fieldset { border: 0; min-width: 0; }
     fieldset:disabled .step { opacity: .72; }
     .mode.soon::after { content: 'Preview only · not sent by SuffAI yet'; }
-    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
   </style>
 </head>
 <body>
@@ -480,8 +478,8 @@
               </div>
               <div class="fields">
                 <label class="f">Budget (₹)<input class="in" id="campaignBudget" type="number" min="500" step="500"><span class="ferr" id="eBudget"></span></label>
-                <label class="f">Duration (days)<input class="in" id="campaignDays" type="number" min="1" max="365" value="14"></label>
-                <label class="f">Start date<input class="in" id="campaignStart" type="date"></label>
+                <label class="f">Duration (days)<input class="in" id="campaignDays" type="number" min="1" max="365" step="1" value="14"><span class="ferr" id="eDays"></span></label>
+                <label class="f">Start date<input class="in" id="campaignStart" type="date"><span class="ferr" id="eStart"></span></label>
                 <label class="f">Daily budget<span class="in mono" id="dailyBudget" style="display:block;background:var(--raised)">—</span></label>
                 <label class="f">Frequency cap<select class="in" id="fCap"><option value="1d">1 message per day</option><option value="3d" selected>1 message per 3 days</option><option value="7d">1 message per week</option></select></label>
                 <label class="switch" style="align-self:end;padding-bottom:10px"><input type="checkbox" id="fQuiet" checked> Respect quiet hours (9 PM – 9 AM)</label>
@@ -504,7 +502,7 @@
         <section class="card sum" aria-label="Summary">
           <h3>Summary</h3>
           <dl id="sumList"></dl>
-          <ul class="errs" id="errs" hidden></ul>
+          <ul class="errs" id="errs" hidden aria-live="polite"></ul>
           <div class="actions" id="actionBar">
             <button type="button" class="btn primary" id="launchBtn"><i class="fa-solid fa-rocket"></i> Confirm &amp; start campaign</button>
             <button type="button" class="btn" id="saveBtn"><i class="fa-regular fa-floppy-disk"></i> Save draft</button>
@@ -662,13 +660,37 @@
       else location.href = href;
     }
     async function api(path, opts = {}) {
-      const res = await fetch(endpoint(path), {
-        ...opts,
-        headers: { Accept: 'application/json', ...(opts.body ? { 'Content-Type': 'application/json' } : {}), ...SuffaiSession.authHeaders() },
-      });
+      let res;
+      try {
+        res = await fetch(endpoint(path), {
+          ...opts,
+          headers: { Accept: 'application/json', ...(opts.body ? { 'Content-Type': 'application/json' } : {}), ...SuffaiSession.authHeaders() },
+        });
+      } catch (_) {
+        throw Object.assign(new Error('Could not reach the server. Check your connection and try again.'), { status: 0 });
+      }
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(SuffaiSession.formatApiDetail(data && data.detail, 'Request failed (HTTP ' + res.status + ')'));
+      if (!res.ok) throw Object.assign(new Error(SuffaiSession.formatApiDetail(data && data.detail, 'Request failed (HTTP ' + res.status + ')')), { status: res.status });
       return data;
+    }
+    // 503 = no campaign database behind this backend; 0 = network down. Both mean "storage offline", not "you did something wrong".
+    const storageOffline = (e) => e && (e.status === 503 || e.status === 0);
+    const scrollBehavior = () => (matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth');
+    // created_at is an ISO timestamp; show / filter by the viewer's local calendar day, not the UTC one.
+    function localDay(v) {
+      const d = v ? new Date(v) : null;
+      if (!d || isNaN(d)) return String(v || '').slice(0, 10);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+    // Remove utm_* params properly (a regex on the raw string broke links like ?utm_source=x&page=2).
+    function stripUtm(raw) {
+      const s = String(raw || '').trim();
+      if (!s) return '';
+      try {
+        const u = new URL(s);
+        [...u.searchParams.keys()].filter(k => /^utm_/i.test(k)).forEach(k => u.searchParams.delete(k));
+        return u.toString().replace(/\?$/, '');
+      } catch (_) { return s; }
     }
     const splitList = (v) => String(v ?? '').split(',').map(s => s.trim()).filter(Boolean);
     function displayGender(g) {
@@ -751,7 +773,17 @@
         clearTimeout(state.pollTimer);
         if (state.campaigns.some(c => c.status === 'processing')) state.pollTimer = setTimeout(loadCampaigns, 10000);
       } catch (e) {
-        $('histBody').innerHTML = `<tr><td colspan="7" class="empty-row" style="color:var(--bad)">${esc(e.message)}</td></tr>`;
+        clearTimeout(state.pollTimer);
+        $('histCount').textContent = '—';
+        $('histPager').innerHTML = '';
+        const offline = storageOffline(e);
+        $('histBody').innerHTML = `<tr><td colspan="7" class="empty-row"><div class="unavail">
+          <i class="fa-solid ${offline ? 'fa-database' : 'fa-triangle-exclamation'}" aria-hidden="true"></i>
+          <b>${offline ? 'Campaign history is unavailable right now' : 'Could not load your campaigns'}</b>
+          <span>${offline ? 'Campaign storage isn’t connected to this server. You can still explore the sample campaign above.' : esc(e.message)}</span>
+          <button type="button" class="link" data-retry="1">Try again</button></div></td></tr>`;
+        $('insNote').textContent = 'Insights appear once campaign history is available.';
+        $('insBody').hidden = true; $('insEmpty').hidden = true;
       }
     }
     /* ---------- History filters (multi-select dropdowns + created-date range) ---------- */
@@ -761,7 +793,7 @@
     const chanName = (ch) => CHANNELS[ch]?.name || ch;
     function msRender(id, label, options) {
       const el = $(id);
-      const keep = new Set(msValues(id));
+      const keep = new Set(msValues(id)), wasOpen = el.open; // the 10s poll re-renders: keep the dropdown open
       el.dataset.label = label;
       el.innerHTML = '<summary></summary><div class="ms-pop">' + (options.length
         ? (options.length > 1 ? '<label class="opt all"><input type="checkbox" data-all="1" /> Select all</label>' : '')
@@ -774,6 +806,7 @@
         msSummary(el); applyHistFilters();
       });
       msSummary(el);
+      el.open = wasOpen && options.length > 0;
     }
     function msSummary(el) {
       const vals = msValues(el.id);
@@ -801,7 +834,7 @@
       const brand = set('hfBrand'), status = set('hfStatus'), pin = set('hfPin'), chan = set('hfChannel'), rfm = set('hfRfm');
       const from = $('hfFrom').value, to = $('hfTo').value;
       return state.campaigns.filter(c => {
-        const day = (c.created_at || '').slice(0, 10);
+        const day = localDay(c.created_at);
         return (!brand.size || brand.has(c.brand_name))
           && (!status.size || status.has(statusGroup(c.status)))
           && (!pin.size || (c.pin_codes || []).some(p => pin.has(p)))
@@ -911,7 +944,7 @@
         const chans = (c.channels || []).map(ch => CHANNELS[ch]?.name || ch).join(', ') || '—';
         const i = c.impact || {};
         return `<tr class="${active ? 'active' : ''}">
-          <td><b>${esc(campaignTitle(c))}</b><div style="font-size:11px;color:var(--muted)">${esc((c.created_at || '').slice(0, 10))}</div></td>
+          <td><b>${esc(campaignTitle(c))}</b><div style="font-size:11px;color:var(--muted)">${esc(localDay(c.created_at))}</div></td>
           <td style="max-width:260px">${esc(audienceParts(c).join(' · '))}</td>
           <td>${esc(chans)}</td>
           <td>${esc(c.sku_count ?? 0)}</td>
@@ -936,23 +969,29 @@
       } else {
         $('heroTitle').textContent = running.length ? `${running.length} campaign${running.length === 1 ? '' : 's'} running` : "You don't have any active campaigns yet";
         $('heroSub').textContent = 'Rank SKUs in Ads Lab, then reach that audience on In-app, WhatsApp and SMS.';
+        // don't leave a discarded campaign's numbers in the hero
+        $('hsCustomers').textContent = '—'; $('hsCreatives').textContent = '0'; $('hsBest').textContent = '—';
       }
       $('heroMatrixWrap').hidden = running.length > 0;
     }
     $('histBody').addEventListener('click', (e) => {
+      if (e.target.closest('[data-retry]')) { $('histBody').innerHTML = '<tr><td colspan="7" class="empty-row">Loading campaigns…</td></tr>'; loadCampaigns(); return; }
       const b = e.target.closest('[data-load]');
       if (!b) return;
       const row = state.campaigns.find(c => c.campaign_id === b.dataset.load);
       if (row && row.status === 'launched') loadCampaign(b.dataset.load, null, { focus: 'analysis' });
-      else { loadCampaign(b.dataset.load); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+      else { loadCampaign(b.dataset.load); window.scrollTo({ top: 0, behavior: scrollBehavior() }); }
     });
 
     /* ---------- Load + fill ---------- */
+    let loadSeq = 0;
     async function loadCampaign(id, sourceContext, opts) {
       if (!id) return;
-      if (sourceContext && typeof sourceContext === 'object') state.sourceContext = sourceContext;
+      const seq = ++loadSeq; // a slower, older response must not overwrite the campaign the user picked last
       try {
         const data = await api('/v1/ads-lab/campaigns/' + encodeURIComponent(id));
+        if (seq !== loadSeq) return;
+        if (sourceContext && typeof sourceContext === 'object') state.sourceContext = sourceContext;
         const c = data.campaign || {};
         if (!state.current || state.current.campaign_id !== c.campaign_id) {
           if (!sourceContext) state.sourceContext = c.source_context || readStoredSource(c.campaign_id);
@@ -967,7 +1006,8 @@
         publishContext();
         if (opts && opts.focus === 'analysis') requestAnimationFrame(focusAnalysis);
       } catch (e) {
-        toast(e.message, 'fa-triangle-exclamation');
+        if (seq !== loadSeq) return;
+        toast(storageOffline(e) ? 'Campaign storage is unavailable right now.' + (state.current ? '' : ' Showing the sample campaign.') : e.message, 'fa-triangle-exclamation');
       }
     }
     function readStoredSource(id) {
@@ -993,6 +1033,8 @@
     }
 
     function fillStudio(c) {
+      // drop any in-flight recommendation / estimate for the previous campaign
+      recSeq++; estSeq++; clearTimeout(recTimer); clearTimeout(estTimer);
       $('noDraft').hidden = c.status !== 'sample';
       $('launchBtn').innerHTML = '<i class="fa-solid fa-rocket"></i> Confirm &amp; start campaign';
       ['saveBtn', 'discardBtn'].forEach(id => { $(id).disabled = false; $(id).title = ''; });
@@ -1027,12 +1069,15 @@
       $('fSms').value = tpl.sms || '';
       $('fCta').value = creative.cta || 'Shop now';
       $('fCode').value = creative.offer_code || '';
-      $('fUrl').value = String(creative.landing_url || '').replace(/[?&]utm_[^&]+/g, '').replace(/\?$/, '');
+      $('fUrl').value = stripUtm(creative.landing_url);
       $('fUtm').checked = creative.utm !== false;
       $('fCap').value = creative.frequency_cap || '3d';
       $('fQuiet').checked = creative.quiet_hours !== false;
       $('campaignDays').value = c.duration_days || 14;
-      $('campaignStart').value = c.start_date ? String(c.start_date).slice(0, 10) : todayIso();
+      // a draft saved days ago may carry a start date that is now in the past: move it to today
+      const savedStart = c.start_date ? String(c.start_date).slice(0, 10) : '';
+      $('campaignStart').value = savedStart && (savedStart >= todayIso() || !EDITABLE.includes(c.status)) ? savedStart : todayIso();
+      $('campaignStart').min = EDITABLE.includes(c.status) || c.status === 'sample' ? todayIso() : '';
       $('campaignBudget').value = c.budget_inr != null ? Math.round(Number(c.budget_inr)) : '';
       showErrs([]);
 
@@ -1053,7 +1098,7 @@
         const score = skuScore(s), a = s.attributes || {}, thumb = thumbOf(s);
         const sub = ok ? (score == null ? 'not scored' : `fit ${score}/100`) : (s.process_status === 'pending' ? 'pending' : 'failed');
         return `<button type="button" class="ctile ${focus ? 'focus' : ''}" data-id="${esc(s.sku_uuid)}" aria-pressed="${on}" ${ok ? '' : 'disabled'} title="${esc([a.color, a.pattern, a.name || a.commodity].filter(Boolean).join(' · '))}">${focus ? '<span class="eye"><i class="fa-regular fa-eye"></i> In preview</span>' : ''}
-          <div class="img">${thumb ? `<img src="${thumb}" alt="">` : '<i class="fa-solid fa-shirt"></i>'}</div>
+          <div class="img">${thumb ? `<img src="${esc(thumb)}" alt="">` : '<i class="fa-solid fa-shirt"></i>'}</div>
           <span class="badge">#${esc(s.rank ?? '—')}</span><span class="tick"><i class="fa-solid fa-check"></i></span>
           <div class="meta"><b>${esc(s.original_filename || 'SKU')}</b><span>${esc(sub)}</span></div>
         </button>`;
@@ -1121,6 +1166,7 @@
       if (!raw) return '';
       try {
         const u = new URL(raw);
+        if (!/^https?:$/.test(u.protocol)) return '';
         if ($('fUtm').checked) {
           u.searchParams.set('utm_source', 'suffai');
           u.searchParams.set('utm_medium', state.channels.length > 1 ? 'multi' : (state.channels[0] || 'in_app'));
@@ -1136,9 +1182,9 @@
     }
     function previewHTML(ch) {
       const s = skuById(state.focus) || skuById(state.picked[0]) || state.skus[0];
-      const imgOf = (x) => thumbOf(x) ? `<img class="pv-img" src="${thumbOf(x)}" alt="">` : '<div class="pv-img"></div>';
+      const imgOf = (x) => thumbOf(x) ? `<img class="pv-img" src="${esc(thumbOf(x))}" alt="">` : '<div class="pv-img"></div>';
       const img = imgOf(s);
-      const brand = esc(brandName()), initial = brand.charAt(0).toUpperCase();
+      const brand = esc(brandName()), initial = esc(brandName().charAt(0).toUpperCase());
       const head = esc($('fHead').value || 'Your headline'), cta = esc($('fCta').value || 'Shop now');
       const codeV = esc($('fCode').value.trim().toUpperCase());
       const code = codeV ? `\nUse code ${codeV}` : '';
@@ -1155,7 +1201,7 @@
       if (ch === 'push') return `<div class="scr"><div class="lock">${sbar('#fff')}
         <div class="lk"><i class="fa-solid fa-lock"></i></div><div class="date">${t.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}</div>
         <div class="time">${hhmm}</div>
-        <div class="ntf"><span class="app"><i class="fa-solid fa-bag-shopping"></i></span><div style="flex:1;min-width:0"><b>${head}</b><p>${body}</p></div>${thumbOf(s) ? `<img src="${thumbOf(s)}" alt="">` : ''}</div>
+        <div class="ntf"><span class="app"><i class="fa-solid fa-bag-shopping"></i></span><div style="flex:1;min-width:0"><b>${head}</b><p>${body}</p></div>${thumbOf(s) ? `<img src="${esc(thumbOf(s))}" alt="">` : ''}</div>
         <div class="ntf"><span class="app"></span><div style="flex:1"><b>&nbsp;</b><p>&nbsp;</p></div></div>
         <div class="lock-btns"><span><i class="fa-solid fa-lightbulb"></i></span><span><i class="fa-solid fa-camera"></i></span></div></div></div>`;
       if (ch === 'whatsapp') return `<div class="scr">${sbar('#111', '#fff')}
@@ -1177,7 +1223,7 @@
           <div class="banner"><div><h4>${head}</h4><p>Styles picked for you by ${brand}.</p>${codeV ? `<span class="code">${codeV}</span><br>` : ''}<span class="pv-cta">${cta}</span></div>${img}</div>
           <div class="chips2"><span><i class="b">%</i>View coupons<i class="fa-solid fa-chevron-right"></i></span><span><i class="b">%</i>Refer &amp; earn<i class="fa-solid fa-chevron-right"></i></span></div>
           <p class="sec-t">Picked for you</p>
-          <div class="hscroll">${(picks.length ? picks : [s || {}]).map(x => `<div class="pcard">${imgOf(x)}<div><b>${esc(x.original_filename || 'Your SKU')}</b><small>${cta} ›</small></div></div>`).join('')}</div>
+          <div class="hscroll">${(picks.length ? picks : [s || {}]).map(x => `<div class="pcard"><span class="pc-rank">#${esc(x.rank ?? '—')}</span>${imgOf(x)}<div><b>${esc(x.original_filename || 'Your SKU')}</b><small>${skuScore(x) == null ? cta : 'Fit ' + skuScore(x) + '/100'} ›</small></div></div>`).join('')}</div>
         </div>
         <div class="tabbar"><i class="fa-solid fa-house on"></i><i class="fa-solid fa-magnifying-glass"></i><i class="fa-solid fa-bag-shopping"></i><i class="fa-regular fa-user"></i></div></div>`;
     }
@@ -1202,7 +1248,7 @@
     }
     function showChannel(ch) {
       const sec = $('screen').querySelector(`[data-mode="${ch}"]`);
-      if (sec) $('screen').scrollTo({ top: sec.offsetTop, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+      if (sec) $('screen').scrollTo({ top: sec.offsetTop, behavior: scrollBehavior() });
     }
     let pvRaf = 0;
     $('screen').addEventListener('scroll', () => { cancelAnimationFrame(pvRaf); pvRaf = requestAnimationFrame(syncPreviewTabs); }, { passive: true });
@@ -1329,6 +1375,8 @@
       try {
         data = await api('/v1/ads-lab/campaigns/' + encodeURIComponent(id) + '/monitor');
       } catch (e) {
+        if (!state.current || state.current.campaign_id !== id) return;
+        Object.keys(anCharts).forEach(k => anChart(k, null)); // don't leave the previous campaign's charts on screen
         $('anErr').textContent = 'Trend charts are unavailable right now: ' + e.message;
         $('anErr').hidden = false;
         return;
@@ -1403,7 +1451,7 @@
     function focusAnalysis() {
       const el = $('analysisSection');
       if (el.hidden) return;
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      el.scrollIntoView({ behavior: scrollBehavior(), block: 'start' });
     }
     /* ---------- Summary + validation ---------- */
     function renderSummary() {
@@ -1478,18 +1526,28 @@
       };
     }
     function validate(body) {
-      const errs = [], mark = (id, eid, msg) => { $(id).classList.toggle('err', !!msg); $(eid).textContent = msg || ''; if (msg) errs.push(msg); };
+      const errs = [], mark = (id, eid, msg) => {
+        $(id).classList.toggle('err', !!msg); $(id).setAttribute('aria-invalid', String(!!msg));
+        $(eid).textContent = msg || ''; if (msg) errs.push(msg);
+      };
       mark('fName', 'eName', body.campaign_name ? '' : 'Campaign name is required.');
       mark('fHead', 'eHead', body.creative.headline ? '' : 'Add a headline.');
       mark('fWa', 'eWa', body.channels.includes('whatsapp') && !body.message_template.whatsapp ? 'Write the WhatsApp message.' : '');
       mark('fSms', 'eSms', body.channels.includes('sms') && !body.message_template.sms ? 'Write the SMS message.' : '');
       const code = $('fCode').value.trim();
-      mark('fCode', 'eCode', !code || /^[A-Za-z0-9_-]{3,15}$/.test(code) ? '' : 'Use 3–15 letters or numbers.');
+      mark('fCode', 'eCode', !code || /^[A-Za-z0-9_-]{3,15}$/.test(code) ? '' : 'Use 3–15 letters, numbers, - or _ (no spaces).');
       const url = $('fUrl').value.trim();
       let urlErr = '';
       if (url) { try { if (!/^https?:$/.test(new URL(url).protocol)) urlErr = 'Link must start with http:// or https://'; } catch (_) { urlErr = 'Enter a full link, e.g. https://yourstore.com/sale'; } }
       mark('fUrl', 'eUrl', urlErr);
-      mark('campaignBudget', 'eBudget', body.budget_inr > 0 ? '' : 'Enter a budget (or use the recommended budget).');
+      const b = body.budget_inr;
+      mark('campaignBudget', 'eBudget', !(Number.isFinite(b) && b > 0) ? 'Enter a budget (or use the recommended budget).'
+        : b > 100000000 ? 'Budget can be at most ₹10,00,00,000.' : '');
+      const rawDays = $('campaignDays').value.trim(), d = Number(rawDays);
+      mark('campaignDays', 'eDays', rawDays && Number.isInteger(d) && d >= 1 && d <= 365 ? '' : 'Enter a whole number of days from 1 to 365.');
+      const start = $('campaignStart').value;
+      mark('campaignStart', 'eStart', !start ? '' : !/^\d{4}-\d{2}-\d{2}$/.test(start) ? 'Pick a valid start date.'
+        : start < todayIso() ? 'Start date can’t be in the past.' : '');
       if (!body.channels.length) errs.push('Select at least one channel.');
       if (!body.selected_sku_ids.length) errs.push('Select at least one creative.');
       if (state.mode === 'ab' && body.selected_sku_ids.length < 2) errs.push('A/B testing needs two or more creatives.');
@@ -1511,6 +1569,7 @@
       if (e.target.id === 'campaignDays' || e.target.name === 'objective') scheduleRecommendation();
       if (e.target.id === 'campaignBudget') scheduleEstimate();
     });
+    $('form').addEventListener('submit', (e) => e.preventDefault()); // Enter in a field must not reload the page
     $('form').addEventListener('change', (e) => { renderAll(); if (e.target.name === 'objective') scheduleRecommendation(); });
 
     /* ---------- Actions ---------- */
@@ -1573,6 +1632,7 @@
     }
     window.addEventListener('message', (ev) => {
       const data = ev.data;
+      if (ev.source !== window.parent || window.parent === window) return; // only the Command Center shell may drive this page
       if (!data || typeof data !== 'object') return;
       if (data.type === 'cc-context-request') { publishContext(); return; }
       if (data.type !== 'cc-agent-command') return;
@@ -1609,6 +1669,10 @@
       document.querySelectorAll('#histFilters details.ms').forEach(msSummary);
       $('hfFrom').value = ''; $('hfTo').value = ''; $('hfFrom').max = ''; $('hfTo').min = '';
       applyHistFilters();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      document.querySelectorAll('details.ms[open]').forEach(d => { d.removeAttribute('open'); if (d.contains(document.activeElement)) d.querySelector('summary').focus(); });
     });
     document.addEventListener('click', (e) => {
       document.querySelectorAll('details.ms[open]').forEach(d => { if (!d.contains(e.target)) d.removeAttribute('open'); });

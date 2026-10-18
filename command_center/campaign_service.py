@@ -617,8 +617,9 @@ def extract_sku(pctx: PipelineContext, object_key: str) -> dict[str, Any]:
         )
     except Exception as exc:
         log.exception("Extract failed key=%s", object_key)
+        # Raw exception text (URLs, hosts) is logged above; brands only see a generic reason.
         return {"attributes": {"brand": pctx.brand}, "raw_result": {}, "extract_ok": False,
-                "extract_error": str(exc)[:300]}
+                "extract_error": "attribute extraction failed"}
     raw = payload.get("result") or {}
     attrs = extracted_attributes(raw, pctx.brand)
     if not any(attrs.get(k) for k in ("color", "name", "material", "pattern", "size")):
@@ -693,7 +694,7 @@ def compare_sku(
         brand_camp.upsert_pin_scores(sku_uuid, per_pin)
     except Exception as exc:
         log.exception("compare-pins failed sku=%s", sku_uuid)
-        compare_err = str(exc)[:300]
+        compare_err = "similarity comparison failed"
     a_fit = brand_camp.attr_fit_score(attrs, pctx.profile)
     rank_score = brand_camp.blend_rank_score(sim_fit=sim_fit, freq_coverage=freq_cov, attr_fit=a_fit)
     return {
