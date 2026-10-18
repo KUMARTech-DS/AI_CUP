@@ -1,5 +1,23 @@
 # Suffai — Fashion Intelligence (GCP)
 
+# Please use the below credentials for login
+## Test Accounts
+
+| Username | Password / ID | Role | Display Name |
+|---|---|---|---|
+| `admin1` | `123@admin` | `admin` | — |
+| `brand_adidas` | `6jQel8Wc2V` | `brand` | Adidas |
+| `brand_h_m` | `XCmIaHM1uy` | `brand` | H&M |
+| `brand_mango` | `GrV5XJtSsY` | `brand` | Mango |
+| `brand_nike` | `mnFZ8SPvoR` | `brand` | Nike |
+| `brand_tommy_hilfiger` | `5JTYKiVHbI` | `brand` | Tommy Hilfiger |
+| `brand_uniqlo` | `ExC2mkHeFc` | `brand` | Uniqlo |
+| `cust_68cb71fa` | `ahjlebPFnW` | `customer` | — |
+| `cust_68c28f57` | `C0ywVRul1D` | `customer` | — |
+
+> **Note:** These appear to be test credentials. Keep them restricted to local or development environments. Avoid committing real passwords, API keys, or production credentials to a public repository.
+
+
 Multi-tenant B2B fashion demand intelligence on **Google Cloud**.  
 **Streamlit is not part of the runtime** (legacy demos live under `archive/streamlit/`).
 
