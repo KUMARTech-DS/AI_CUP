@@ -191,6 +191,7 @@
     .fld input[aria-invalid="true"] { border-color: #c45a5a; }
     .fld input[aria-invalid="true"]:focus { box-shadow: 0 0 0 3px rgba(196, 90, 90, 0.2); }
     .fld-err { min-height: 0; font-size: 11.5px; color: #a03a3a; }
+    .fld .req { color: #a03a3a; margin-left: 2px; font-weight: 600; }
     .fld-err:empty { display: none; }
     .fld-err button { border: 0; background: none; padding: 0; font: inherit; font-weight: 600; color: var(--plum); text-decoration: underline; cursor: pointer; }
     .ph { position: relative; }
@@ -455,6 +456,9 @@
     .cf-multi .cf-opts label { display: flex; gap: 0.4rem; align-items: center; padding: 0.15rem 0; font-weight: 400; color: var(--ink); cursor: pointer; }
     .cf-field.cf-invalid select, .cf-field.cf-invalid input, .cf-field.cf-invalid summary { border-color: #c0392b; }
     .cf-error { color: #c0392b; font-size: 11px; }
+    .cf-req { color: #c0392b; margin-left: 2px; }
+    .cf-ferr { color: #c0392b; font-size: 10.5px; }
+    .cf-ferr:empty { display: none; }
     .cf-actions { display: flex; gap: 0.5rem; }
     .chat-chips { display: flex; flex-wrap: wrap; gap: 0.35rem; padding: 0 0.7rem; }
     .chat-chips:empty { display: none; }
@@ -541,7 +545,8 @@
           </div>
         </div>
         <div class="fgrid">
-          <label class="fld full"><span>Display Name</span><input id="pfName" maxlength="60" required placeholder="Your name" autocomplete="name" /></label>
+          <label class="fld full"><span>Display Name<b class="req" aria-hidden="true">*</b></span><input id="pfName" maxlength="60" required placeholder="Your name" autocomplete="name" aria-describedby="pfNameErr" />
+            <small class="fld-err" id="pfNameErr" aria-live="polite"></small></label>
           <label class="fld"><span>Email</span>
             <input id="pfEmail" type="email" maxlength="120" placeholder="name@gmail.com" autocomplete="email" spellcheck="false" autocapitalize="none" aria-describedby="pfEmailErr" />
             <small class="fld-err" id="pfEmailErr" aria-live="polite"></small></label>
@@ -815,6 +820,21 @@
       };
     }
 
+    // Campaign / ranking job each tab has open. Sent as ui_focus, never inside `context` (which reaches the model).
+    const uiRefs = {};
+    function noteUiRef(tab, campaignId, jobId) {
+      const ref = { campaign_id: campaignId ? String(campaignId) : null, job_id: jobId ? String(jobId) : null };
+      const prev = uiRefs[tab];
+      if (prev && prev.campaign_id === ref.campaign_id && prev.job_id === ref.job_id) return;
+      uiRefs[tab] = { ...ref, at: Date.now() };
+    }
+    function buildUiFocus() {
+      const has = (r) => !!(r && (r.campaign_id || r.job_id));
+      const active = uiRefs[window.__CC_CONTEXT__.active_tab];
+      const pick = has(active) ? active : Object.values(uiRefs).filter(has).sort((a, b) => b.at - a.at)[0];
+      return pick ? { campaign_id: pick.campaign_id, job_id: pick.job_id } : null;
+    }
+
     const AURA_GENERIC_ERROR = 'Something went wrong. Please try again.';
 
     function maskedErrorText(data) {
@@ -877,11 +897,23 @@
       const getters = {};
       const rows = {};
       const optLabel = {};
+      const fieldErrs = {};
+      const markRequired = form.fields.length > 1; // a lone question needs no asterisk
+      const reqMark = () => {
+        const s = document.createElement('span');
+        s.className = 'cf-req';
+        s.setAttribute('aria-hidden', 'true');
+        s.textContent = '*';
+        return s;
+      };
 
       form.fields.forEach((f, i) => {
         const row = document.createElement('div');
         row.className = 'cf-field';
         const inputId = 'cf_' + form.form_id.slice(0, 8) + '_' + i;
+        const fe = document.createElement('div');
+        fe.className = 'cf-ferr';
+        fe.id = inputId + '_err';
         const opts = Array.isArray(f.options) ? f.options : [];
         optLabel[f.id] = {};
         opts.forEach((o) => { optLabel[f.id][String(o.value)] = String(o.label); });
@@ -889,6 +921,7 @@
           const cap = document.createElement('span');
           cap.className = 'cf-label';
           cap.textContent = f.label;
+          if (markRequired && f.required) cap.appendChild(reqMark());
           row.appendChild(cap);
           const det = document.createElement('details');
           det.className = 'cf-multi';
@@ -939,6 +972,7 @@
           const lab = document.createElement('label');
           lab.htmlFor = inputId;
           lab.textContent = f.label;
+          if (markRequired && f.required) lab.appendChild(reqMark());
           row.appendChild(lab);
           let el;
           if (f.type === 'select') {
@@ -964,9 +998,21 @@
             if (f.default != null) el.value = String(f.default);
           }
           el.id = inputId;
+          if (f.required) el.setAttribute('aria-required', 'true');
+          el.setAttribute('aria-describedby', fe.id);
           row.appendChild(el);
           getters[f.id] = () => el.value;
         }
+        row.appendChild(fe);
+        fieldErrs[f.id] = fe;
+        const clearRow = () => {
+          if (!row.classList.contains('cf-invalid')) return;
+          row.classList.remove('cf-invalid');
+          fe.textContent = '';
+          if (!card.querySelector('.cf-invalid')) err.hidden = true;
+        };
+        row.addEventListener('input', clearRow);
+        row.addEventListener('change', clearRow);
         rows[f.id] = row;
         card.appendChild(row);
       });
@@ -1012,15 +1058,17 @@
       submit.addEventListener('click', () => {
         const values = {};
         const echo = [];
-        let missing = null;
+        const missing = [];
         form.fields.forEach((f) => {
           rows[f.id].classList.remove('cf-invalid');
+          fieldErrs[f.id].textContent = '';
           if (!isShown(f)) return;
           const v = getters[f.id]();
           const empty = Array.isArray(v) ? v.length === 0 : String(v).trim() === '';
           if (f.required && empty) {
             rows[f.id].classList.add('cf-invalid');
-            if (!missing) missing = f.label;
+            fieldErrs[f.id].textContent = f.type === 'multiselect' ? 'Choose at least one option.' : f.label + ' is required.';
+            missing.push(f.label);
           }
           if (f.type === 'number') {
             values[f.id] = String(v).trim() === '' ? null : Number(v);
@@ -1033,9 +1081,10 @@
             : (optLabel[f.id][v] || String(v).trim());
           echo.push(f.label + ': ' + (shown.length > 60 ? shown.slice(0, 57) + '…' : shown));
         });
-        if (missing) {
-          err.textContent = 'Please fill in: ' + missing;
+        if (missing.length) {
+          err.textContent = 'Please fill in the required fields: ' + missing.join(', ') + '.';
           err.hidden = false;
+          card.querySelector('.cf-invalid input, .cf-invalid select, .cf-invalid summary')?.focus();
           return;
         }
         card.remove();
@@ -1073,6 +1122,7 @@
           body: JSON.stringify({
             context: window.__CC_CONTEXT__,
             filter_context: buildFilterContext(),
+            ui_focus: buildUiFocus(),
             ...payload,
           }),
         });
@@ -1292,11 +1342,13 @@
           filters_label: data.filters_label || '',
           ranked: data.ranked || []
         };
+        noteUiRef('ads', data.campaign_id, data.job && data.job.job_id);
       } else if (data.source === 'campaigns') {
         window.__CC_CONTEXT__.campaigns = {
           campaign_name: data.campaign_name || null,
           status: data.status || null
         };
+        noteUiRef('campaigns', data.campaign_id, null);
       }
       updateHint();
     });
@@ -1378,7 +1430,7 @@
       $id('pfName').value = displayName();
       $id('pfEmail').value = p.email || '';
       $id('pfPhone').value = phoneDigits(p.phone || '');
-      ['pfEmail', 'pfPhone'].forEach(id => setFieldError(id, ''));
+      ['pfName', 'pfEmail', 'pfPhone'].forEach(id => setFieldError(id, ''));
       $id('pfTitle').value = p.title || '';
       $id('pfTabList').innerHTML = '';
       allowed.forEach(t => {
@@ -1442,7 +1494,10 @@
     $id('dlgClose').addEventListener('click', () => $id('profileDlg').close());
     $id('dlgCancel').addEventListener('click', () => $id('profileDlg').close());
     $id('profileDlg').addEventListener('close', () => $id('profileBtn').focus());
-    $id('pfName').addEventListener('input', () => { if (!draftPhoto) paintAvatar($id('avDlg'), null, $id('pfName').value || '?'); });
+    $id('pfName').addEventListener('input', () => {
+      if (!draftPhoto) paintAvatar($id('avDlg'), null, $id('pfName').value || '?');
+      if ($id('pfName').value.trim()) setFieldError('pfName', '');
+    });
     $id('profileForm').addEventListener('input', () => { $id('dlgErr').textContent = ''; });
 
     /* ---- Email + Indian mobile validation (fields optional; if filled they must be valid) ---- */
@@ -1543,11 +1598,10 @@
     $id('profileForm').addEventListener('submit', (e) => {
       e.preventDefault();
       const name = $id('pfName').value.trim();
-      if (!name) { $id('dlgErr').textContent = 'Display name is required.'; $id('pfName').focus(); return; }
       const email = $id('pfEmail').value.trim(), phone = phoneDigits($id('pfPhone').value);
-      const eErr = emailError(email), pErr = phoneError(phone);
-      setFieldError('pfEmail', eErr); setFieldError('pfPhone', pErr);
-      if (eErr || pErr) { $id(eErr ? 'pfEmail' : 'pfPhone').focus(); return; }
+      const nErr = name ? '' : 'Display name is required.', eErr = emailError(email), pErr = phoneError(phone);
+      setFieldError('pfName', nErr); setFieldError('pfEmail', eErr); setFieldError('pfPhone', pErr);
+      if (nErr || eErr || pErr) { $id(nErr ? 'pfName' : eErr ? 'pfEmail' : 'pfPhone').focus(); return; }
       const ok = saveProfile({
         display_name: name,
         email,

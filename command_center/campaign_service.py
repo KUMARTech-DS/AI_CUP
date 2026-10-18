@@ -173,8 +173,10 @@ def list_for(
         raise ServiceError("unavailable", "Campaign list unavailable", 503) from exc
 
 
-def get_with_skus(sess: Optional[dict[str, Any]], campaign_id: str) -> dict[str, Any]:
-    """Campaign + SKUs (created order) annotated with average PIN fit and fit rank."""
+def get_with_skus(
+    sess: Optional[dict[str, Any]], campaign_id: str, *, with_images: bool = False
+) -> dict[str, Any]:
+    """Campaign + SKUs (created order) annotated with average PIN fit and fit rank (+ signed image URLs)."""
     campaign = load_campaign(sess, campaign_id)
     try:
         skus = brand_camp.list_campaign_skus(campaign["campaign_id"])
@@ -193,6 +195,10 @@ def get_with_skus(sess: Optional[dict[str, Any]], campaign_id: str) -> dict[str,
     )
     for i, s in enumerate(order, start=1):
         s["rank"] = i
+    if with_images:
+        import style_assistant as style_asst
+
+        style_asst.attach_image_urls(skus)
     campaign["sku_count"] = len(skus)
     return {"campaign": campaign, "skus": skus}
 

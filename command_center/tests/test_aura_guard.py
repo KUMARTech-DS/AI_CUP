@@ -97,6 +97,7 @@ def test_scrub_text_keeps_business_numbers():
 def test_scrub_obj_drops_pii_and_internal_keys_and_neutralizes():
     data = {
         "campaign_id": "3f2b1c9e-1111-2222-3333-444455556666",
+        "job_id": "33333333-3333-4333-8333-333333333333",
         "sku_uuid": "x",
         "email": "a@b.com",
         "customer_id": "c1",

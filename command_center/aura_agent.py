@@ -106,6 +106,10 @@ CAMPAIGN JOURNEY (take action with tools wherever it helps; do not just explain)
    happened until a tool result says so.
 8. After launch the impact and campaign analysis opens on the Campaigns tab (never the Style
    tab). Use get_campaign_monitor / open_campaign_monitor for it later.
+The brand can also act directly in the tabs: rank SKUs with the Ads Lab button, and open, save,
+launch or discard campaigns on the Campaigns tab. dashboard_context.on_screen is the campaign and
+ranking job they have open; "this campaign" or "my ranking" mean that one. Tools always return the
+latest saved state, so check with a tool before describing a campaign's status.
 
 SIMULATION
 - All campaign impact metrics (reach, impressions, CTR, conversions, revenue, lift, ROAS, spend),
@@ -135,6 +139,8 @@ class AgentChatRequest(BaseModel):
     # Sent by the shell, never typed by the user: handled without the model.
     event: Optional[Literal["uploads_ready", "ranking_done", "ranking_failed"]] = None
     job_id: Optional[str] = Field(default=None, max_length=64)
+    # Campaign / ranking job open in the tabs (set by the shell); only used server-side, never shown to the model.
+    ui_focus: Optional[dict[str, Any]] = None
 
 
 class FormResponse(BaseModel):
@@ -177,6 +183,10 @@ class AgentState:
     source_context: Optional[dict[str, Any]] = None
     history: list[tuple[str, str]] = field(default_factory=list)
     forms: dict[str, dict[str, Any]] = field(default_factory=dict)
+    # last values seen in the tabs: only a change moves AURA's current campaign / job / audience
+    ui_campaign_id: Optional[str] = None
+    ui_job_id: Optional[str] = None
+    ui_audience: Optional[dict[str, Any]] = None
     touched: float = 0.0
 
 
@@ -554,6 +564,71 @@ def _sku_view(rows: list[dict[str, Any]], selected: Optional[set[str]] = None) -
     return out
 
 
+def _ui_focus(raw: Any) -> dict[str, Optional[str]]:
+    out: dict[str, Optional[str]] = {"campaign_id": None, "job_id": None}
+    if isinstance(raw, dict):
+        for key in out:
+            try:
+                out[key] = str(uuid.UUID(str(raw.get(key) or "").strip()))
+            except ValueError:
+                pass
+    return out
+
+
+def _ui_lookup(ctx: ToolContext, fn: Callable[..., Any], ref: str) -> Optional[dict[str, Any]]:
+    try:
+        return _svc(fn, ctx.sess, ref)
+    except ToolError:
+        return None  # not this brand's, or gone
+    except Exception:
+        log.warning("request_id=%s aura ui focus lookup failed", ctx.request_id, exc_info=True)
+        return None
+
+
+def _sync_with_ui(ctx: ToolContext, raw_focus: Any) -> dict[str, Any]:
+    """Follow what the brand did in the tabs without AURA (ranked, opened or saved a campaign, changed filters).
+
+    Only a change since the last request moves AURA's current campaign / job / audience, so AURA's own
+    actions stand. Ownership is checked by campaign_service. Returns what is on screen (no IDs).
+    """
+    st = ctx.state
+    focus = _ui_focus(raw_focus)
+    job_id, cid = focus["job_id"], focus["campaign_id"]
+    job_moved = job_id is not None and job_id != st.ui_job_id
+    camp_moved = cid is not None and cid != st.ui_campaign_id
+    st.ui_job_id, st.ui_campaign_id = job_id, cid
+    on_screen: dict[str, Any] = {}
+    adopted = False
+
+    job = _ui_lookup(ctx, campaign_jobs.get_job, job_id) if job_id else None
+    if job:
+        status = job.get("status")
+        if status in ("queued", "running"):
+            on_screen["ranking_job"] = {"status": status, "progress_pct": job.get("progress_pct")}
+            if job_moved:
+                st.active_job_id, st.active_campaign_id, st.ranked = job_id, job.get("campaign_id"), []
+                adopted = True
+        else:
+            if st.active_job_id == job_id:
+                st.active_job_id = None
+            if job_moved and status == "succeeded":
+                st.active_campaign_id, st.ranked = job.get("campaign_id"), []
+                adopted = True
+
+    campaign = _ui_lookup(ctx, camp_svc.load_campaign, cid) if cid else None
+    if campaign:
+        on_screen["campaign"] = _campaign_label(campaign)
+        on_screen["status"] = campaign.get("status")
+        if camp_moved and not adopted and st.active_campaign_id != cid:
+            st.active_campaign_id, st.ranked = cid, []
+
+    audience = _current_audience(ctx)
+    if audience != st.ui_audience:
+        st.ui_audience = audience
+        st.draft_audience = None  # filters changed in the tabs: they win over an earlier AURA form
+    return on_screen
+
+
 # ---------------------------------------------------------------------------
 # Tool handlers — Geo
 # ---------------------------------------------------------------------------
@@ -923,7 +998,7 @@ def _t_ranking_job(ctx: ToolContext, _: NoArgs) -> ToolOutput:
         except ToolError:
             out["next"] = "Call request_inputs kind=run_mode so the brand picks 1P setup or 3P export. Nothing is running yet."
         return ToolOutput(out, cmds, form=form)
-    elif job.get("status") == "failed":
+    elif job.get("status") in ("failed", campaign_jobs.CANCELLED):
         ctx.state.active_job_id = None
     return ToolOutput(out, cmds)
 
@@ -961,8 +1036,9 @@ def _t_configure(ctx: ToolContext, args: ConfigureArgs) -> ToolOutput:
             raise ToolError("invalid_input", "hero product must be one of the selected ranks")
         hero = by_rank[args.hero_rank]["sku_uuid"]
     prev_creative = c.get("creative") if isinstance(c.get("creative"), dict) else {}
+    hero_name = next(((r.get("attributes") or {}).get("name") for r in rows if r.get("sku_uuid") == hero), None) or "styles"
     creative = {
-        "headline": args.headline if args.headline is not None else (prev_creative.get("headline") or ""),
+        "headline": args.headline or prev_creative.get("headline") or f"New {hero_name} picked for you"[:90],
         "cta": args.cta or prev_creative.get("cta") or "Shop now",
         "hero_sku_id": hero,
     }
@@ -1678,7 +1754,7 @@ TOOLS: dict[str, ToolSpec] = {
         ToolSpec("get_campaign", "Read campaign", "Campaign details and its ranked products (by rank number).", _obj({"campaign": _CAMPAIGN_REF}), CampaignRefArgs, _t_get_campaign),
         ToolSpec("request_inputs", "Asked for details", "Show ONE form with every input the next step needs (dropdowns built from allowed values). kind=audience (purpose analyze_geo or rank_skus) before analysis or ranking when the audience is not given; run_mode after ranking completes; campaign_setup for the 1P setup; choices (question + 2-6 short options) for any other question. Never ask questions one by one in text.", _obj({"kind": {"type": "string", "enum": ["audience", "run_mode", "campaign_setup", "choices"]}, "purpose": {"type": "string", "enum": ["analyze_geo", "rank_skus"]}, "campaign": _CAMPAIGN_REF, "question": {"type": "string"}, "options": {"type": "array", "items": {"type": "string"}, "description": "2-6 short options, choices only"}}, ["kind"]), InputsArgs, _t_request_inputs),
         ToolSpec("open_campaign_setup", "Opened campaign setup", "Brand chose SuffAI (1P): open the Campaigns tab with this ranked campaign as a draft to fill in. Does not start it.", _obj({"campaign": _CAMPAIGN_REF}), CampaignRefArgs, _t_open_setup),
-        ToolSpec("configure_campaign", "Saved campaign draft", "Save a SuffAI (1P) campaign draft (does not start it): name, objective, channels, WhatsApp/SMS messages, products (rank numbers), creative, budget and schedule. Omit budget_inr to use the recommended budget. Returns a simulated estimate.", _obj({"campaign": _CAMPAIGN_REF, "campaign_name": {"type": "string"}, "objective": {"type": "string", "enum": list(OBJECTIVES)}, "budget_inr": {"type": "number", "description": "INR; omit to use the recommended budget"}, "duration_days": {"type": "integer"}, "channels": _CHANNELS_PROP, "whatsapp_message": {"type": "string", "description": "Required with whatsapp; max 1000 chars"}, "sms_message": {"type": "string", "description": "Required with sms; max 160 chars"}, "start_date": {"type": "string", "description": "YYYY-MM-DD, default today"}, "sku_ranks": {"type": "array", "items": {"type": "integer"}, "description": "Product rank numbers; default top 3"}, "headline": {"type": "string"}, "cta": {"type": "string", "enum": list(CTAS)}, "hero_rank": {"type": "integer"}}, ["campaign_name", "objective", "duration_days"]), ConfigureArgs, _t_configure, writes=True),
+        ToolSpec("configure_campaign", "Saved campaign draft", "Save a SuffAI (1P) campaign draft (does not start it): name, objective, channels, WhatsApp/SMS messages, products (rank numbers), creative, budget and schedule. Omit budget_inr to use the recommended budget. Returns a simulated estimate.", _obj({"campaign": _CAMPAIGN_REF, "campaign_name": {"type": "string"}, "objective": {"type": "string", "enum": list(OBJECTIVES)}, "budget_inr": {"type": "number", "description": "INR; omit to use the recommended budget"}, "duration_days": {"type": "integer"}, "channels": _CHANNELS_PROP, "whatsapp_message": {"type": "string", "description": "Required with whatsapp; max 1000 chars"}, "sms_message": {"type": "string", "description": "Required with sms; max 160 chars"}, "start_date": {"type": "string", "description": "YYYY-MM-DD, default today"}, "sku_ranks": {"type": "array", "items": {"type": "integer"}, "description": "Product rank numbers; default top 3"}, "headline": {"type": "string", "description": "Required. Omit to keep the saved headline or use one based on the hero product"}, "cta": {"type": "string", "enum": list(CTAS)}, "hero_rank": {"type": "integer"}}, ["campaign_name", "objective", "duration_days"]), ConfigureArgs, _t_configure, writes=True),
         ToolSpec("recommend_budget", "Recommended budget", "Simulated recommended budget (min / recommended / max, per-channel split, daily budget, expected ROAS and reasons) for an objective, duration and channels.", _obj({"campaign": _CAMPAIGN_REF, "objective": {"type": "string", "enum": list(OBJECTIVES)}, "duration_days": {"type": "integer"}, "channels": _CHANNELS_PROP}), BudgetArgs, _t_recommend_budget),
         ToolSpec("export_campaign_3p", "Exported for 3P", "Run on other platforms: export the campaign ranking as CSV (downloads in Ads Lab).", _obj({"campaign": _CAMPAIGN_REF}), CampaignRefArgs, _t_export_3p, writes=True),
         ToolSpec("estimate_campaign", "Estimated outcomes", "Simulated outcome ranges (reach, impressions, CTR, conversions, revenue, lift, ROAS) for a budget, duration and channels.", _obj({"campaign": _CAMPAIGN_REF, "objective": {"type": "string", "enum": list(OBJECTIVES)}, "budget_inr": {"type": "number"}, "duration_days": {"type": "integer"}, "channels": _CHANNELS_PROP}, ["budget_inr", "duration_days"]), EstimateArgs, _t_estimate),
@@ -1922,6 +1998,8 @@ def _handle_event(ctx: ToolContext, body: AgentChatRequest) -> Union[dict[str, A
         elif status == "failed":
             answer = (f"The ranking job did not complete: {res.get('problem') or 'please try again.'}"
                       " Try clearer product photos, then attach them again.")
+        elif status == campaign_jobs.CANCELLED:
+            answer = "The ranking job was cancelled and nothing was saved. Attach SKU images again when you're ready to rank."
         else:
             answer = f"Ranking is still running ({res.get('progress_pct') or 0}% done). I'll post the results when it finishes."
     answer = _finalize_answer(answer, ctx)
@@ -1983,6 +2061,8 @@ def run_agent(
         answer = _finalize_answer(msg, ctx)
         _remember(state, "[confirmed]", answer)
         return _ok(request_id, answer, cmds, attached_images=_staging.count(token))
+
+    on_screen = _sync_with_ui(ctx, body.ui_focus)
 
     if body.event:
         return _handle_event(ctx, body)
@@ -2053,6 +2133,7 @@ def run_agent(
         "filter_context": ctx.filter_ctx,
         "attached_images": _staging.count(token),
         "campaign_in_progress": bool(state.active_campaign_id),
+        "on_screen": on_screen or None,
     }
     safe_dashboard = guard.scrub_obj(dashboard, own_brand=brand, competitor_names=_competitors(ctx))
     user_blob = (

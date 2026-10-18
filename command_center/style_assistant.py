@@ -7,6 +7,7 @@ import logging
 import math
 import os
 import re
+from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 from typing import Any, List, Optional, Sequence
 
@@ -571,12 +572,15 @@ def signed_image_url(
 
 
 def attach_image_urls(items: list[dict[str, Any]]) -> None:
-    signed: dict[tuple[Any, Any], Optional[str]] = {}
+    keys = list(dict.fromkeys((item.get("gcs_bucket"), item.get("gcs_object_key")) for item in items))
+    if len(keys) > 1:
+        # each signature is a remote IAM signBlob call: sign concurrently so a 20-image campaign isn't 20 round trips
+        with ThreadPoolExecutor(max_workers=min(8, len(keys))) as pool:
+            signed = dict(zip(keys, pool.map(lambda k: signed_image_url(*k), keys)))
+    else:
+        signed = {k: signed_image_url(*k) for k in keys}
     for item in items:
-        key = (item.get("gcs_bucket"), item.get("gcs_object_key"))
-        if key not in signed:
-            signed[key] = signed_image_url(*key)
-        item["image_url"] = signed[key]
+        item["image_url"] = signed[(item.get("gcs_bucket"), item.get("gcs_object_key"))]
 
 
 # ---------------------------------------------------------------------------

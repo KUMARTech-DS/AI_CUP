@@ -68,6 +68,7 @@ _PII_KEY_SUBSTR = ("email", "phone", "address", "password", "token", "secret")
 _INTERNAL_KEY_DENY = frozenset(
     {
         "campaign_id",
+        "job_id",
         "sku_uuid",
         "selected_sku_ids",
         "hero_sku_id",

@@ -148,6 +148,31 @@ def test_configure_requires_ranked_status_409(db):
                  start_date=None, selected_sku_ids=[], creative=None) == ("invalid_input", 409)
 
 
+@pytest.mark.parametrize("creative", [None, {}, {"headline": "   "}])
+def test_configure_requires_headline(db, creative):
+    db[0]["est_audience"] = 1000
+    with pytest.raises(svc.ServiceError) as err:
+        svc.configure(ZARA, CID, campaign_name="A", objective="awareness", budget_inr=1000, duration_days=7,
+                      start_date=None, selected_sku_ids=[], creative=creative)
+    assert (err.value.code, err.value.status, err.value.public) == ("invalid_input", 400, "headline is required")
+
+
+def test_detail_signs_image_urls_only_when_asked(db, monkeypatch):
+    import style_assistant as sa
+
+    monkeypatch.setattr(bc, "list_campaign_skus", lambda cid: [
+        {"sku_uuid": "a", "extract_ok": True, "rank_score": 80, "gcs_bucket": "bkt", "gcs_object_key": "k1"},
+        {"sku_uuid": "b", "extract_ok": True, "rank_score": 90, "gcs_bucket": "bkt", "gcs_object_key": "k2"},
+        {"sku_uuid": "c", "extract_ok": False, "rank_score": None, "gcs_bucket": None, "gcs_object_key": None},
+    ])
+    monkeypatch.setattr(bc, "sku_pin_fit", lambda cid: {})
+    monkeypatch.setattr(sa, "signed_image_url", lambda b, k, **kw: f"https://signed/{k}" if b and k else None)
+    assert all("image_url" not in s for s in svc.get_with_skus(ZARA, CID)["skus"])
+    skus = svc.get_with_skus(ZARA, CID, with_images=True)["skus"]
+    assert [s["image_url"] for s in skus] == ["https://signed/k1", "https://signed/k2", None]
+    assert [s["rank"] for s in skus] == [2, 1, 3]
+
+
 def test_list_for_brand_is_scoped_to_own_brand(db, monkeypatch):
     seen = {}
     monkeypatch.setattr(bc, "list_campaigns", lambda **k: seen.update(k) or [])

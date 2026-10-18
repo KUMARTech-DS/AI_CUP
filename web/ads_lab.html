@@ -60,6 +60,11 @@
     details.ms label.opt input { accent-color: #6B3A55; }
     details.ms .ms-empty { padding: .4rem; font-size: .75rem; color: #8A7480; }
     .form-err { padding: .55rem .7rem; border-radius: 10px; background: rgba(180,60,60,.08); border: 1px solid rgba(180,60,60,.3); color: #a03a3a; font-size: 12px; }
+    .req { color: #a03a3a; margin-left: 2px; }
+    .field-err { margin-top: .3rem; font-size: 11px; font-weight: 500; color: #a03a3a; text-transform: none; letter-spacing: normal; }
+    .field-err:empty { display: none; }
+    .field[aria-invalid="true"], details.ms.invalid > summary { border-color: #c45a5a; }
+    .upload-zone.invalid { border-color: #c45a5a; }
     
     .tag { display: inline-flex; align-items: center; gap: .3rem; border-radius: 999px; border: 1px solid #EAD9E0; padding: .15rem .5rem; font-size: 10px; color: #552C43; background: #F6EEF0; }
     .muted { color: #8A7480; }
@@ -332,6 +337,16 @@
     @keyframes barflow { to { background-position: 16px 0; } }
     .job-bar.succeeded { background: #16A34A; }
     .job-bar.failed { background: #DC2626; }
+    .job-bar.cancelled { background: #A8949E; }
+    .job-stages li.stopped .js-dot { background: #8A7480; border-color: #8A7480; color: #fff; }
+    .job-stages li.stopped b { color: #6E5A65; }
+    .job-live.stopped { color: #6E5A65; }
+    .job-cancel { display: inline-flex; align-items: center; gap: .4rem; padding: .35rem .75rem; border-radius: 8px; font-size: 11px; font-weight: 700; color: #B42318; background: #fff; border: 1px solid #F1B8B0; transition: background .2s, border-color .2s; }
+    .job-cancel:hover:not(:disabled) { background: #FEF3F2; border-color: #B42318; }
+    .job-cancel:focus-visible { outline: 2px solid #B42318; outline-offset: 2px; }
+    .job-cancel:disabled { opacity: .55; cursor: not-allowed; }
+    .overlay-cancel { margin-top: 14px; padding: .45rem 1rem; border-radius: 10px; font-size: 12px; font-weight: 700; color: #3B2733; background: #fff; border: 1px solid #DCC3CE; transition: border-color .2s, color .2s; }
+    .overlay-cancel:hover { border-color: #B42318; color: #B42318; }
     .lb-link:disabled { opacity: .45; cursor: not-allowed; transform: none; box-shadow: none; }
     .lb-text .lb-note { color: #F3D58A; }
 
@@ -423,10 +438,12 @@
     <aside id="sidebar" aria-label="Brand, audience and upload" class="sidebar w-full md:w-80 md:max-w-[45vw] max-h-[50vh] md:max-h-none flex-none border-b md:border-b-0 md:border-r border-[#EAD9E0] bg-[#F6EEF0] flex flex-col p-4 gap-5 overflow-y-auto z-20">
       <section class="space-y-3">
         <h2 class="text-xs font-bold uppercase tracking-wider text-[#3B2733] flex items-center gap-2"><span class="w-5 h-5 rounded bg-[#EAD9E0] text-[#3B2733] flex items-center justify-center text-[10px] border border-[#DCC3CE]">1</span> Brand &amp; Audience</h2>
-        <label class="block text-[10px] text-[#8A7480] uppercase tracking-wider font-semibold">Brand Name<input id="filterBrand" type="text" class="field mt-1" placeholder="e.g. Nike" autocomplete="organization" /></label>
-        <div class="block text-[10px] text-[#8A7480] uppercase tracking-wider font-semibold">PIN Codes <span id="pinCount" class="normal-case tracking-normal font-normal text-[#6B3A55]"></span>
+        <div><label class="block text-[10px] text-[#8A7480] uppercase tracking-wider font-semibold">Brand Name<span class="req" aria-hidden="true">*</span><input id="filterBrand" type="text" class="field mt-1" placeholder="e.g. Nike" autocomplete="organization" required aria-describedby="brandErr" /></label>
+          <p id="brandErr" class="field-err" aria-live="polite"></p></div>
+        <div class="block text-[10px] text-[#8A7480] uppercase tracking-wider font-semibold">PIN Codes<span class="req" aria-hidden="true">*</span> <span id="pinCount" class="normal-case tracking-normal font-normal text-[#6B3A55]"></span>
           <details class="ms mt-1" id="msArea"><summary>Loading areas…</summary></details>
-          <select id="filterArea" multiple hidden aria-hidden="true" tabindex="-1"></select></div>
+          <select id="filterArea" multiple hidden aria-hidden="true" tabindex="-1"></select>
+          <p id="pinErr" class="field-err" aria-live="polite"></p></div>
         <div class="block text-[10px] text-[#8A7480] uppercase tracking-wider font-semibold">Age Bucket
           <details class="ms mt-1" id="msAge"><summary>All age groups</summary></details>
           <select id="filterAge" multiple hidden aria-hidden="true" tabindex="-1"></select></div>
@@ -441,20 +458,21 @@
 
       <section class="space-y-3 flex-1 flex flex-col min-h-[180px]">
         <div class="flex items-center justify-between gap-2">
-          <h2 class="text-xs font-bold uppercase tracking-wider text-[#3B2733] flex items-center gap-2"><span class="w-5 h-5 rounded bg-[#EAD9E0] text-[#3B2733] flex items-center justify-center text-[10px] border border-[#DCC3CE]">2</span> Upload SKUs</h2>
+          <h2 class="text-xs font-bold uppercase tracking-wider text-[#3B2733] flex items-center gap-2"><span class="w-5 h-5 rounded bg-[#EAD9E0] text-[#3B2733] flex items-center justify-center text-[10px] border border-[#DCC3CE]">2</span> <span>Upload SKUs<span class="req" aria-hidden="true">*</span></span></h2>
           <button type="button" id="clearSkus" class="icon-btn" title="Remove all selected images" aria-label="Remove all selected images" disabled><i class="fa-solid fa-rotate-right text-[12px]"></i></button>
         </div>
         <input type="file" id="fileInput" multiple accept="image/*" class="hidden">
-        <div id="dropzone" role="button" tabindex="0" class="upload-zone rounded-xl flex flex-col items-center justify-center text-center p-5 cursor-pointer min-h-[130px]">
+        <div id="dropzone" role="button" tabindex="0" aria-describedby="skuErr" class="upload-zone rounded-xl flex flex-col items-center justify-center text-center p-5 cursor-pointer min-h-[130px]">
           <i class="fa-solid fa-cloud-arrow-up text-3xl text-[#6B3A55] mb-3"></i>
           <span class="text-xs text-[#3B2733] font-semibold">Click or drop SKU images</span>
           <span class="text-[10px] text-[#8A7480] mt-1">JPG or PNG, any file name.</span>
         </div>
+        <p id="skuErr" class="field-err" aria-live="polite"></p>
         <div id="thumbs" class="thumbs" aria-label="Selected SKUs"></div>
         <p id="uploadSummary" class="text-[10px] text-[#8A7480]">No creatives uploaded.</p>
         <p class="text-[11px] text-[#3B2733]">Campaign brand: <strong id="brandUploadLabel" class="text-[#6B3A55]">(enter brand name above)</strong></p>
         <div class="run-dock">
-        <button id="runButton" type="button" class="w-full py-3 bg-[#6B3A55] hover:bg-[#552C43] disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl text-sm font-bold flex justify-center items-center gap-2 transition-all shadow-sm" disabled><i class="fa-solid fa-wand-magic-sparkles text-[#C59FB0]"></i><span>Extract &amp; Rank SKUs</span></button>
+        <button id="runButton" type="button" class="w-full py-3 bg-[#6B3A55] hover:bg-[#552C43] disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl text-sm font-bold flex justify-center items-center gap-2 transition-all shadow-sm"><i class="fa-solid fa-wand-magic-sparkles text-[#C59FB0]"></i><span>Extract &amp; Rank SKUs</span></button>
         <p id="runError" class="form-err hidden mt-2" role="alert"></p>
         </div>
         <p class="text-[10px] text-[#8A7480] leading-relaxed">Extract &amp; Rank runs in the background against every garment in the selected PINs. You will see the job size, an estimated finish time and a popup when your campaign is ready.</p>
@@ -466,7 +484,7 @@
         <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M2 4h12M2 8h12M2 12h12"/></svg>
         <svg class="arrow" viewBox="0 0 10 16" width="10" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.25 4.5L6.75 8L3.25 11.5"/></svg>
       </button>
-      <div id="loadingOverlay" role="status" class="absolute inset-0 z-50 hidden items-center justify-center bg-[#FAF6EE]/80 backdrop-blur-sm"><div class="text-center"><i class="fa-solid fa-circle-notch text-4xl text-[#6B3A55] animate-spin mb-4"></i><p id="loadingText" class="text-sm font-mono text-[#3B2733]">Loading…</p></div></div>
+      <div id="loadingOverlay" role="status" class="absolute inset-0 z-50 hidden items-center justify-center bg-[#FAF6EE]/80 backdrop-blur-sm"><div class="text-center"><i class="fa-solid fa-circle-notch text-4xl text-[#6B3A55] animate-spin mb-4"></i><p id="loadingText" class="text-sm font-mono text-[#3B2733]">Loading…</p><button id="cancelSubmitBtn" type="button" class="overlay-cancel hidden"><i class="fa-solid fa-xmark mr-1"></i>Cancel Upload</button></div></div>
       <div id="mainScroll" class="flex-1 overflow-y-auto p-4 sm:p-6 md:pl-14 space-y-5">
         <nav id="wizardSteps" class="glass-panel rounded-xl p-2 sticky top-0 z-[80] flex flex-wrap items-center gap-1 bg-white/95 backdrop-blur" aria-label="Campaign steps">
           <button type="button" class="wiz-step" data-step="opportunity" data-target="stepOpportunity"><span class="wiz-num">1</span><span>Opportunity</span></button>
@@ -535,7 +553,10 @@
               <h3 class="text-xs font-bold uppercase tracking-wider text-[#3B2733]"><i class="fa-solid fa-gears text-[#6B3A55] mr-2"></i>Extract &amp; Rank Job</h3>
               <p id="jobNote" class="text-[10px] text-[#8A7480] mt-1">Select PINs, upload SKU images and press <b>Extract &amp; Rank SKUs</b>. You can leave this page; the job keeps running.</p>
             </div>
-            <span id="jobStatusTag" class="tag hidden"></span>
+            <div class="flex items-center gap-2 flex-none">
+              <span id="jobStatusTag" class="tag hidden"></span>
+              <button id="cancelJobBtn" type="button" class="job-cancel hidden" title="Stop this Extract &amp; Rank job"><i class="fa-solid fa-circle-stop"></i><span>Cancel Job</span></button>
+            </div>
           </div>
           <div id="jobCard" class="hidden space-y-3">
             <ol class="job-stages" id="jobStages" aria-label="Job stages">
@@ -784,11 +805,32 @@
       b.title = open ? 'Hide brand & upload panel' : 'Show brand & upload panel';
       if (remember) try { localStorage.setItem('suffai_ads_sidebar', open ? 'open' : 'closed'); } catch (_) {}
     }
-    function showRunError(msg) {
+    function showRunError(msg, kind = '') {
       if (msg && $('sidebar').classList.contains('collapsed')) setSidebar(true); // errors point at sidebar fields
       const el = $('runError');
       el.textContent = msg || '';
+      el.dataset.kind = msg ? kind : '';
       el.classList.toggle('hidden', !msg);
+    }
+    let runChecked = false; // after a blocked run, re-check the required fields as the user fills them in
+    /** Flags missing required fields inline and in the run error; returns the first missing one ('' when complete). */
+    function checkRequired() {
+      const brand = lockedBrand || ($('filterBrand').value || '').trim();
+      const errs = {
+        brand: brand ? '' : 'Brand name is required.',
+        pins: selectedPinCodes().length ? '' : 'Select at least one PIN code.',
+        skus: state.assets.length ? '' : 'Upload at least one SKU image.',
+      };
+      $('brandErr').textContent = errs.brand;
+      $('filterBrand').setAttribute('aria-invalid', String(!!errs.brand));
+      $('pinErr').textContent = errs.pins;
+      $('msArea').classList.toggle('invalid', !!errs.pins);
+      $('skuErr').textContent = errs.skus;
+      $('dropzone').classList.toggle('invalid', !!errs.skus);
+      const missing = [errs.brand && 'Brand Name', errs.pins && 'PIN Codes', errs.skus && 'SKU images'].filter(Boolean);
+      if (missing.length) showRunError(`Please fill in the required fields: ${missing.join(', ')}.`, 'required');
+      else if ($('runError').dataset.kind === 'required') showRunError('');
+      return Object.keys(errs).find(k => errs[k]) || '';
     }
     function updatePinCount() {
       const n = selectedPinCodes().length;
@@ -801,7 +843,7 @@
     }
     function setLoading(show, text = 'Working…') {
       state.loading = show; $('loadingText').textContent = text;
-      $('loadingOverlay').classList.toggle('hidden', !show); $('loadingOverlay').classList.toggle('flex', show);$('runButton').disabled = show || state.assets.length === 0; $('clearSkus').disabled = show || state.assets.length === 0;
+      $('loadingOverlay').classList.toggle('hidden', !show); $('loadingOverlay').classList.toggle('flex', show);$('runButton').disabled = show; $('clearSkus').disabled = show || state.assets.length === 0;
     }
     function selectOptions(el, firstLabel, rows, selected = '') {
       const isMulti = el.multiple;
@@ -1048,6 +1090,7 @@
 
     function refreshForFilters() {
       updateBrandUploadLabel();
+      if (runChecked && !checkRequired()) runChecked = false;
       if (!state.metrics) return;
       const filters = currentFilters();
       state.profile = createProfile(filters);
@@ -1084,12 +1127,15 @@
           reason: row.fit?.reason || '',
           ok: !!(row.item && row.item.ok)
         }));
+        const job = state.job;
         window.parent.postMessage({
           type: 'cc-context',
           source: 'ads',
           filters,
           filters_label: filtersLabel(filters),
-          ranked
+          ranked,
+          campaign_id: state.campaign?.campaign_id || null,
+          job: job && job.job_id ? { job_id: job.job_id, status: job.status || null, progress_pct: job.progress_pct ?? null } : null
         }, '*');
       } catch (e) {
         console.error('[ads_lab] postMessage failed', e);
@@ -1158,6 +1204,7 @@
         state.campaignItems = skus.map(s => ({
           sku_uuid: s.sku_uuid,
           filename: s.original_filename,
+          image_url: s.image_url || '',
           ok: !!s.extract_ok && s.process_status !== 'failed',
           extract_ok: !!s.extract_ok,
           attributes: s.attributes || {},
@@ -1179,6 +1226,7 @@
         state.campaign.status = c.status;
         state.campaign.campaign_name = c.campaign_name;
         renderCreatives();
+        publishAdsContext();
         $('uploadSummary').textContent = c.status === 'processing'
           ? 'Ranking job is still running for this campaign.'
           : `Loaded ${state.campaignItems.filter(r => r.ok).length} ranked SKU(s).`;
@@ -1245,7 +1293,7 @@
       });
       const assets = state.assets.length
         ? state.assets
-        : (state.campaignItems || []).map(r => ({ file: { name: r.filename || 'SKU' }, src: '' }));
+        : (state.campaignItems || []).map(r => ({ file: { name: r.filename || 'SKU' }, src: r.image_url || '' }));
       const ranked = assets.map((asset, index) => {
         const camp = campaignByName[normal(asset.file.name)];
         const a = camp?.attributes || {};
@@ -1425,7 +1473,7 @@
       }).filter(Boolean);
     }
     function fileInfo(a) {
-      if (!a?.file) return [];
+      if (!a?.file?.size) return []; // campaign loaded from the server: no local file details
       const kb = a.file.size / 1024;
       return [['Size', kb >= 1024 ? `${(kb / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(kb))} KB`],
         ['Dimensions', a.w ? `${a.w} × ${a.h}px` : '—'], ['Format', (a.file.type || '').replace('image/', '').toUpperCase() || '—']];
@@ -1439,6 +1487,9 @@
     }
 
     const deck = makeDeck($('creativeGrid'), { loop: true, autoplay: 3200, label: 'Ranked creative cards' });
+    const NO_IMAGE = '<div class="w-full h-full grid place-items-center"><i class="fa-solid fa-shirt text-5xl text-[#DCC3CE]"></i></div>';
+    // signed image URLs expire: show the placeholder rather than a broken image
+    $('creativeGrid').addEventListener('error', (e) => { if (e.target.tagName === 'IMG') e.target.outerHTML = NO_IMAGE; }, true);
     // The deck + matrix show results only once Extract & Rank has produced scores.
     function rankingReady() { return state.campaignItems.length > 0; }
     function renderCreatives() {
@@ -1451,7 +1502,7 @@
       deck.set(list.map((row) => {
         const { asset, item, attrs, fit, rank } = row;
         return cardHTML({
-          media: asset.src ? `<img src="${esc(asset.src)}" alt="${esc(asset.file.name)}" loading="lazy">` : '<div class="w-full h-full grid place-items-center"><i class="fa-solid fa-shirt text-5xl text-[#DCC3CE]"></i></div>',
+          media: asset.src ? `<img src="${esc(asset.src)}" alt="${esc(asset.file.name)}" loading="lazy">` : NO_IMAGE,
           rank, top: rank === 1 && fit.score !== null, score: fit.score, name: asset.file.name,
           status: item ? (item.ok ? (item.status || 'Extracted') : 'Extraction failed') : 'Awaiting extraction',
           bad: item && !item.ok, tags: extractedTags(attrs), of: list.length, rankedFor: ranked,
@@ -1473,10 +1524,11 @@
           const k = Math.min(1, max / Math.max(img.width, img.height));
           const cv = document.createElement('canvas'); cv.width = Math.round(img.width * k); cv.height = Math.round(img.height * k);
           const ctx = cv.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cv.width, cv.height); ctx.drawImage(img, 0, 0, cv.width, cv.height);
-          resolve(cv.toDataURL('image/jpeg', .82));
+          try { resolve(cv.toDataURL('image/jpeg', .82)); } catch (_) { resolve(''); }
         };
         img.onerror = () => resolve('');
-        if (!src) { resolve(''); return; } // campaign loaded from the server: no local image
+        // campaign loaded from the server: Campaigns fetches its own signed image URLs (a cross-origin image would taint the canvas)
+        if (!src || !src.startsWith('data:')) { resolve(''); return; }
         img.src = src;
       });
     }
@@ -1579,7 +1631,7 @@
         <small title="${esc(x.file.name)}">${esc(x.file.name)}</small>
         <button type="button" class="rm" data-rm="${i}" aria-label="Remove ${esc(x.file.name)}"><i class="fa-solid fa-xmark"></i></button></div>`).join('');
       $('uploadSummary').textContent = n ? `${n} SKU image${n === 1 ? '' : 's'} selected · run Extract & Rank to score ${n === 1 ? 'it' : 'them'}.` : 'No creatives uploaded.';
-      $('runButton').disabled = state.loading || !n;
+      $('runButton').disabled = state.loading;
       $('clearSkus').disabled = state.loading || !n;
       refreshForFilters();
       if (!state.metrics) renderCreatives();
@@ -1621,6 +1673,8 @@
     $('filterBrand').addEventListener('input', refreshForFilters);
     $('filterArea').addEventListener('change', updatePinCount);
     $('runButton').addEventListener('click', runAnalysis);
+    $('cancelJobBtn').addEventListener('click', cancelJob);
+    $('cancelSubmitBtn').addEventListener('click', cancelSubmit);
     applyBrandLock();
     if (session.role === 'brand' && !lockedBrand) {
       SuffaiSession.fetchMe().then((fresh) => {
@@ -1637,6 +1691,8 @@
     const JOB_KEY = 'suffai_rank_job';
     const JOB_POLL_MS = 5000;
     let jobTimer = null;
+    let submitAbort = null;
+    const isJobActive = (job) => !!job && (job.status === 'queued' || job.status === 'running');
 
     function fmtDuration(sec) {
       sec = Math.max(0, Math.round(Number(sec) || 0));
@@ -1668,14 +1724,19 @@
     }
 
     async function runAnalysis() {
-      if (!state.assets.length || state.loading) return;
+      if (state.loading) return;
       if (lockedBrand) applyBrandLock();
       const f = currentFilters();
       if (lockedBrand) f.brand_name = lockedBrand;
-      if (!f.brand_name) { showRunError('Enter a brand name to run the campaign.'); $('filterBrand').focus(); return; }
-      if (!f.pin_codes.length) { showRunError('Select at least one PIN code.'); setTimeout(() => { $('msArea').open = true; $('msArea').querySelector('summary')?.focus(); }); return; }
+      const missing = checkRequired();
+      runChecked = !!missing;
+      if (missing === 'brand') { $('filterBrand').focus(); return; }
+      if (missing === 'pins') { setTimeout(() => { $('msArea').open = true; $('msArea').querySelector('summary')?.focus(); }); return; }
+      if (missing === 'skus') { $('dropzone').focus(); return; }
       showRunError('');
       setLoading(true, 'Uploading SKU images · scheduling ranking job…');
+      submitAbort = new AbortController();
+      $('cancelSubmitBtn').classList.remove('hidden');
       try {
         const fd = new FormData();
         fd.append('brand_name', f.brand_name);
@@ -1688,6 +1749,7 @@
           method: 'POST',
           headers: { ...SuffaiSession.authHeaders() },
           body: fd,
+          signal: submitAbort.signal,
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(apiError(data, `Job could not be submitted (HTTP ${res.status})`));
@@ -1700,47 +1762,101 @@
         scrollToStep('stepJob');
         scheduleJobPoll(data.job.job_id);
       } catch (e) {
-        console.error('[ads_lab] job submit failed', e);
-        $('uploadSummary').textContent = `Job not submitted: ${e.message}`;
-        showRunError(e.message);
-      } finally { setLoading(false); }
+        if (e.name === 'AbortError') {
+          $('uploadSummary').textContent = 'Upload cancelled. No ranking job was started from this page.';
+          // the server may have accepted the upload just before the abort: surface that job so it can be cancelled
+          setTimeout(resumeJob, 1500);
+        } else {
+          console.error('[ads_lab] job submit failed', e);
+          $('uploadSummary').textContent = `Job not submitted: ${e.message}`;
+          showRunError(e.message);
+        }
+      } finally {
+        submitAbort = null;
+        $('cancelSubmitBtn').classList.add('hidden');
+        setLoading(false);
+      }
+    }
+
+    function cancelSubmit() {
+      if (submitAbort) submitAbort.abort();
+    }
+
+    function jobEnded(job) {
+      rememberJob('');
+      markQuietJob(job.job_id, false);
+      // AURA reads the real status, so a cancelled job is reported as cancelled, not as a failure
+      notifyParent({ type: 'cc-campaign-job-failed', campaign_id: job.campaign_id, job_id: job.job_id });
+    }
+
+    async function cancelJob() {
+      const job = state.job;
+      if (!isJobActive(job)) return;
+      if (!confirm('Cancel this Extract & Rank job? It stops after the image in progress, nothing is saved and the campaign is discarded.')) return;
+      const btn = $('cancelJobBtn');
+      btn.disabled = true;
+      btn.querySelector('span').textContent = 'Cancelling…';
+      clearTimeout(jobTimer); pollSeq++; // drop in-flight polls so they don't re-render the running state
+      try {
+        const res = await fetch(endpoint('/v1/ads-lab/campaign-jobs/' + encodeURIComponent(job.job_id) + '/cancel'), {
+          method: 'POST',
+          headers: { Accept: 'application/json', ...SuffaiSession.authHeaders() },
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw Object.assign(new Error(apiError(data, `Job could not be cancelled (HTTP ${res.status})`)), { status: res.status });
+        renderJob(data.job);
+        jobEnded(data.job);
+        $('uploadSummary').textContent = 'Ranking job cancelled. Adjust the audience or images and run Extract & Rank again.';
+      } catch (e) {
+        console.error('[ads_lab] job cancel failed', e);
+        showRunError(e.status === 409 ? 'The job had already finished, so it was not cancelled.' : e.message);
+        pollJob(job.job_id); // re-sync with the server's state
+      } finally {
+        btn.disabled = false;
+        btn.querySelector('span').textContent = 'Cancel Job';
+      }
     }
 
     function renderJob(job) {
       state.job = job;
       $('jobCard').classList.remove('hidden');
       const tag = $('jobStatusTag');
-      const labels = { queued: 'Queued', running: 'Running', succeeded: 'Completed', failed: 'Failed' };
+      const labels = { queued: 'Queued', running: 'Running', succeeded: 'Completed', failed: 'Failed', cancelled: 'Cancelled' };
       tag.textContent = labels[job.status] || job.status;
       tag.classList.remove('hidden');
       tag.classList.toggle('sim-badge', job.status === 'succeeded');
+      $('cancelJobBtn').classList.toggle('hidden', !isJobActive(job));
       $('jobCustomers').textContent = fmtNumber(job.total_customers);
       $('jobImages').textContent = fmtNumber(job.total_images);
       $('jobImagesSub').textContent = job.skipped_images ? `${job.skipped_images} skipped (upload failed)` : 'SKUs to rank';
       $('jobGarments').textContent = fmtNumber(job.total_garments);
       $('jobComparisons').textContent = fmtNumber(job.comparisons);
-      const done = job.status === 'succeeded' || job.status === 'failed';
+      const cancelled = job.status === 'cancelled';
+      const done = !isJobActive(job);
       renderJobStages(job);
       $('jobHourglass').classList.toggle('hidden', done);
-      startEtaCountdown(done ? null : job.eta_seconds, !done ? 'Estimating…' : job.status === 'failed' ? 'Failed' : 'Done');
+      startEtaCountdown(done ? null : job.eta_seconds, !done ? 'Estimating…' : job.status === 'failed' ? 'Failed' : cancelled ? 'Cancelled' : 'Done');
       $('jobEtaSub').textContent = done
         ? (job.finished_at ? 'Finished ' + String(job.finished_at).replace('T', ' ').slice(0, 16) : '')
         : 'Initial estimate ' + fmtDuration(job.est_seconds);
       const pct = Math.max(0, Math.min(100, Number(job.progress_pct) || 0));
       $('jobProgressBar').style.width = (job.status === 'failed' ? Math.max(pct, 100) : pct) + '%';
-      $('jobProgressBar').className = 'job-bar h-full transition-all ' + (job.status === 'succeeded' ? 'succeeded' : job.status === 'failed' ? 'failed' : 'running');
+      $('jobProgressBar').className = 'job-bar h-full transition-all ' + (job.status === 'succeeded' ? 'succeeded' : job.status === 'failed' ? 'failed' : cancelled ? 'cancelled' : 'running');
       $('jobProgressPct').textContent = Math.round(pct) + '%';
       $('jobProgressLabel').textContent = job.stage === 'personalising'
         ? `All images ranked · saving Style Assistant picks for ${fmtNumber(job.total_customers)} customer(s)`
         : `${job.processed_images || 0} of ${job.total_images} image(s) processed`
           + (job.failed_images ? ` · ${job.failed_images} failed` : '');
-      $('jobNote').textContent = done
-        ? 'Job finished.'
-        : 'Your job is running. You can leave this page; it keeps running and progress resumes here when you return.';
+      $('jobNote').textContent = cancelled
+        ? 'Job cancelled. Nothing was saved; run Extract & Rank again when you are ready.'
+        : done
+          ? 'Job finished.'
+          : 'Your job is running. You can leave this page; it keeps running and progress resumes here when you return. Use Cancel Job to stop it.';
       const err = $('jobError');
       err.textContent = job.status === 'failed' ? (job.error || 'The job did not complete.') : '';
       err.classList.toggle('hidden', job.status !== 'failed');
       updateWizard();
+      publishAdsContext();
     }
 
     const DEMO_COPY = { badge: $('demoBadge').textContent, title: $('demoTitle').innerHTML, sub: $('demoSub').innerHTML };
@@ -1757,26 +1873,29 @@
       const total = Number(job.total_images) || 0, processed = Number(job.processed_images) || 0;
       // 0 upload/queued → 1 extracting + comparing images → 2 final ranking → 3 all done
       const stage = job.status === 'succeeded' ? 3 : job.status === 'queued' ? 0 : (total && processed >= total ? 2 : 1);
-      const failed = job.status === 'failed';
-      const failAt = failed ? Math.min(2, total && processed >= total ? 2 : 1) : -1;
+      const failed = job.status === 'failed', cancelled = job.status === 'cancelled';
+      const stopped = failed || cancelled;
+      const failAt = stopped ? Math.min(2, total && processed >= total ? 2 : 1) : -1;
+      const stopCls = cancelled ? 'stopped' : 'fail';
       document.querySelectorAll('#jobStages li[data-stage]').forEach(li => {
         const k = Number(li.dataset.stage);
-        li.className = failed ? (k < failAt ? 'done' : k === failAt ? 'fail' : '') : (k < stage ? 'done' : k === stage ? 'active' : '');
+        li.className = stopped ? (k < failAt ? 'done' : k === failAt ? stopCls : '') : (k < stage ? 'done' : k === stage ? 'active' : '');
       });
       document.querySelectorAll('#jobStages .js-line').forEach((line, i) => {
-        const cur = failed ? failAt : stage;
-        line.className = 'js-line ' + (i < cur ? 'done' : i === cur && !failed ? 'active' : '');
+        const cur = stopped ? failAt : stage;
+        line.className = 'js-line ' + (i < cur ? 'done' : i === cur && !stopped ? 'active' : '');
       });
       const live = $('jobLive');
-      live.className = 'job-live' + (failed ? ' bad' : stage === 3 ? ' ok' : '');
+      live.className = 'job-live' + (failed ? ' bad' : cancelled ? ' stopped' : stage === 3 ? ' ok' : '');
       live.innerHTML = failed ? '<i class="fa-solid fa-circle-xmark"></i> The job stopped — see the error below.'
+        : cancelled ? `<i class="fa-solid fa-circle-stop"></i> Job cancelled after ${processed} of ${total} image(s). Nothing was saved.`
         : stage === 3 ? '<i class="fa-solid fa-circle-check"></i> Ranking ready.'
         : stage === 0 ? '<span class="dots">Uploading your SKUs and queueing the job</span>'
         : stage === 1 ? `<span class="dots">Extracting attributes and comparing image ${Math.min(processed + 1, total)} of ${total} against the audience</span>`
         : '<span class="dots">Ranking SKUs for this audience</span>';
-      $('jobStatusTag').classList.toggle('live', !(failed || stage === 3));
-      $('thumbs').classList.toggle('scanning', !(failed || stage === 3));
-      setDemoRanking(!(failed || stage === 3), total);
+      $('jobStatusTag').classList.toggle('live', !(stopped || stage === 3));
+      $('thumbs').classList.toggle('scanning', !(stopped || stage === 3));
+      setDemoRanking(!(stopped || stage === 3), total);
     }
 
     // Remaining time ticks every second between polls (each poll re-syncs it to the server's ETA).
@@ -1827,10 +1946,8 @@
           notifyParent({ type: 'cc-campaign-created', campaign_id: job.campaign_id, job_id: job.job_id });
           return;
         }
-        if (job.status === 'failed') {
-          rememberJob('');
-          markQuietJob(job.job_id, false);
-          notifyParent({ type: 'cc-campaign-job-failed', campaign_id: job.campaign_id, job_id: job.job_id });
+        if (job.status === 'failed' || job.status === 'cancelled') {
+          jobEnded(job);
           return;
         }
         scheduleJobPoll(jobId);

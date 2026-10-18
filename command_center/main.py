@@ -967,6 +967,22 @@ def ads_lab_get_campaign_job(
     return {"ok": True, "job": job}
 
 
+@app.post("/v1/ads-lab/campaign-jobs/{job_id}/cancel")
+def ads_lab_cancel_campaign_job(
+    job_id: str,
+    request: Request,
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None, alias="X-Session-Token"),
+):
+    """Stop a queued / running extract & rank job and discard its campaign (409 once it has finished)."""
+    sess = _require_session(request, authorization, x_session_token)
+    try:
+        job = campaign_jobs.cancel_job(sess, job_id)
+    except camp_svc.ServiceError as exc:
+        raise _svc_http(exc) from exc
+    return {"ok": True, "job": job}
+
+
 @app.post("/internal/campaign-jobs/{job_id}/run", include_in_schema=False)
 def internal_run_campaign_job(
     job_id: str,
@@ -1011,7 +1027,7 @@ def ads_lab_campaign_detail(
 ):
     sess = _require_session(request, authorization, x_session_token)
     try:
-        data = camp_svc.get_with_skus(sess, campaign_id)
+        data = camp_svc.get_with_skus(sess, campaign_id, with_images=True)
     except camp_svc.ServiceError as exc:
         raise _svc_http(exc) from exc
     return {"ok": True, **data}

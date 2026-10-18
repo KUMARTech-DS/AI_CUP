@@ -56,6 +56,7 @@ button[type=submit]::after{content:"";position:absolute;inset:0;background:linea
 @keyframes shine{to{transform:translateX(100%)}}
 
 label{display:block;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#8a7480;font-weight:600;margin-bottom:.4rem}
+label .req{color:#a03a3a;margin-left:2px}
 .logo{display:block;height:64px;margin:0 0 .6rem -4px;transform-origin:50% 6%;animation:sway 3s ease-in-out 2.5s infinite}
 /* the hanger hangs: idle sway, big pendulum swing on a failed login */
 @keyframes sway{50%{transform:rotate(2.5deg)}0%,100%{transform:rotate(-2.5deg)}}
@@ -122,9 +123,9 @@ button[type=submit]:disabled{opacity:.7;cursor:wait;transform:none;box-shadow:no
     <h1 style="--k:0">Sign In</h1><p style="--k:1"><span id="hello">Hello</span> · Sign in to the SuffAI Command Center.</p>
     <div id="err" class="err" role="alert"></div>
     <form id="form" novalidate>
-      <label for="user" style="--k:2">Username</label>
+      <label for="user" style="--k:2">Username<span class="req" aria-hidden="true">*</span></label>
       <input id="user" name="user" autocomplete="username" autocapitalize="none" spellcheck="false" autofocus required style="--k:2" />
-      <label for="pass" style="--k:3">Password</label>
+      <label for="pass" style="--k:3">Password<span class="req" aria-hidden="true">*</span></label>
       <div class="pw" style="--k:3"><input id="pass" name="pass" type="password" placeholder=" " autocomplete="current-password" required /><button type="button" class="eye" aria-label="Show password" aria-pressed="false" aria-controls="pass"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><path class="slash" d="M3 3l18 18"/></svg></button></div>
       <div class="caps" id="caps" aria-live="polite">⇪ Caps Lock is on</div>
       <button type="submit" style="--k:4"><span class="spin" aria-hidden="true"></span><span class="go-txt">Continue</span></button>
