@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Outfit:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
   <script>
     tailwind.config = {
       theme: {
@@ -27,7 +27,7 @@
             accent2: '#552C43'
           },
           fontFamily: {
-            display: ['Cormorant Garamond', 'Georgia', 'serif'],
+            display: ['Outfit', 'system-ui', 'sans-serif'],
             sans: ['Outfit', 'system-ui', 'sans-serif'],
             mono: ['IBM Plex Mono', 'monospace']
           }
@@ -56,7 +56,7 @@
       color: var(--soft);
       background-color: var(--ink);
     }
-    .font-display { font-family: 'Cormorant Garamond', Georgia, serif; }
+    .font-display { font-family: Outfit, system-ui, sans-serif; }
     .font-mono { font-family: 'IBM Plex Mono', monospace; }
 
     .app {
@@ -89,6 +89,7 @@
       justify-content: center;
       padding: 0 1.15rem;
       border-bottom: 1px solid var(--line);
+      position: relative;
     }
     .sidebar-body {
       flex: 1;
@@ -236,8 +237,8 @@
       height: min(64vh, 620px);
       min-height: 340px;
       border-bottom: 1px solid var(--line);
+      isolation: isolate; /* keep Leaflet's z-indexed panes below the mobile filter overlay */
     }
-    .map-hero { isolation: isolate; } /* keep Leaflet's z-indexed panes below the mobile filter overlay */
     #map { width: 100%; height: 100%; }
     .leaflet-container { background: #0e0e10 !important; font-family: Outfit, sans-serif; }
     /* Only the base tiles are darkened (place names live in their own pane); markers/halos unaffected */
@@ -287,7 +288,7 @@
       background: rgba(255, 255, 255, 0.96); border: 1px solid var(--line); border-left: 3px solid var(--c);
       font: 600 11px/1.3 Outfit, sans-serif; color: var(--soft);
       box-shadow: 0 4px 14px rgba(59, 39, 51, 0.12);
-      transition: box-shadow 0.2s, transform 0.2s;
+      transition: opacity 0.15s, box-shadow 0.2s, transform 0.2s;
     }
     .hub-label b { color: var(--c); font-weight: 700; }
     .hub-no .hub-label { color: #B03A2E; background: #FDF2F0; border-color: #F1CFCA; border-left-color: var(--c); }
@@ -296,7 +297,6 @@
     /* Decluttered: label hidden when it would collide; hovering the dot reveals it */
     .hub.label-hidden .hub-label { opacity: 0; pointer-events: none; transform: translateX(-4px); }
     .hub.label-hidden:hover .hub-label { opacity: 1; transform: none; }
-    .hub-label { transition: opacity 0.15s, box-shadow 0.2s, transform 0.2s; }
 
     /* Area analytics popup */
     .area-pop .leaflet-popup-content-wrapper { padding: 0; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); box-shadow: 0 12px 30px rgba(59, 39, 51, 0.2); }
@@ -395,6 +395,8 @@
     .decision-badge.no { background: #FBE5E2; color: #A3301F; border-color: #F1CFCA; }
 
     .market-brief {
+      position: relative;
+      overflow: hidden;
       margin: 0;
       padding: 1rem 1.25rem 1.15rem;
       border-bottom: 1px solid var(--line);
@@ -406,13 +408,6 @@
       justify-content: space-between;
       gap: 1rem;
       margin-bottom: 0.55rem;
-    }
-    .market-brief h2 {
-      margin: 0;
-      font-family: 'Cormorant Garamond', Georgia, serif;
-      font-size: 1.35rem;
-      font-weight: 600;
-      color: var(--soft);
     }
     .market-brief .brief-actions {
       display: flex;
@@ -445,7 +440,6 @@
       white-space: pre-wrap;
     }
     .market-brief .brief-body.muted { color: var(--muted); font-style: italic; }
-    .market-brief { position: relative; overflow: hidden; }
     .market-brief .brief-body strong { color: var(--accent); font-weight: 700; }
     .brief-factors { display: flex; flex-wrap: wrap; gap: 6px; margin-top: .7rem; white-space: normal; }
     .brief-factors span { font-size: 11.5px; padding: .25rem .65rem; border-radius: 999px; background: #F6EEF0; border: 1px solid var(--line); color: #552C43; }
@@ -499,8 +493,7 @@
 
     /* Analytics below map */
     .analytics { width: 100%; padding-bottom: 2rem; }
-    /* Collapsible analytics panels (Audience taste, and future sections) */
-    /* Full-bleed like the map: same left/right edges, stacked with hairline dividers */
+    /* Collapsible panels: full-bleed, stacked with hairline dividers */
     .panel { border-bottom: 1px solid var(--line); background: #fff; }
     .panel-bar { list-style: none; display: flex; align-items: center; gap: 1rem; padding: 1rem 1.35rem; cursor: pointer; user-select: none; transition: background 0.15s; }
     .panel-bar::-webkit-details-marker { display: none; }
@@ -510,7 +503,7 @@
     .panel[open] > .panel-bar { border-bottom: 1px solid var(--line); }
     .panel-ico { width: 42px; height: 42px; flex-shrink: 0; border-radius: 12px; display: flex; align-items: center; justify-content: center; background: #F3E6EC; color: var(--accent); }
     .panel-main { flex: 1; min-width: 0; }
-    .panel-main h2 { margin: 0; font-family: 'Cormorant Garamond', Georgia, serif; font-size: 1.8rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--soft); line-height: 1.05; }
+    .panel-main h2 { margin: 0; font-family: Outfit, system-ui, sans-serif; font-size: 1.32rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--soft); line-height: 1.05; }
     .panel-main p { margin: 0.4rem 0 0; font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .panel-cta { display: inline-flex; align-items: center; gap: 0.35rem; flex-shrink: 0; padding: 0.4rem 0.75rem; border-radius: 999px; border: 1px solid var(--line); background: #fff; font-size: 12px; font-weight: 600; color: var(--accent); white-space: nowrap; transition: border-color 0.15s; }
     .panel-bar:hover .panel-cta { border-color: var(--accent); }
@@ -566,72 +559,14 @@
       margin-bottom: 0.85rem;
     }
     .taste-headline {
-      font-family: 'Cormorant Garamond', Georgia, serif;
-      font-size: 1.55rem;
+      font-family: Outfit, system-ui, sans-serif;
+      font-size: 1.3rem;
       font-weight: 600;
       color: var(--soft);
-      line-height: 1.25;
+      line-height: 1.3;
       margin: 0;
     }
-    .pill-row { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-top: 0.9rem; }
-    .pill {
-      display: inline-flex; align-items: center; gap: 0.35rem;
-      padding: 0.35rem 0.7rem;
-      border-radius: 999px;
-      border: 1px solid var(--line);
-      background: var(--raised);
-      font-size: 11px;
-      color: var(--soft);
-      text-transform: capitalize;
-    }
-    .pill b { font-family: 'IBM Plex Mono', monospace; color: var(--accent); font-weight: 600; }
-
-    .swatch-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
-      gap: 12px;
-    }
-    .swatch-card { text-align: center; }
-    .swatch-chip {
-      height: 64px;
-      border-radius: 12px;
-      border: 1px solid var(--line);
-      box-shadow: inset 0 0 0 1px rgba(0,0,0,0.05);
-    }
-    .swatch-card .name {
-      margin-top: 0.45rem;
-      font-size: 12px;
-      color: var(--soft);
-      text-transform: capitalize;
-    }
-    .swatch-card .pct {
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 11px;
-      color: var(--muted);
-    }
-
-    .share-row {
-      display: grid;
-      grid-template-columns: 100px 1fr 44px;
-      gap: 10px;
-      align-items: center;
-      margin-bottom: 10px;
-      font-size: 13px;
-    }
-    .bar-track {
-      height: 7px;
-      border-radius: 99px;
-      background: var(--raised);
-      border: 1px solid var(--line);
-      overflow: hidden;
-    }
-    .bar-fill {
-      height: 100%;
-      border-radius: 99px;
-      background: linear-gradient(90deg, #552C43, var(--accent));
-    }
-
-    /* ---- Audience taste dashboard ---- */
+    /* ---- Audience Taste dashboard ---- */
     .ctx-chips { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.65rem; }
     .ctx-chip { font-size: 11px; padding: 0.2rem 0.6rem; border-radius: 999px; background: var(--raised); border: 1px solid var(--line); color: var(--muted); }
     .ctx-chip.on { background: #F3E6EC; border-color: #DCC3CE; color: var(--accent); font-weight: 600; }
@@ -659,15 +594,6 @@
     .pl i { width: 12px; height: 12px; flex-shrink: 0; border-radius: 4px; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.14); }
     .pl span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-transform: capitalize; }
     .pl b { margin-left: auto; font: 500 11px 'IBM Plex Mono', monospace; color: var(--muted); }
-    .rank { display: grid; grid-template-columns: 18px minmax(0, 1fr) 40px; gap: 0.3rem 0.6rem; align-items: center; margin-bottom: 0.75rem; }
-    .rank:last-child { margin-bottom: 0; }
-    .rank .n { font: 600 11px 'IBM Plex Mono', monospace; color: var(--muted); }
-    .rank .l { font-size: 13px; color: var(--soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-transform: capitalize; }
-    .rank .p { font: 600 12px 'IBM Plex Mono', monospace; color: var(--soft); text-align: right; }
-    .rank .t { grid-column: 2 / 4; height: 6px; border-radius: 99px; background: var(--raised); overflow: hidden; }
-    .rank .t i { display: block; height: 100%; border-radius: 99px; background: rgba(107, 58, 85, 0.45); }
-    .rank.top .l { font-weight: 600; }
-    .rank.top .t i { background: linear-gradient(90deg, var(--accent2), var(--accent)); }
     .empty-note { font-size: 13px; color: var(--muted); padding: 0.5rem 0; }
     .chart-box { position: relative; height: 230px; }
     .donut-wrap { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 1.25rem; align-items: center; }
@@ -737,7 +663,7 @@
     .focus-items .card-title { margin-bottom: 0.5rem; }
     @media (max-width: 640px) { .donut-wrap { grid-template-columns: 1fr; } .areas .hide-sm { display: none; } }
 
-    /* ---- Clothesline in the Audience taste bar ---- */
+    /* ---- Clothesline in the Audience Taste bar ---- */
     .panel-bar.with-art .panel-main { flex: 0 1 auto; max-width: 42%; }
     .line-art { flex: 1 1 auto; min-width: 0; display: flex; justify-content: center; }
     .line-art svg { width: 100%; max-width: 520px; height: 62px; overflow: visible; }
@@ -766,7 +692,7 @@
     @keyframes pinRing { 0% { transform: scale(0.5); opacity: 0.55; } 100% { transform: scale(1.9); opacity: 0; } }
     .route { animation: road 1.1s linear infinite reverse; }
     @keyframes road { to { stroke-dashoffset: 24; } }
-    /* Market brief bar: bars rise, the trend draws itself under a gliding lens, the report types out, AI sparkles */
+    /* Market Brief bar: bars rise, the trend draws itself under a gliding lens, the report types out, AI sparkles */
     .bar-grow { transform-box: fill-box; transform-origin: 50% 100%; animation: barGrow 2.2s ease-in-out var(--dl, 0s) infinite alternate; }
     @keyframes barGrow { from { transform: scaleY(.35); } to { transform: scaleY(1); } }
     .trend { stroke-dasharray: 100; stroke-dashoffset: 100; animation: trendDraw 4.8s cubic-bezier(.45,0,.55,1) infinite; }
@@ -787,11 +713,10 @@
     /* Collapsed bar shows whether the AI brief is still being written (gold pulse) or ready (green) */
     #briefPanel .panel-main p::before { content: ''; display: inline-block; width: 7px; height: 7px; margin-right: .5rem; border-radius: 50%; vertical-align: 1px; background: #3F7D3B; box-shadow: 0 0 0 3px rgba(63, 125, 59, .14); }
     #briefPanel:has(.market-brief.loading) .panel-main p::before { background: #C9A24A; box-shadow: 0 0 0 3px rgba(201, 162, 74, .2); animation: thinkPulse 1s ease-in-out infinite; }
-    /* Landing highlight after "Full reasoning ↑" */
+    /* Landing highlight after "Full Reasoning ↑" */
     #briefPanel { scroll-margin-top: 8px; }
     .panel.flash > .panel-bar { animation: briefFlash 1.8s ease-out; }
     @keyframes briefFlash { 0%, 25% { background: #FBF0D9; box-shadow: inset 4px 0 0 #C9A24A; } 100% { background: #fff; box-shadow: inset 4px 0 0 transparent; } }
-    /* brief content sits inside the panel now */
     #briefPanelBody .market-brief { border-bottom: 1px solid var(--line); }
     #briefPanelBody .market-brief .brief-head { margin-bottom: .45rem; }
     #briefPanelBody .geo-intel { padding: 1rem 1.25rem 0; background: var(--ink); }
@@ -918,7 +843,7 @@
     .logi-steps li.done::before { content: '✓'; }
     .logi-err { padding: 1rem 1.1rem; border-radius: 12px; background: rgba(180,60,60,0.06); border: 1px solid rgba(180,60,60,0.3); color: #A03A3A; font-size: 13px; }
 
-    /* Store lookup status dot (the .ai-dot style above was scoped to the brief only, so this one rendered nothing) */
+    /* Store lookup status dot */
     .stores-note .ai-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #C9A24A; animation: thinkPulse 1s ease-in-out infinite; }
     /* Active filters: tinted dropdowns + removable chips in the top bar */
     .drop.active .drop-btn { border-color: #DCC3CE; background: #F3E6EC; }
@@ -935,7 +860,6 @@
     .af-clear { border: 0; background: none; padding: 0.25rem 0.4rem; font: 600 11.5px Outfit, sans-serif; color: var(--muted); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
     .af-clear:hover { color: var(--accent); }
     .sidebar-close { display: none; position: absolute; right: 0.9rem; top: 50%; transform: translateY(-50%); }
-    .sidebar-head { position: relative; }
     .card-head, .panel-ctx { flex-wrap: wrap; }
     @media (max-width: 720px) {
       .sidebar-close { display: inline-flex; }
@@ -990,7 +914,7 @@
           </div>
         </div>
         <div class="filter-block" data-filter="age">
-          <span class="filter-label" id="lbl-age">Age group</span>
+          <span class="filter-label" id="lbl-age">Age Group</span>
           <div class="drop" id="drop-age">
             <button type="button" class="drop-btn" data-drop="age" aria-haspopup="true" aria-expanded="false" aria-controls="opts-age" aria-labelledby="lbl-age sum-age">
               <span class="summary" id="sum-age">All selected</span>
@@ -1010,7 +934,7 @@
           </div>
         </div>
         <div class="filter-block" data-filter="rfm">
-          <span class="filter-label" id="lbl-rfm">RFM segment</span>
+          <span class="filter-label" id="lbl-rfm">RFM Segment</span>
           <div class="drop" id="drop-rfm">
             <button type="button" class="drop-btn" data-drop="rfm" aria-haspopup="true" aria-expanded="false" aria-controls="opts-rfm" aria-labelledby="lbl-rfm sum-rfm">
               <span class="summary" id="sum-rfm">All selected</span>
@@ -1029,7 +953,7 @@
             <div class="drop-panel" id="opts-brand"></div>
           </div>
         </div>
-        <button type="button" class="btn-reset" id="btnClear">Reset filters</button>
+        <button type="button" class="btn-reset" id="btnClear">Reset Filters</button>
       </div>
     </aside>
 
@@ -1043,7 +967,7 @@
             <span class="nav-badge" id="filterCount" hidden></span>
           </button>
           <div class="min-w-0">
-            <div class="font-display text-[1.45rem] text-accent leading-none tracking-tight font-semibold">Geo insights</div>
+            <div class="font-display text-[1.45rem] text-accent leading-none tracking-tight font-semibold">Geo Insights</div>
             <div class="text-[11px] text-muted mt-0.5 truncate">Where demand is · what the audience wears · where to open next</div>
           </div>
         </div>
@@ -1051,12 +975,60 @@
       </header>
 
       <div class="scroll">
+        <!-- NEW STORE LOCATIONS (map) -->
+        <details class="panel" id="mapPanel" open>
+          <summary class="panel-bar with-art" aria-controls="mapBody">
+            <span class="panel-ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg></span>
+            <span class="panel-main">
+              <h2>New Store Locations</h2>
+              <p id="mapSummary">Candidate areas on the map — opens on the densest 10 km cluster.</p>
+            </span>
+            <span class="line-art" aria-hidden="true"><svg class="clip" viewBox="0 0 420 62" preserveAspectRatio="xMidYMid meet">
+                <g fill="#F1E6EB"><rect x="40" y="34" width="14" height="16" rx="1.5"/><rect x="56" y="26" width="10" height="24" rx="1.5"/><rect x="68" y="38" width="16" height="12" rx="1.5"/><rect x="118" y="30" width="12" height="20" rx="1.5"/><rect x="132" y="20" width="18" height="30" rx="1.5"/><rect x="152" y="36" width="10" height="14" rx="1.5"/><rect x="186" y="32" width="14" height="18" rx="1.5"/><rect x="244" y="24" width="16" height="26" rx="1.5"/><rect x="262" y="35" width="10" height="15" rx="1.5"/><rect x="276" y="29" width="14" height="21" rx="1.5"/><rect x="302" y="38" width="12" height="12" rx="1.5"/><rect x="352" y="28" width="16" height="22" rx="1.5"/><rect x="370" y="20" width="10" height="30" rx="1.5"/><rect x="382" y="36" width="14" height="14" rx="1.5"/></g>
+                <path d="M0 50H420" stroke="#DCC3CE" stroke-width="1.5"/>
+                <path class="route" d="M92 48C130 20 170 52 210 40S290 18 328 46" fill="none" stroke="#C59FB0" stroke-width="1.6" stroke-dasharray="4 5" stroke-linecap="round"/>
+                <g transform="translate(92 50)"><ellipse class="pin-ring" style="--dl:0s" cx="0" cy="0" rx="9" ry="2.6" fill="#2E8B57"/><g class="pin-bob" style="--dl:0s"><path d="M0 -26c-5.5 0-9.5 4-9.5 9.5C-9.5 -9.5 0 0 0 0s9.5-9.5 9.5-16.5C9.5 -22 5.5 -26 0 -26z" fill="#2E8B57"/><circle cx="0" cy="-16.5" r="3.6" fill="#fff"/></g></g><g transform="translate(210 50)"><ellipse class="pin-ring" style="--dl:-0.35s" cx="0" cy="0" rx="9" ry="2.6" fill="#5FA85B"/><g class="pin-bob" style="--dl:-0.35s"><path d="M0 -26c-5.5 0-9.5 4-9.5 9.5C-9.5 -9.5 0 0 0 0s9.5-9.5 9.5-16.5C9.5 -22 5.5 -26 0 -26z" fill="#5FA85B"/><circle cx="0" cy="-16.5" r="3.6" fill="#fff"/></g></g><g transform="translate(328 50)"><ellipse class="pin-ring" style="--dl:-0.7s" cx="0" cy="0" rx="9" ry="2.6" fill="#C0392B"/><g class="pin-bob" style="--dl:-0.7s"><path d="M0 -26c-5.5 0-9.5 4-9.5 9.5C-9.5 -9.5 0 0 0 0s9.5-9.5 9.5-16.5C9.5 -22 5.5 -26 0 -26z" fill="#C0392B"/><circle cx="0" cy="-16.5" r="3.6" fill="#fff"/></g></g>
+              </svg></span>
+            <span class="panel-cta"><span class="lbl when-closed">Show Map</span><span class="lbl when-open">Hide</span>
+              <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8l4 4 4-4"/></svg></span>
+          </summary>
+          <div class="panel-body flush" id="mapBody">
+            <section class="map-hero">
+              <div id="map"></div>
+            </section>
+            <div class="stores-note" id="storesNote">Locating existing stores…</div>
+
+            <div class="catchment">
+              <div>
+                <div class="lbl">Focus Area</div>
+                <div class="val" id="hubLabel" style="font-family:Outfit,sans-serif;font-weight:600;font-size:0.92rem">All hubs</div>
+              </div>
+              <div>
+                <div class="lbl">PIN Population</div>
+                <div class="val" id="popPin">—</div>
+              </div>
+              <div>
+                <div class="lbl">~1 km Buffer</div>
+                <div class="val" id="pop1">—</div>
+              </div>
+              <div>
+                <div class="lbl">~2 km Buffer</div>
+                <div class="val" id="pop2">—</div>
+              </div>
+              <div>
+                <div class="lbl">~4 km Buffer</div>
+                <div class="val" id="pop4">—</div>
+              </div>
+            </div>
+          </div>
+        </details>
+
         <!-- MARKET BRIEF -->
         <details class="panel" id="briefPanel">
           <summary class="panel-bar with-art" aria-controls="briefPanelBody">
             <span class="panel-ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5M8.5 13h7M8.5 17h4.5"/></svg></span>
             <span class="panel-main">
-              <h2>Market brief</h2>
+              <h2>Market Brief</h2>
               <p id="briefSummary">AI summary, store recommendation and why — for your filters.</p>
             </span>
             <span class="line-art" aria-hidden="true"><svg class="clip" viewBox="0 0 420 62" preserveAspectRatio="xMidYMid meet">
@@ -1078,19 +1050,19 @@
                   <g transform="translate(66 14)"><path class="spark" style="--dl:-.9s" d="M0-4L.9-.9L4 0L.9.9L0 4L-.9.9L-4 0L-.9-.9Z" fill="#E3C27A"/></g>
                 </g>
               </svg></span>
-            <span class="panel-cta"><span class="lbl when-closed">Show brief</span><span class="lbl when-open">Hide</span>
+            <span class="panel-cta"><span class="lbl when-closed">Show Brief</span><span class="lbl when-open">Hide</span>
               <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8l4 4 4-4"/></svg></span>
           </summary>
           <div class="panel-body flush" id="briefPanelBody">
-        <section class="market-brief" aria-live="polite">
+        <section class="market-brief">
           <div class="brief-head">
             <span class="brief-meta" id="briefMeta">Loading…</span>
           </div>
-          <p class="brief-body muted" id="briefBody">Preparing the market summary…</p>
+          <p class="brief-body muted" id="briefBody" aria-live="polite">Preparing the market summary…</p>
           <div class="brief-err" id="briefErr" hidden></div>
           <div class="brief-actions">
             <button type="button" class="btn-campaign" id="btnCreateCampaign" title="Open Ads Lab with this geography and audience pre-filled">
-              Create campaign from this →
+              Create Campaign from This →
             </button>
             <span class="brief-meta" id="campaignCtxHint"></span>
           </div>
@@ -1098,18 +1070,18 @@
 
         <div class="store-strip">
           <div>
-            <div class="lbl">Store recommendation</div>
+            <div class="lbl">Store Recommendation</div>
             <div class="val" id="storeFocusLabel">—</div>
             <span class="decision-badge consider" id="storeDecision">—</span>
             <div class="sub" id="storeDecisionDetail">Select a PIN or click an area on the map.</div>
           </div>
           <div>
-            <div class="lbl">Opportunity score</div>
+            <div class="lbl">Opportunity Score</div>
             <div class="val" id="storeScore">—</div>
             <div class="sub" id="storeScoreDetail">Demand, wardrobe share and catchment</div>
           </div>
           <div>
-            <div class="lbl">Est. footfall</div>
+            <div class="lbl">Est. Footfall</div>
             <div class="val" id="storeFootfall">—</div>
             <div class="sub" id="storeTopPins">Top areas update with your filters</div>
           </div>
@@ -1117,68 +1089,20 @@
 
         <section class="geo-intel" id="geoIntel" aria-live="polite">
           <div class="card">
-            <div class="card-head"><div class="card-title">Why this decision</div><span class="card-meta">4 km store rule · Champions &amp; Loyalists first</span></div>
+            <div class="card-head"><div class="card-title">Why This Decision</div><span class="card-meta">4 km store rule · Champions &amp; Loyalists first</span></div>
             <ol class="logic" id="logicList"><li><i>…</i><span>Select an area to see the decision steps.</span></li></ol>
           </div>
           <div class="card" id="routeCard" hidden>
-            <div class="card-head"><div class="card-title">Regional stock &amp; assortment routing</div><span class="card-meta" id="routeMeta">Optimisation mode</span></div>
+            <div class="card-head"><div class="card-title">Regional Stock &amp; Assortment Routing</div><span class="card-meta" id="routeMeta">Optimisation mode</span></div>
             <div id="routeOut"></div>
           </div>
           <div class="card" id="marketCard" hidden>
-            <div class="card-head"><div class="card-title">External market check</div><span class="card-meta">Gemini + Google Search</span></div>
+            <div class="card-head"><div class="card-title">External Market Check</div><span class="card-meta">Gemini + Google Search</span></div>
             <p class="text-[12.5px] text-muted m-0 mb-2" id="marketIntro">Footfall, retail rents and competition for this whitespace area. External signals can only lower the decision.</p>
-            <button type="button" class="intel-btn" id="marketRun">Run external check</button>
+            <button type="button" class="intel-btn" id="marketRun">Run External Check</button>
             <div id="marketOut"></div>
           </div>
         </section>
-          </div>
-        </details>
-
-        <!-- NEW STORE LOCATIONS (map) -->
-        <details class="panel" id="mapPanel" open>
-          <summary class="panel-bar with-art" aria-controls="mapBody">
-            <span class="panel-ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg></span>
-            <span class="panel-main">
-              <h2>New store locations</h2>
-              <p id="mapSummary">Candidate areas on the map — opens on the densest 10 km cluster.</p>
-            </span>
-            <span class="line-art" aria-hidden="true"><svg class="clip" viewBox="0 0 420 62" preserveAspectRatio="xMidYMid meet">
-                <g fill="#F1E6EB"><rect x="40" y="34" width="14" height="16" rx="1.5"/><rect x="56" y="26" width="10" height="24" rx="1.5"/><rect x="68" y="38" width="16" height="12" rx="1.5"/><rect x="118" y="30" width="12" height="20" rx="1.5"/><rect x="132" y="20" width="18" height="30" rx="1.5"/><rect x="152" y="36" width="10" height="14" rx="1.5"/><rect x="186" y="32" width="14" height="18" rx="1.5"/><rect x="244" y="24" width="16" height="26" rx="1.5"/><rect x="262" y="35" width="10" height="15" rx="1.5"/><rect x="276" y="29" width="14" height="21" rx="1.5"/><rect x="302" y="38" width="12" height="12" rx="1.5"/><rect x="352" y="28" width="16" height="22" rx="1.5"/><rect x="370" y="20" width="10" height="30" rx="1.5"/><rect x="382" y="36" width="14" height="14" rx="1.5"/></g>
-                <path d="M0 50H420" stroke="#DCC3CE" stroke-width="1.5"/>
-                <path class="route" d="M92 48C130 20 170 52 210 40S290 18 328 46" fill="none" stroke="#C59FB0" stroke-width="1.6" stroke-dasharray="4 5" stroke-linecap="round"/>
-                <g transform="translate(92 50)"><ellipse class="pin-ring" style="--dl:0s" cx="0" cy="0" rx="9" ry="2.6" fill="#2E8B57"/><g class="pin-bob" style="--dl:0s"><path d="M0 -26c-5.5 0-9.5 4-9.5 9.5C-9.5 -9.5 0 0 0 0s9.5-9.5 9.5-16.5C9.5 -22 5.5 -26 0 -26z" fill="#2E8B57"/><circle cx="0" cy="-16.5" r="3.6" fill="#fff"/></g></g><g transform="translate(210 50)"><ellipse class="pin-ring" style="--dl:-0.35s" cx="0" cy="0" rx="9" ry="2.6" fill="#5FA85B"/><g class="pin-bob" style="--dl:-0.35s"><path d="M0 -26c-5.5 0-9.5 4-9.5 9.5C-9.5 -9.5 0 0 0 0s9.5-9.5 9.5-16.5C9.5 -22 5.5 -26 0 -26z" fill="#5FA85B"/><circle cx="0" cy="-16.5" r="3.6" fill="#fff"/></g></g><g transform="translate(328 50)"><ellipse class="pin-ring" style="--dl:-0.7s" cx="0" cy="0" rx="9" ry="2.6" fill="#C0392B"/><g class="pin-bob" style="--dl:-0.7s"><path d="M0 -26c-5.5 0-9.5 4-9.5 9.5C-9.5 -9.5 0 0 0 0s9.5-9.5 9.5-16.5C9.5 -22 5.5 -26 0 -26z" fill="#C0392B"/><circle cx="0" cy="-16.5" r="3.6" fill="#fff"/></g></g>
-              </svg></span>
-            <span class="panel-cta"><span class="lbl when-closed">Show map</span><span class="lbl when-open">Hide</span>
-              <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8l4 4 4-4"/></svg></span>
-          </summary>
-          <div class="panel-body flush" id="mapBody">
-            <section class="map-hero">
-              <div id="map"></div>
-            </section>
-            <div class="stores-note" id="storesNote">Locating existing stores…</div>
-
-            <div class="catchment">
-              <div>
-                <div class="lbl">Focus area</div>
-                <div class="val" id="hubLabel" style="font-family:Outfit,sans-serif;font-weight:600;font-size:0.92rem">All hubs</div>
-              </div>
-              <div>
-                <div class="lbl">PIN population</div>
-                <div class="val" id="popPin">—</div>
-              </div>
-              <div>
-                <div class="lbl">~1 km buffer</div>
-                <div class="val" id="pop1">—</div>
-              </div>
-              <div>
-                <div class="lbl">~2 km buffer</div>
-                <div class="val" id="pop2">—</div>
-              </div>
-              <div>
-                <div class="lbl">~4 km buffer</div>
-                <div class="val" id="pop4">—</div>
-              </div>
-            </div>
           </div>
         </details>
 
@@ -1188,7 +1112,7 @@
             <summary class="panel-bar with-art" aria-controls="tasteBody">
               <span class="panel-ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3l-5 4 3 4 2-1v11h8V10l2 1 3-4-5-4c-1 2-2.5 3-4 3S9 5 8 3z"/></svg></span>
               <span class="panel-main">
-                <h2>Audience taste</h2>
+                <h2>Audience Taste</h2>
                 <p id="tasteSummary">What this audience owns today — colour, pattern, size, fabric and brands.</p>
               </span>
               <span class="line-art" aria-hidden="true"><svg viewBox="0 0 420 62" preserveAspectRatio="xMidYMid meet">
@@ -1196,7 +1120,7 @@
                 <defs><linearGradient id="lineFade" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="420" y2="0"><stop offset="0" stop-color="#B9A3AF" stop-opacity="0"/><stop offset=".12" stop-color="#B9A3AF"/><stop offset=".88" stop-color="#B9A3AF"/><stop offset="1" stop-color="#B9A3AF" stop-opacity="0"/></linearGradient></defs>
                 <g class="line-bob"><path d="M0 8Q210 30 420 8" fill="none" stroke="url(#lineFade)" stroke-width="1.4"/><g transform="translate(52 12.8)"><g class="sway" style="--t:2.6s;--dl:0.0s" fill="#7A8FB0"><path d="M-9 1.5L-4 0Q0 3 4 0L9 1.5L13 8L9 10.5L7.5 6.5V23H-7.5V6.5L-9 10.5L-13 8Z"/><path d="M0 3V23" stroke="rgba(255,255,255,.55)" stroke-width="1"/><circle cx="0" cy="9" r=".9" fill="#fff"/><circle cx="0" cy="14" r=".9" fill="#fff"/><circle cx="0" cy="19" r=".9" fill="#fff"/><rect x="-1.6" y="-3" width="3.2" height="6" rx="1" fill="#8A7480"/></g></g><g transform="translate(106 16.3)"><g class="sway" style="--t:3.1s;--dl:-0.6s" fill="#C59FB0"><path d="M-4 0H4L5.5 7L12 27Q0 30 -12 27L-5.5 7Z"/><path d="M-5.5 7H5.5" stroke="rgba(255,255,255,.6)" stroke-width="1.2"/><rect x="-1.6" y="-3" width="3.2" height="6" rx="1" fill="#8A7480"/></g></g><g transform="translate(160 18.4)"><g class="sway" style="--t:3.6s;--dl:-1.2s" fill="#6B3A55"><path d="M-9.5 1L-4 0L0 5L4 0L9.5 1L13 12L9.5 13L8.5 7V32H-8.5V7L-9.5 13L-13 12Z"/><path d="M0 5V32" stroke="rgba(255,255,255,.35)" stroke-width="1"/><path d="M-4 0L0 9L4 0" fill="none" stroke="rgba(255,255,255,.45)" stroke-width="1"/><rect x="-1.6" y="-3" width="3.2" height="6" rx="1" fill="#8A7480"/></g></g><g transform="translate(216 19.0)"><g class="sway" style="--t:2.8s;--dl:-0.3s" fill="#D9B48F"><path d="M-8 1L-3.5 0Q0 2.5 3.5 0L8 1L12 6.5L8.5 8.5L7 6V20H-7V6L-8.5 8.5L-12 6.5Z"/><rect x="-1.6" y="-3" width="3.2" height="6" rx="1" fill="#8A7480"/></g></g><g transform="translate(268 18.2)"><g class="sway" style="--t:3.3s;--dl:-0.9s" fill="#9CB09D"><path d="M-7 0H7L8 26H2.5L0 9L-2.5 26H-8Z"/><path d="M-7 3H7" stroke="rgba(255,255,255,.5)" stroke-width="1"/><rect x="-1.6" y="-3" width="3.2" height="6" rx="1" fill="#8A7480"/></g></g><g transform="translate(318 16.1)"><g class="sway" style="--t:2.4s;--dl:-1.5s" fill="#B5654A"><path d="M-6 0H-1V9L3 11.5V14.5H-6Z"/><path d="M2 0H7V9L11 11.5V14.5H2Z" opacity=".85"/><rect x="-1.6" y="-3" width="3.2" height="6" rx="1" fill="#8A7480"/></g></g><g transform="translate(368 12.8)"><g class="sway" style="--t:3.0s;--dl:-0.45s" fill="#3F5E7A"><path d="M-3.5 0H3.5L4.5 5L10 22Q0 25 -10 22L-4.5 5Z"/><path d="M-10 22Q0 25 10 22" fill="none" stroke="rgba(255,255,255,.45)" stroke-width="1.2"/><rect x="-1.6" y="-3" width="3.2" height="6" rx="1" fill="#8A7480"/></g></g></g>
               </svg></span>
-              <span class="panel-cta"><span class="lbl when-closed">Show analytics</span><span class="lbl when-open">Hide</span>
+              <span class="panel-cta"><span class="lbl when-closed">Show Analytics</span><span class="lbl when-open">Hide</span>
                 <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8l4 4 4-4"/></svg></span>
             </summary>
             <div class="panel-body" id="tasteBody">
@@ -1212,12 +1136,12 @@
 
           <div class="grid-2 mb-4">
             <div class="card col">
-              <div class="card-head"><div class="card-title">Colour story</div><span class="card-meta">Share of garments</span></div>
+              <div class="card-head"><div class="card-title">Colour Story</div><span class="card-meta">Share of garments</span></div>
               <div id="colorStory"></div>
               <div class="pal-sum" id="colorSum"></div>
             </div>
             <div class="card">
-              <div class="card-head"><div class="card-title">Size curve</div><span class="card-meta" id="sizeMeta">Pack allocation · % of garments</span></div>
+              <div class="card-head"><div class="card-title">Size Curve</div><span class="card-meta" id="sizeMeta">Pack allocation · % of garments</span></div>
               <div class="chart-box"><canvas id="sizeChart" aria-label="Size distribution chart" role="img"></canvas></div>
             </div>
           </div>
@@ -1225,7 +1149,7 @@
           <div class="grid-3 mb-4">
             <div class="card">
               <div class="card-head"><div class="card-title">Pattern</div><span class="card-meta">Share of garments</span></div>
-              <div class="pie-wrap"><div class="pie"><canvas id="patternChart" aria-label="Pattern share" role="img"></canvas><div class="pie-c"><b id="patternTop">—</b><span>top pattern</span></div></div>
+              <div class="pie-wrap"><div class="pie"><canvas id="patternChart" aria-label="Pattern share" role="img"></canvas><div class="pie-c"><b id="patternTop">—</b><span>Top Pattern</span></div></div>
                 <div class="lgd-mini" id="patternLegend"></div></div>
             </div>
             <div class="card">
@@ -1246,19 +1170,19 @@
               <div class="bubbles" id="materialMix"></div>
             </div>
             <div class="card">
-              <div class="card-head"><div class="card-title">Brands in wardrobes</div><span class="card-meta" id="brandMeta">Share of garments</span></div>
+              <div class="card-head"><div class="card-title">Brands in Wardrobes</div><span class="card-meta" id="brandMeta">Share of garments</span></div>
               <div class="lolli" id="brandLolli"></div>
             </div>
           </div>
 
           <div class="grid-2">
             <div class="card">
-              <div class="card-head"><div class="card-title">Top areas for a store</div><span class="card-meta">Click a row to focus the map</span></div>
+              <div class="card-head"><div class="card-title">Top Areas for a Store</div><span class="card-meta">Click a row to focus the map</span></div>
               <p class="text-[13px] text-muted leading-relaxed m-0 mb-3" id="storeCardCopy">Scores use aggregated PIN areas — never individual customer locations.</p>
               <div id="storeCardPills" style="overflow-x:auto"></div>
             </div>
             <div class="card">
-              <div class="card-head"><div class="card-title">RFM mix</div><span class="card-meta">Customers by segment</span></div>
+              <div class="card-head"><div class="card-title">RFM Mix</div><span class="card-meta">Customers by segment</span></div>
               <div class="donut-wrap">
                 <div class="donut"><canvas id="rfmChart" aria-label="RFM segment chart" role="img"></canvas>
                   <div class="donut-center"><b id="rfmTotal">—</b><span>Customers</span></div></div>
@@ -1272,7 +1196,7 @@
             <summary class="panel-bar with-art" aria-controls="logiBody">
               <span class="panel-ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-5 9 5v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="M7 20v-7h10v7M7 16h10"/></svg></span>
               <span class="panel-main">
-                <h2>Logistics &amp; warehouse</h2>
+                <h2>Logistics &amp; Warehouse</h2>
                 <p id="logiSummary">Store plan · stock mix, footfall &amp; expected revenue</p>
               </span>
               <span class="line-art" aria-hidden="true"><svg class="clip" viewBox="0 0 420 62" preserveAspectRatio="xMidYMid meet">
@@ -1293,18 +1217,18 @@
                   <g class="wheel"><circle cx="58" cy="-3" r="5.2" fill="#3B2733"/><circle cx="58" cy="-3" r="2" fill="#DCC3CE"/><path d="M58 -7.4V1.4" stroke="#8A7480" stroke-width="1"/></g>
                 </g></g></g>
               </svg></span>
-              <span class="panel-cta"><span class="lbl when-closed">Show analytics</span><span class="lbl when-open">Hide</span>
+              <span class="panel-cta"><span class="lbl when-closed">Show Analytics</span><span class="lbl when-open">Hide</span>
                 <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8l4 4 4-4"/></svg></span>
             </summary>
             <div class="panel-body" id="logiBody">
               <div class="logi-top">
                 <div class="min-w-0">
-                  <label class="card-title" for="logiSelect" style="display:block;margin-bottom:.45rem">Plan a store in</label>
+                  <label class="card-title" for="logiSelect" style="display:block;margin-bottom:.45rem">Plan a Store in</label>
                   <select id="logiSelect" class="logi-select"></select>
                   <span class="empty-note" id="logiEmpty" hidden></span>
                 </div>
                 <div class="logi-actions">
-                  <button type="button" class="logi-run" id="logiRun">Analyse area</button>
+                  <button type="button" class="logi-run" id="logiRun">Analyse Area</button>
                   <span class="card-meta">Gemini market knowledge + our wardrobe data · not a live web search</span>
                 </div>
               </div>
@@ -1337,8 +1261,6 @@
     let lastBriefKey = '';
 
     const CHART = {
-      color: '#6B3A55',
-      colorAlt: '#552C43',
       grid: '#EAD9E0',
       tick: '#8A7480'
     };
@@ -1456,20 +1378,6 @@
       });
     }
 
-    /** Ranked bars scaled to the leader (so differences are visible); label shows share of total. */
-    function renderShareRows(el, rows, emptyMsg) {
-      const ranked = withShare(rows).slice(0, 6);
-      if (!ranked.length) { el.innerHTML = `<div class="empty-note">${esc(emptyMsg)}</div>`; return; }
-      const max = ranked[0].count || 1;
-      el.innerHTML = ranked.map((r, i) => `
-        <div class="rank${i === 0 ? ' top' : ''}">
-          <span class="n">${i + 1}</span>
-          <span class="l" title="${esc(r.value)}">${esc(r.value)}</span>
-          <span class="p">${r.pct}%</span>
-          <span class="t"><i style="width:${Math.max(3, Math.round((r.count / max) * 100))}%"></i></span>
-        </div>`).join('');
-    }
-
     function renderColorStory(rows) {
       const ranked = withShare(rows);
       const el = $('colorStory');
@@ -1478,8 +1386,8 @@
       const rest = ranked.slice(10).reduce((t, r) => t + r.pct, 0);
       const NEUTRAL = /black|white|grey|gray|beige|cream|ivory|navy|charcoal|khaki|tan|camel|silver|off white/i;
       const neutralPct = ranked.filter(r => NEUTRAL.test(r.value)).reduce((t, r) => t + r.pct, 0);
-      $('colorSum').innerHTML = `<div><span>Colours seen</span><b>${ranked.length}</b></div>`
-        + `<div><span>Top 3 share</span><b>${ranked.slice(0, 3).reduce((t, r) => t + r.pct, 0)}%</b></div>`
+      $('colorSum').innerHTML = `<div><span>Colours Seen</span><b>${ranked.length}</b></div>`
+        + `<div><span>Top 3 Share</span><b>${ranked.slice(0, 3).reduce((t, r) => t + r.pct, 0)}%</b></div>`
         + `<div><span>Neutrals</span><b>${neutralPct}%</b></div>`;
       el.innerHTML = `<div class="palette" role="img" aria-label="Colour share">`
         + shown.map(r => `<i style="flex:${Math.max(r.pct, 0.5)};background:${colorHex(r.value)}" title="${esc(r.value)} · ${r.pct}%"></i>`).join('')
@@ -1530,7 +1438,7 @@
     function buildDropdown(key, values, allLabel, labelFn) {
       const panel = $('opts-' + key);
       const allRow = values.length > 1
-        ? `<label class="drop-item drop-all"><input type="checkbox" data-all="${key}" /><span>Select all</span></label>`
+        ? `<label class="drop-item drop-all"><input type="checkbox" data-all="${key}" /><span>Select All</span></label>`
         : '';
       panel.innerHTML = allRow + values.map(v => {
         const label = labelFn ? labelFn(v) : v;
@@ -1759,7 +1667,7 @@
         .join('; ');
       const taste = [
         trends.top_commodity && `commodity ${trends.top_commodity}`,
-        trends.top_color && `color ${trends.top_color}`,
+        trends.top_color && `colour ${trends.top_color}`,
         trends.top_brand && `brand ${trends.top_brand}`,
       ].filter(Boolean).join(', ');
       const audience = [
@@ -1785,7 +1693,7 @@
       return [
         `Audience: ${audience}. Aggregates only (no individual customer data).`,
         `Estimated footfall ~${Math.round(f.est_footfall || 0)} (simulated) · demand ${Math.round(f.demand || 0)} · Champions & Loyalists ${Math.round(f.hv_demand || 0)}.`,
-        `${brand} vs competitors at PIN: share ${sharePct} (${Math.round(f.brand_garments || 0)} vs ${Math.round(f.competitor_garments || 0)} garments).`,
+        `${brand} vs competitors in this PIN: share ${sharePct} (${Math.round(f.brand_garments || 0)} vs ${Math.round(f.competitor_garments || 0)} garments).`,
         commodities ? `Brand commodities: ${commodities}.` : 'No brand commodity counts in this slice.',
         taste ? `Trending taste: ${taste}.` : '',
         action,
@@ -1888,7 +1796,7 @@
       const name = (r) => (r.area_label && r.area_label !== r.pin ? r.area_label : 'PIN ' + r.pin);
       const items = (focus && focus.commodities || []).slice(0, 5);
       $('storeCardPills').innerHTML = `<table class="areas">
-        <thead><tr><th>#</th><th>Area</th><th>Decision</th><th>Store zone</th><th>Opportunity</th><th class="num hide-sm">${esc(brandLabel)} share</th><th class="num hide-sm">Footfall</th></tr></thead>
+        <thead><tr><th>#</th><th>Area</th><th>Decision</th><th>Store Zone</th><th>Opportunity</th><th class="num hide-sm">${esc(brandLabel)} Share</th><th class="num hide-sm">Footfall</th></tr></thead>
         <tbody>${rows.map((r, i) => {
           const d = decisionOf(r.decision);
           return `<tr data-pin="${esc(r.pin)}" tabindex="0" class="${focus && focus.pin === r.pin ? 'is-focus' : ''}" aria-label="Focus ${esc(name(r))} on the map">
@@ -1950,7 +1858,7 @@
       if (!el) return;
       const s = geoStores, brand = esc(s.brand || 'brand');
       const srcs = (s.sources || []).slice(0, 5).map((x, i) => `<a href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">[${i + 1}]</a>`).join(' ');
-      const refresh = isAdmin() && s.brand && s.status !== 'loading' ? '<button type="button" id="storesRefresh">Refresh stores</button>' : '';
+      const refresh = isAdmin() && s.brand && s.status !== 'loading' ? '<button type="button" id="storesRefresh">Refresh Stores</button>' : '';
       if (s.status === 'loading') el.innerHTML = `<span class="ai-dot"></span>Locating existing ${brand} stores with Google Search…`;
       else if (s.status === 'ok') {
         const low = (s.stores || []).filter(x => x.confidence === 'low').length;
@@ -2002,9 +1910,9 @@
       const name = f.area_label && f.area_label !== f.pin ? f.area_label : 'PIN ' + f.pin;
       $('routeMeta').textContent = `Optimisation mode · ${name} is served by an existing store`;
       if (routeCache[key] && routeCache[key].data) { renderRouting(routeCache[key].data); return; }
+      $('routeOut').innerHTML = '<div class="empty-note">Building the routing guide…</div>'; // also replaces another area's guide while this one is in flight
       if (routeCache[key] && routeCache[key].busy) return;
       routeCache[key] = { busy: true };
-      $('routeOut').innerHTML = '<div class="empty-note">Building the routing guide…</div>';
       try {
         const data = await geoApi('/v1/geo/routing-guide', { method: 'POST', body: JSON.stringify({ pin: f.pin, analysis_brand: brand }) });
         routeCache[key] = { data };
@@ -2026,8 +1934,8 @@
         <p class="text-[12.5px] m-0">Route stock to <b>${esc(st.name || 'the nearest store')}</b>${st.distance_km != null ? ` (${esc(st.distance_km)} km away)` : ''}. Its ${esc(g.threshold_km)} km catchment covers
           ${(g.pins || []).map(p => `<span class="zpill service">${esc(p.area_label !== p.pin ? p.area_label : 'PIN ' + p.pin)}${p.distance_km != null ? ' · ' + esc(p.distance_km) + ' km' : ''}</span>`).join(' ')}.</p>
         ${(g.actions || []).length ? `<ul class="bul" style="margin:.5rem 0 0">${g.actions.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
-        <div class="intel-sub">Customer personas (groups of ${esc(g.persona_min_customers)}+ customers)</div>
-        ${(g.personas || []).length ? `<table class="persona-tbl"><thead><tr><th>Persona</th><th>Customers</th><th>Avg order</th><th>Wears</th></tr></thead><tbody>
+        <div class="intel-sub">Customer Personas (Groups of ${esc(g.persona_min_customers)}+ Customers)</div>
+        ${(g.personas || []).length ? `<table class="persona-tbl"><thead><tr><th>Persona</th><th>Customers</th><th>Avg Order</th><th>Wears</th></tr></thead><tbody>
           ${g.personas.map(p => `<tr class="${p.high_value ? 'hv' : ''}"><td>${esc(p.persona)}${p.merged_groups ? ` <small>(${esc(p.merged_groups)} small groups)</small>` : ''}</td><td>${fmtInt(p.customers)}</td><td>${fmtRs(p.avg_order_value)}</td>
             <td>${esc([...(p.top_commodities || []), ...(p.top_colors || []), ...(p.top_sizes || []).map(s => 'size ' + s)].slice(0, 6).join(', ') || '—')}</td></tr>`).join('')}</tbody></table>`
           : '<div class="empty-note">Not enough customers to show personas without identifying anyone.</div>'}
@@ -2039,7 +1947,7 @@
           <div><div class="intel-sub">Commodity</div>${mixRows(a.commodity)}</div>
           <div><div class="intel-sub">Colour</div>${mixRows(a.color)}</div>
           <div><div class="intel-sub">Pattern</div>${mixRows(a.pattern)}</div>
-          <div><div class="intel-sub">Size curve</div>${mixRows(curve)}</div>
+          <div><div class="intel-sub">Size Curve</div>${mixRows(curve)}</div>
         </div>
         <p class="text-[11.5px] text-muted m-0 mt-2">${esc(g.weighting || '')} ${esc(g.notes || '')}</p>`;
     }
@@ -2051,7 +1959,7 @@
       const c = marketCache[key];
       const btn = $('marketRun');
       btn.disabled = !!(c && c.busy) || !brand;
-      btn.textContent = c && c.data ? (isAdmin() ? 'Refresh check' : 'Checked') : c && c.busy ? 'Searching…' : 'Run external check';
+      btn.textContent = c && c.data ? (isAdmin() ? 'Refresh Check' : 'Checked') : c && c.busy ? 'Searching…' : 'Run External Check';
       if (c && c.data && !isAdmin()) btn.disabled = true;
       btn.onclick = () => runMarket(f, brand, !!(c && c.data));
       if (c && c.data) $('marketOut').innerHTML = marketHtml(c.data);
@@ -2091,9 +1999,9 @@
         ${d.adjustment_note ? `<p class="text-[12px] m-0 mt-1" style="color:#A3301F">${esc(d.adjustment_note)}</p>` : ''}
         <div class="ap-kv"><span>Footfall</span><b>${esc(ff.level || 'unknown')}</b></div>
         ${(ff.drivers || []).length ? `<div class="text-[11.5px] text-muted">${esc(ff.drivers.join(' · '))}</div>` : ''}
-        <div class="ap-kv"><span>Retail rent</span><b>${esc(rentTxt)}</b></div>
-        ${rent.rental_yield_pct != null ? `<div class="ap-kv"><span>Rental yield</span><b>${esc(rent.rental_yield_pct)}%</b></div>` : ''}
-        <div class="ap-kv"><span>Apparel competition</span><b>${esc(comp.level || 'unknown')}${comp.apparel_store_count_estimate != null ? ' · ~' + fmtInt(comp.apparel_store_count_estimate) + ' stores' : ''}</b></div>
+        <div class="ap-kv"><span>Retail Rent</span><b>${esc(rentTxt)}</b></div>
+        ${rent.rental_yield_pct != null ? `<div class="ap-kv"><span>Rental Yield</span><b>${esc(rent.rental_yield_pct)}%</b></div>` : ''}
+        <div class="ap-kv"><span>Apparel Competition</span><b>${esc(comp.level || 'unknown')}${comp.apparel_store_count_estimate != null ? ' · ~' + fmtInt(comp.apparel_store_count_estimate) + ' stores' : ''}</b></div>
         ${competitors ? `<div class="text-[11.5px] text-muted">${esc(competitors)}</div>` : ''}
         ${(comp.malls_nearby || []).length ? `<div class="text-[11.5px] text-muted">Malls: ${esc(comp.malls_nearby.join(', '))}</div>` : ''}
         <div class="intel-sub">Sources${d.cached ? ' · cached' : ''}</div>
@@ -2213,8 +2121,11 @@
         const explanation = data.explanation || '';
         const briefText = data.brief || fallback;
         const factors = Array.isArray(data.key_factors) ? data.key_factors : [];
+        const briefPin = payload.focus_pin && payload.focus_pin.pin;
+        aiPendingPin = null; // every outcome below ends the popup's "Asking Gemini…" state
 
         if (!res.ok && !data.brief && !data.decision) {
+          refreshOpenPopup(briefPin);
           const detail = SuffaiSession.formatApiDetail(data.detail, 'HTTP ' + res.status);
           console.warn('[geo] brief hard fail request_id=%s detail=%s', data.request_id || '—', detail);
           $('briefBody').textContent = fallback;
@@ -2229,8 +2140,6 @@
 
         // Gemini's verdict is shown as an opinion (popup + strip); the dot keeps the shared rule colour.
         // Rule-based fallback replies equal the dot's decision already, so there is nothing to apply.
-        const briefPin = payload.focus_pin && payload.focus_pin.pin;
-        aiPendingPin = null;
         applyAiDecision(payload, data);
 
         refreshOpenPopup(briefPin);
@@ -2239,7 +2148,7 @@
         const md = (t) => esc(t).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/\*/g, '');
         $('briefBody').innerHTML = md(briefText)
           + (!data.fallback && factors.length ? `<span class="brief-factors">${factors.map(f => `<span>${esc(f)}</span>`).join('')}</span>` : '')
-          + (!data.fallback && explanation ? `<details class="brief-expl"><summary>Why this decision</summary>${md(explanation)}</details>` : '');
+          + (!data.fallback && explanation ? `<details class="brief-expl"><summary>Why This Decision</summary>${md(explanation)}</details>` : '');
         $('briefBody').classList.remove('muted');
         $('briefBody').dataset.source = data.fallback ? 'heuristic' : 'gemini';
         $('briefMeta').innerHTML = data.fallback ? 'Rule-based summary'
@@ -2353,9 +2262,9 @@
           tile('Pattern', lead(patterns), ICON.pattern),
           tile('Sleeve', lead(sleeves), ICON.sleeve),
           tile('Collar', lead(collars), ICON.collar),
-          tile('Core size', lead(sizes), ICON.size),
+          tile('Core Size', lead(sizes), ICON.size),
           tile('Fabric', lead(materials), ICON.fabric),
-          tile('Top item', lead(commodities), ICON.item),
+          tile('Top Item', lead(commodities), ICON.item),
         ].join('');
       }
 
@@ -2460,9 +2369,9 @@
       });
       const focusId = resolveFocusPin(scored);
       const focus = scored.find(r => r.pin === focusId) || scored[0] || null;
-      lastStoreState = { scored, focus, cust, analysisBrand };
+      lastStoreState = { scored, focus, analysisBrand };
       renderStoreStrip(scored, focus, analysisBrand);
-      updateMap(pins, scored, focus, cust);
+      updateMap(scored, focus);
       updateCatchment(focus ? [focus.pin] : pins);
       renderLogiPicker();
 
@@ -2572,13 +2481,8 @@
     };
 
     function syncGeoDropdownChecks(key) {
-      const panel = $('opts-' + key);
-      if (!panel) return;
-      const wanted = new Set((selection[key] || []).map(String));
-      panel.querySelectorAll('input[data-key]').forEach((input) => {
-        input.checked = wanted.has(String(input.value));
-      });
-      updateDropSummary(key, GEO_DROP_ALL[key] || 'All');
+      dropNone[key] = false; // an agent-cleared filter means "all", not "none ticked"
+      updateDropSummary(key, GEO_DROP_ALL[key]); // also syncs the checkboxes
     }
 
     function applyAgentGeoFilters(filters) {
@@ -2604,7 +2508,7 @@
       applyFilters();
     }
 
-    function resetAgentGeoFilters() {
+    function resetFilters() {
       focusPin = null;
       lastBriefKey = '';
       Object.keys(selection).forEach((k) => { selection[k] = []; dropNone[k] = false; });
@@ -2643,7 +2547,7 @@
       if (t === 'set_filters') {
         applyAgentGeoFilters(cmd.filters || {});
       } else if (t === 'reset_filters') {
-        resetAgentGeoFilters();
+        if (DATA) resetFilters();
       } else if (t === 'focus_pin') {
         focusAgentPin(cmd.pin);
       } else if (t === 'run_brief') {
@@ -2667,7 +2571,7 @@
 
     window.addEventListener('message', (ev) => {
       const data = ev.data;
-      if (!data || typeof data !== 'object') return;
+      if (ev.source !== window.parent || !data || typeof data !== 'object') return; // only the shell may drive this page
       if (data.type === 'cc-context-request') {
         if (DATA && lastStoreState) publishGeoContext(lastGeoSummary); // re-send only; a full re-render reset the open brief
         return;
@@ -2726,7 +2630,7 @@
         return `<div class="ap-why">
           <div class="ap-why-h"><span>${head}</span><em>Gemini${r.ai_confidence ? ' · ' + esc(r.ai_confidence) : ''}</em></div>
           <ul>${r.ai_factors.slice(0, 3).map(f => `<li>${esc(f)}</li>`).join('')}</ul>
-          <button type="button" class="ap-more" data-scroll-brief="1">Full reasoning ↑</button></div>`;
+          <button type="button" class="ap-more" data-scroll-brief="1">Full Reasoning ↑</button></div>`;
       }
       if (aiPendingPin === r.pin) {
         return `<div class="ap-why"><div class="ap-why-h"><span>Why ${esc(d)}?</span><em class="ap-think">Asking Gemini…</em></div>
@@ -2751,15 +2655,15 @@
           <span class="ap-badge ${d.cls}">${esc(r.decision)}</span>
         </div>
         <div class="ap-body">
-          <div class="ap-kv"><span>Store zone</span><b>${esc(r.decision_label || ZONE_TEXT[r.proximity_zone] || '—')}${r.nearest_store_km != null ? ' · ' + r.nearest_store_km + ' km' : ''}</b></div>
+          <div class="ap-kv"><span>Store Zone</span><b>${esc(r.decision_label || ZONE_TEXT[r.proximity_zone] || '—')}${r.nearest_store_km != null ? ' · ' + r.nearest_store_km + ' km' : ''}</b></div>
           <div class="ap-kv"><span>Champions &amp; Loyalists</span><b>${fmtInt(r.hv_demand)}</b></div>
           <div class="ap-kv"><span>Footfall <span class="sim-tag">sim</span></span><b>~${fmtInt(r.est_footfall)}</b></div>
           <div class="ap-kv"><span>Pop. 2 km</span><b>${fmtInt(g.pop_buffer_2km || g.population_pin)}</b></div>
-          ${total ? `<div class="ap-kv"><span>${esc(brand)} share</span><b>${ownPct}%</b></div>
+          ${total ? `<div class="ap-kv"><span>${esc(brand)} Share</span><b>${ownPct}%</b></div>
             <div class="ap-share"><i style="width:${ownPct}%;background:${d.color}"></i></div>` : ''}
           ${whyBlock(r)}
         </div>
-        <button type="button" class="ap-btn" data-pin-filter="${esc(r.pin)}" ${onlyThis ? 'disabled' : ''}>${onlyThis ? 'Showing this area' : 'Filter to this area →'}</button>`;
+        <button type="button" class="ap-btn" data-pin-filter="${esc(r.pin)}" ${onlyThis ? 'disabled' : ''}>${onlyThis ? 'Showing This Area' : 'Filter to This Area →'}</button>`;
     }
 
     function renderLegend(hubs) {
@@ -2769,7 +2673,7 @@
         : (DATA ? 'No candidate areas for this filter set' : 'Loading areas for your filters…');
       if (!legendEl) return;
       const n = (k) => hubs.filter(h => h.decision === k).length;
-      legendEl.innerHTML = `<div class="t">Store decision</div>`
+      legendEl.innerHTML = `<div class="t">Store Decision</div>`
         + ['Yes', 'Consider', 'No'].map(k => `<div class="r"><i style="background:${DECISION[k].color}"></i>${k}<b>${n(k)}</b></div>`).join('')
         + ((geoStores.stores || []).length ? `<div class="r" title="Existing store with its ${PROXIMITY_KM} km service ring"><i style="background:#2F4F77;border-radius:3px"></i>Stores · ${PROXIMITY_KM} km<b>${geoStores.stores.length}</b></div>` : '')
         + (hubs.some(h => h.proximity_zone === 'service') ? `<div class="hint">${hubs.filter(h => h.proximity_zone === 'service').length} served by a store</div>` : '');
@@ -2816,7 +2720,7 @@
       map.fitBounds(L.latLngBounds(hubs.map(h => [h.centroid_lat, h.centroid_lon])).pad(0.25), { animate: !!animate, maxZoom: 14 });
     }
 
-    function updateMap(pins, scored, focus, cust) {
+    function updateMap(scored, focus) {
       // Skip identical redraws (brief replies, shell context pings): rebuilding mid-click swallows the click
       const mapKey = JSON.stringify([focus && focus.pin, selection, geoStores.brand, geoStores.status, (geoStores.stores || []).length,
         (scored || []).map(r => [r.pin, r.decision, Math.round(r.score * 1000), r.est_footfall, r.demand])]);
@@ -2902,7 +2806,7 @@
         });
         m.bindPopup(`<div class="ap-head"><div class="ap-title"><div class="ap-name">${esc(s.name)}</div><div class="ap-pin">Existing store${s.pin_code ? ' · PIN ' + esc(s.pin_code) : ''}</div></div></div>
           <div class="ap-body">${s.address ? `<div class="text-[12px]">${esc(s.address)}</div>` : ''}
-          <div class="ap-kv"><span>Served radius</span><b>${PROXIMITY_KM} km</b></div>
+          <div class="ap-kv"><span>Served Radius</span><b>${PROXIMITY_KM} km</b></div>
           <div class="ap-kv"><span>Location</span><b>${s.confidence === 'low' ? 'Approximate' : s.confidence === 'high' ? 'Verified vs PIN' : 'From search'}</b></div>
           ${(s.catchment_pins || []).length ? `<div class="text-[11.5px] text-muted">Serves ${s.catchment_pins.map(p => esc(areaLabel(p.pin))).join(', ')}</div>` : ''}
           ${s.source_url ? `<a class="text-[11.5px]" href="${esc(s.source_url)}" target="_blank" rel="noopener noreferrer">Source</a>` : ''}</div>`,
@@ -3101,7 +3005,7 @@ Reply ONLY minified JSON, no markdown:
         renderLogiResult(entry);
       } catch (err) {
         console.error('[geo] logistics', err);
-        $('logiOut').innerHTML = `<div class="logi-err">${esc(err.message || String(err))} <button type="button" class="ap-more" id="logiRetry">Try again</button></div>`;
+        $('logiOut').innerHTML = `<div class="logi-err">${esc(err.message || String(err))} <button type="button" class="ap-more" id="logiRetry">Try Again</button></div>`;
         const b = document.getElementById('logiRetry'); if (b) b.onclick = () => runLogistics(true);
       } finally {
         clearInterval(tick);
@@ -3130,19 +3034,19 @@ Reply ONLY minified JSON, no markdown:
       const totalComp = brandsSorted.filter(b => !isOwnBrand(b.brand, brand)).length || 1;
       $('logiOut').innerHTML = `
         <div class="kpi4 mb-4">
-          <div class="kpi-t hero"><span>Expected monthly revenue</span><b>${inr(out.proj.base.revenue)}</b><small>Range ${inr(out.proj.low.revenue)} – ${inr(out.proj.high.revenue)}</small></div>
-          <div class="kpi-t"><span>Daily walk-ins${out.filtered ? ' · your audience' : ''}</span><b>~${fmtInt(out.proj.base.walkins)}</b><small>${fmtInt(out.proj.low.walkins)} – ${fmtInt(out.proj.high.walkins)} a day</small></div>
+          <div class="kpi-t hero"><span>Expected Monthly Revenue</span><b>${inr(out.proj.base.revenue)}</b><small>Range ${inr(out.proj.low.revenue)} – ${inr(out.proj.high.revenue)}</small></div>
+          <div class="kpi-t"><span>Daily Walk-ins${out.filtered ? ' · Your Audience' : ''}</span><b>~${fmtInt(out.proj.base.walkins)}</b><small>${fmtInt(out.proj.low.walkins)} – ${fmtInt(out.proj.high.walkins)} a day</small></div>
           <div class="kpi-t"><span>Conversion</span><b>${out.conv.base}%</b><small>${out.conv.low}–${out.conv.high}% of walk-ins buy</small></div>
-          <div class="kpi-t"><span>Average bill</span><b>${inr(out.bill.base)}</b><small>${inr(out.bill.low)} – ${inr(out.bill.high)}</small></div>
+          <div class="kpi-t"><span>Average Bill</span><b>${inr(out.bill.base)}</b><small>${inr(out.bill.low)} – ${inr(out.bill.high)}</small></div>
         </div>
         <div class="grid-2 mb-4">
-          <div class="card"><div class="card-head"><div class="card-title">Validation · our data vs external</div><span class="card-meta">Gemini confidence: ${esc(ext.confidence || '—')}</span></div>
+          <div class="card"><div class="card-head"><div class="card-title">Validation · Our Data vs External</div><span class="card-meta">Gemini confidence: ${esc(ext.confidence || '—')}</span></div>
             <div class="agree">
               ${agreeRow('Population', out.popAgree, out.popInRange == null ? '' : out.popInRange ? 'ours is within the external range' : 'ours is outside the external range — our population reference may need updating')}
-              ${agreeRow('Size demand', out.mixAgree.size)}
-              ${agreeRow('Colour demand', out.mixAgree.color)}
-              ${agreeRow('Gender split', out.mixAgree.gender, Math.round(int.genderKnown * 100) + '% of our garments have a known gender')}
-              ${agreeRow('Category demand', out.mixAgree.category)}
+              ${agreeRow('Size Demand', out.mixAgree.size)}
+              ${agreeRow('Colour Demand', out.mixAgree.color)}
+              ${agreeRow('Gender Split', out.mixAgree.gender, Math.round(int.genderKnown * 100) + '% of our garments have a known gender')}
+              ${agreeRow('Category Demand', out.mixAgree.category)}
             </div>
             <div class="basis">
               <span>Stock mix = 70% our wardrobe data + 30% market</span>
@@ -3151,15 +3055,15 @@ Reply ONLY minified JSON, no markdown:
               <span>Income: ${esc(ext.income || '—')}</span><span>Retail density: ${esc(ext.retail_density || '—')}</span>
             </div>
           </div>
-          <div class="card"><div class="card-head"><div class="card-title">Brand stores nearby</div><span class="card-meta">${Math.round((competitorsNear / totalComp) * 100)}% of competitors within 3 km</span></div>
+          <div class="card"><div class="card-head"><div class="card-title">Brand Stores Nearby</div><span class="card-meta">${Math.round((competitorsNear / totalComp) * 100)}% of competitors within 3 km</span></div>
             <div class="comp">${brandsSorted.map(b => { const [cls, txt] = presence(b); return `<div class="${isOwnBrand(b.brand, brand) ? 'own' : ''}"><span>${esc(b.brand)}${isOwnBrand(b.brand, brand) ? ' (you)' : ''}</span><em class="${cls}">${esc(txt)}</em></div>`; }).join('') || '<div class="empty-note">No brand data</div>'}</div>
           </div>
         </div>
         <div class="grid-2-eq mb-4">${mixCard('Size', 'size')}${mixCard('Colour', 'color')}</div>
         <div class="grid-2-eq mb-4">${mixCard('Gender', 'gender')}${mixCard('Category', 'category')}</div>
         <div class="grid-2-eq">
-          <div class="card"><div class="card-head"><div class="card-title">Why this location</div><span class="card-meta">Gemini</span></div><ul class="bul">${(ext.insights || []).slice(0, 4).map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>
-          <div class="card"><div class="card-head"><div class="card-title">Risks to plan for</div><span class="card-meta">Gemini</span></div><ul class="bul risk">${(ext.risks || []).slice(0, 3).map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>
+          <div class="card"><div class="card-head"><div class="card-title">Why This Location</div><span class="card-meta">Gemini</span></div><ul class="bul">${(ext.insights || []).slice(0, 4).map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>
+          <div class="card"><div class="card-head"><div class="card-title">Risks to Plan For</div><span class="card-meta">Gemini</span></div><ul class="bul risk">${(ext.risks || []).slice(0, 3).map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>
         </div>`;
       renderLogiPicker();
     }
@@ -3169,7 +3073,6 @@ Reply ONLY minified JSON, no markdown:
       backgroundColor: '#3B2733', titleColor: '#fff', bodyColor: '#F6EEF0', padding: 10, cornerRadius: 8,
       displayColors: false, titleFont: { family: 'Outfit', weight: '600' }, bodyFont: { family: 'Outfit' },
     };
-    const compact = new Intl.NumberFormat('en-IN', { notation: 'compact', maximumFractionDigits: 1 });
 
     const MULTI = ['#6B3A55', '#3F5E7A', '#9CB09D', '#D9B48F', '#C59FB0', '#B5654A', '#5E7A60', '#8A7480', '#7A8FB0', '#E4C9D3'];
 
@@ -3332,7 +3235,7 @@ Reply ONLY minified JSON, no markdown:
       $('activeFilters').innerHTML = active.map(k => {
         const v = selection[k].map(x => (k === 'pin' && DATA ? areaLabel(x) : x)).join(', ');
         return `<button type="button" class="af-chip" data-clear="${k}" title="Remove ${esc(FILTER_NAME[k])} filter: ${esc(v)}"><em>${FILTER_NAME[k]}</em><span>${esc(v)}</span>${xIco}</button>`;
-      }).join('') + (n > 1 ? '<button type="button" class="af-clear" data-clear="*">Clear all</button>' : '');
+      }).join('') + (n > 1 ? '<button type="button" class="af-clear" data-clear="*">Clear All</button>' : '');
     }
     $('activeFilters').addEventListener('click', (e) => {
       const b = e.target.closest('[data-clear]');
@@ -3354,17 +3257,7 @@ Reply ONLY minified JSON, no markdown:
       setTimeout(() => map && map.invalidateSize(), 300);
     });
 
-    $('btnClear').addEventListener('click', () => {
-      focusPin = null;
-      lastBriefKey = '';
-      Object.keys(selection).forEach(k => { selection[k] = []; dropNone[k] = false; });
-      updateDropSummary('pin', 'All areas');
-      updateDropSummary('age', 'All ages');
-      updateDropSummary('gender', 'All genders');
-      updateDropSummary('rfm', 'All segments');
-      updateDropSummary('brand', 'All brands');
-      applyFilters();
-    });
+    $('btnClear').addEventListener('click', () => { if (DATA) resetFilters(); });
 
     async function boot() {
       map = L.map('map', { center: [12.97, 77.59], zoom: 11, zoomControl: false });
@@ -3413,7 +3306,7 @@ Reply ONLY minified JSON, no markdown:
           L.DomEvent.disableClickPropagation(wrap);
           const fit = L.DomUtil.create('button', 'map-fit', wrap);
           fit.type = 'button';
-          fit.textContent = 'Fit all areas';
+          fit.textContent = 'Fit All Areas';
           fit.addEventListener('click', () => fitEverything(true));
           const seg = L.DomUtil.create('div', 'basemap-seg', wrap);
           seg.setAttribute('role', 'group'); seg.setAttribute('aria-label', 'Map style');
@@ -3428,7 +3321,7 @@ Reply ONLY minified JSON, no markdown:
       });
       new Tools({ position: 'topright' }).addTo(map);
 
-      // "Full reasoning ↑": jump to the Market brief, opened, with the decision explanation expanded
+      // "Full Reasoning ↑": jump to the Market Brief, opened, with the decision explanation expanded
       function openBrief() {
         const p = $('briefPanel');
         map.closePopup();
@@ -3440,7 +3333,7 @@ Reply ONLY minified JSON, no markdown:
         p.querySelector('summary').focus({ preventScroll: true });
       }
 
-      // "Filter dashboard to this area" inside the popup
+      // "Filter to This Area" inside the popup
       map.on('popupopen', (e) => {
         const el = e.popup.getElement();
         if (!el || el.dataset.wired) return; // the container is reused on every open; content is re-rendered
@@ -3450,11 +3343,10 @@ Reply ONLY minified JSON, no markdown:
           const btn = ev.target.closest('[data-pin-filter]');
           if (!btn || btn.disabled) return;
           const pin = btn.dataset.pinFilter;
-          document.querySelectorAll('#opts-pin input[data-key]').forEach(i => { i.checked = i.value === pin; });
           selection.pin = [pin];
           focusPin = pin;
           openPopupPin = pin;
-          updateDropSummary('pin', 'All areas');
+          updateDropSummary('pin', GEO_DROP_ALL.pin); // also ticks the checkboxes
           applyFilters();
         });
       });
@@ -3531,11 +3423,11 @@ Reply ONLY minified JSON, no markdown:
         if (DATA.filters) DATA.filters.brands = brandOpts.slice();
       }
 
-      buildDropdown('pin', DATA.filters.pin_codes, 'All areas', pinOptionLabel);
-      buildDropdown('age', DATA.filters.age_groups, 'All ages');
-      buildDropdown('gender', DATA.filters.genders, 'All genders');
-      buildDropdown('rfm', DATA.filters.rfm_segments, 'All segments');
-      buildDropdown('brand', brandOpts, 'All brands');
+      buildDropdown('pin', DATA.filters.pin_codes, GEO_DROP_ALL.pin, pinOptionLabel);
+      buildDropdown('age', DATA.filters.age_groups, GEO_DROP_ALL.age);
+      buildDropdown('gender', DATA.filters.genders, GEO_DROP_ALL.gender);
+      buildDropdown('rfm', DATA.filters.rfm_segments, GEO_DROP_ALL.rfm);
+      buildDropdown('brand', brandOpts, GEO_DROP_ALL.brand);
 
       applyFilters();
       setTimeout(() => map.invalidateSize(), 150);
@@ -3567,9 +3459,9 @@ Reply ONLY minified JSON, no markdown:
       document.body.innerHTML =
         `<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1.5rem;font-family:Outfit,sans-serif;background:#FAF6EE">
           <div role="alert" style="max-width:440px;width:100%;background:#fff;border:1px solid #EAD9E0;border-radius:18px;padding:2rem;box-shadow:0 20px 50px rgba(107,58,85,.12)">
-            <h1 style="margin:0 0 .5rem;font-family:'Cormorant Garamond',Georgia,serif;font-size:1.8rem;color:#6B3A55">Geo couldn't load</h1>
+            <h1 style="margin:0 0 .5rem;font-family:Outfit, system-ui, sans-serif;font-size:1.8rem;color:#6B3A55">Geo Insights Couldn't Load</h1>
             <p style="margin:0 0 1.25rem;color:#8A7480;font-size:14px;line-height:1.5">${esc(err.message)}</p>
-            <button type="button" onclick="location.reload()" style="border:0;border-radius:12px;background:#6B3A55;color:#fff;font:600 14px Outfit,sans-serif;padding:.75rem 1.25rem;cursor:pointer">Try again</button>
+            <button type="button" onclick="location.reload()" style="border:0;border-radius:12px;background:#6B3A55;color:#fff;font:600 14px Outfit,sans-serif;padding:.75rem 1.25rem;cursor:pointer">Try Again</button>
           </div>
         </div>`;
     });

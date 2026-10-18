@@ -9,10 +9,13 @@ Does NOT modify worker/ (extraction) or similarity/ core ingest.
 
 from __future__ import annotations
 
+import copy
 import json
 import logging
 import os
 import sys
+import threading
+import time
 import uuid
 from pathlib import Path
 from typing import Any, Optional
@@ -84,6 +87,18 @@ async def _validation_error_handler(request: Request, exc: RequestValidationErro
     return await request_validation_exception_handler(request, exc)
 
 
+@app.exception_handler(Exception)
+async def _unhandled_error_handler(request: Request, exc: Exception):
+    """Last resort: log the traceback, return a generic 500 with a reference (never the exception text)."""
+    ref = uuid.uuid4().hex[:12]
+    log.error("unhandled error %s %s reference=%s", request.method, request.url.path, ref,
+              exc_info=(type(exc), exc, exc.__traceback__))
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"Something went wrong on our side. Reference: {ref}", "request_id": ref},
+    )
+
+
 def _env_bool(name: str, default: bool = False) -> bool:
     v = os.getenv(name)
     if v is None:
@@ -111,11 +126,7 @@ def _count_extraction_jobs() -> Optional[int]:
 def compute_metrics() -> dict[str, Any]:
     """Load aggregates from BigQuery only. Fail loudly if BQ is unavailable."""
     if not _env_bool("USE_BQ", True):
-        log.error("USE_BQ is false — CSV fallback disabled; set USE_BQ=true")
-        raise HTTPException(
-            503,
-            "BigQuery required: set USE_BQ=true (local CSV fallback removed)",
-        )
+        raise _masked_http(503, "metrics: USE_BQ is false; CSV fallback removed, set USE_BQ=true")
 
     project = os.getenv("GOOGLE_CLOUD_PROJECT") or os.getenv("GCP_PROJECT") or ""
     dataset = os.getenv("BQ_DATASET", "suffai_ops")
@@ -153,10 +164,33 @@ def compute_metrics() -> dict[str, Any]:
 
 
 METRICS_JSON = WEB_DIR / "metrics.json"
-camp_svc.init(metrics_loader=compute_metrics, metrics_json=METRICS_JSON)
+METRICS_CACHE_SEC = float(os.getenv("METRICS_CACHE_SEC", "120"))
+_metrics_cache: dict[str, Any] = {"fn": None, "at": 0.0, "payload": None}
+_metrics_lock = threading.Lock()
+
+
+def cached_metrics() -> dict[str, Any]:
+    """compute_metrics() reused for METRICS_CACHE_SEC (BigQuery load takes seconds; every tab asks for it).
+
+    Returns a private deep copy so per-request brand masking can never touch the shared payload.
+    The entry is tied to the current compute_metrics function, so a swapped loader (tests) never sees stale data.
+    """
+    fn = compute_metrics
+    with _metrics_lock:
+        hit = _metrics_cache["fn"] is fn and _metrics_cache["payload"] is not None \
+            and time.monotonic() - _metrics_cache["at"] < METRICS_CACHE_SEC
+        if not hit:
+            _metrics_cache.update(fn=fn, at=time.monotonic(), payload=fn())
+        return copy.deepcopy(_metrics_cache["payload"])
+
+
+camp_svc.init(metrics_loader=lambda: cached_metrics(), metrics_json=METRICS_JSON)
 
 
 def _svc_http(exc: camp_svc.ServiceError) -> HTTPException:
+    """4xx text is written for the UI; 5xx (storage/config/cloud failures) is masked behind a reference."""
+    if exc.status >= 500:
+        return _masked_http(exc.status, f"service error code={exc.code} detail={exc.public}")
     return HTTPException(exc.status, exc.public)
 
 
@@ -212,11 +246,10 @@ def _require_session(
     token = _token_from_request(request, authorization, x_session_token)
     sess = auth_acl.get_session(token)
     if not sess:
-        raise HTTPException(401, "Not authenticated — sign in again")
+        raise HTTPException(401, "You are not signed in. Please sign in again.")
     return sess
 
 
-_PII_KEY_DENY = aura_guard.PII_KEY_DENY
 _strip_pii_keys = aura_guard.strip_pii_keys
 
 
@@ -627,6 +660,8 @@ def auth_login(body: LoginRequest):
         sess = auth_acl.authenticate(body.username, body.password)
     except PermissionError:
         raise HTTPException(401, "Invalid username or password") from None
+    except ValueError:
+        raise HTTPException(400, "Username and password are required") from None
     except Exception as exc:
         raise _masked_http(503, "auth login failed") from exc
     log.info("auth login ok user=%s role=%s", sess.get("username"), sess.get("role"))
@@ -664,9 +699,9 @@ def metrics(
     sess = _geo_session(request, authorization, x_session_token)
     brand = str(sess.get("brand_name") or "").strip()
     if sess.get("role") == "brand" and not brand:
-        raise HTTPException(403, "Brand session missing brand_name")
+        raise HTTPException(403, "This brand account has no brand name assigned")
     try:
-        payload = compute_metrics()
+        payload = cached_metrics()
     except HTTPException:
         raise
     except Exception as exc:
@@ -842,18 +877,8 @@ async def ads_lab_campaign(
     """
     sess = _require_session(request, authorization, x_session_token)
     if not files:
-        raise HTTPException(400, "files required")
-    images: list[camp_svc.ImageInput] = []
-    for f in files:
-        if not f.content_type or not f.content_type.startswith("image/"):
-            continue
-        images.append(
-            camp_svc.ImageInput(
-                filename=f.filename or "sku",
-                content_type=f.content_type,
-                data=await f.read(),
-            )
-        )
+        raise HTTPException(400, "At least one image file is required")
+    images = await _read_images(files)
     try:
         return await run_in_threadpool(
             camp_svc.create_campaign_from_images,
@@ -961,16 +986,6 @@ def internal_run_campaign_job(
         raise HTTPException(500, "chunk failed; will retry") from exc
 
 
-def _campaign_access(
-    campaign: dict[str, Any],
-    sess: Optional[dict[str, Any]],
-) -> None:
-    try:
-        camp_svc.check_access(campaign, sess)
-    except camp_svc.ServiceError as exc:
-        raise _svc_http(exc) from exc
-
-
 @app.get("/v1/ads-lab/campaigns")
 def ads_lab_list_campaigns(
     request: Request,
@@ -1014,22 +1029,25 @@ def ads_lab_campaign_start(
     campaign_id = campaign["campaign_id"]
     if campaign.get("status") not in {"ranked", "started"}:
         raise HTTPException(
-            400,
-            f"Campaign must be ranked before start (status={campaign.get('status')})",
+            409,
+            f"Campaign must be ranked before it can start (status={campaign.get('status')})",
         )
     try:
         brand_camp.set_campaign_status(campaign_id, "started")
         result = style_asst.materialize_campaign_recommendations(campaign_id)
     except LookupError as exc:
-        raise HTTPException(404, str(exc)) from exc
+        raise HTTPException(404, "Campaign not found") from exc
     except Exception as exc:
-        log.exception("campaign start failed id=%s", campaign_id)
         try:
             brand_camp.set_campaign_status(campaign_id, "error", "Campaign start failed")
         except Exception:
-            pass
+            log.exception("campaign start: could not mark id=%s as error", campaign_id)
         raise _masked_http(503, f"campaign start failed id={campaign_id}") from exc
-    refreshed = brand_camp.get_campaign(campaign_id) or campaign
+    try:
+        refreshed = brand_camp.get_campaign(campaign_id) or campaign
+    except Exception:
+        log.warning("campaign start: refresh failed id=%s; returning the pre-start row", campaign_id, exc_info=True)
+        refreshed = {**campaign, "status": "started"}
     return {"ok": True, "campaign": refreshed, "materialize": result}
 
 
@@ -1233,7 +1251,7 @@ def _intel_call(fn, *args, **kwargs) -> JSONResponse:
     try:
         return _no_store({"ok": True, **fn(*args, **kwargs)})
     except admin_intel.IntelUnavailable as exc:
-        raise HTTPException(503, str(exc)) from exc
+        raise _masked_http(503, f"admin intel: {exc}") from exc
 
 
 @app.get("/v1/admin/intel/customers-overview")
@@ -1281,7 +1299,7 @@ def admin_intel_customer_detail(
     try:
         detail = admin_intel.customer_detail(customer_id)
     except admin_intel.IntelUnavailable as exc:
-        raise HTTPException(503, str(exc)) from exc
+        raise _masked_http(503, f"admin intel: {exc}") from exc
     if detail is None:
         raise HTTPException(404, "Customer not found")
     return _no_store({"ok": True, "customer": detail})
@@ -1298,7 +1316,7 @@ def admin_intel_reveal_phone(
     try:
         phone = admin_intel.reveal_phone(customer_id)
     except admin_intel.IntelUnavailable as exc:
-        raise HTTPException(503, str(exc)) from exc
+        raise _masked_http(503, f"admin intel: {exc}") from exc
     if phone is None:
         raise HTTPException(404, "No phone on file")
     log.info(
@@ -1396,12 +1414,11 @@ def style_assistant_feed(
         raise HTTPException(403, "Style Assistant is available to customer accounts only")
     user_uuid = (sess.get("customer_id") or "").strip()
     if not user_uuid:
-        raise HTTPException(400, "This customer account has no customer_id")
+        raise HTTPException(400, "This customer account has no customer ID")
     try:
         payload = style_asst.customer_style_feed(user_uuid, brand=brand, limit=limit)
     except Exception as exc:
-        log.exception("style feed failed")
-        raise HTTPException(503, "Style picks are temporarily unavailable") from exc
+        raise _masked_http(503, "style feed failed") from exc
     return payload
 
 
@@ -1424,10 +1441,7 @@ def _proxy_similarity_get(path: str, params: dict[str, Any]) -> Any:
 
     base = (os.getenv("SIMILARITY_URL") or "").rstrip("/")
     if not base:
-        raise HTTPException(
-            503,
-            "SIMILARITY_URL not set (Cloud Run URL of suffai-similarity)",
-        )
+        raise _masked_http(503, "similarity proxy: SIMILARITY_URL not set")
 
     qs = urlencode({k: v for k, v in params.items() if v is not None and v != ""})
     url = f"{base}{path}" + (f"?{qs}" if qs else "")
@@ -1675,7 +1689,7 @@ def geo_stores(
         raise HTTPException(403, "Only admins can refresh store locations")
     metrics = _geo_metrics_or_none()
     if metrics is None:
-        raise HTTPException(503, "Geo metrics unavailable")
+        raise _masked_http(503, "geo metrics unavailable")
     analysis_brand = _geo_brand(sess, brand, metrics)
     lookup = _geo_lookup(analysis_brand, metrics, refresh=refresh, request_id=request_id)
     pin_geo = metrics.get("pin_geo") or {}
@@ -1711,7 +1725,7 @@ def geo_routing_guide(
     request_id = uuid.uuid4().hex[:12]
     metrics = _geo_metrics_or_none()
     if metrics is None:
-        raise HTTPException(503, "Geo metrics unavailable")
+        raise _masked_http(503, "geo metrics unavailable")
     analysis_brand = _geo_brand(sess, body.analysis_brand, metrics)
     lookup = _geo_lookup(analysis_brand, metrics, request_id=request_id)
     stores = lookup.get("stores") or []
@@ -1720,7 +1734,7 @@ def geo_routing_guide(
     pin_geo = metrics.get("pin_geo") or {}
     store, km = None, None
     if body.store_name:
-        store = next((s for s in stores if s["name"].lower() == body.store_name.strip().lower()), None)
+        store = next((s for s in stores if str(s.get("name") or "").lower() == body.store_name.strip().lower()), None)
         if not store:
             raise HTTPException(404, "Store not found for this brand")
     elif body.pin:
@@ -1733,7 +1747,7 @@ def geo_routing_guide(
                 409, f"PIN is not within {geo_prox.PROXIMITY_KM:g} km of an existing store; use the expansion view"
             )
     else:
-        raise HTTPException(400, "Provide pin or store_name")
+        raise HTTPException(400, "Provide a PIN or a store name")
     catchment = geo_prox.catchment_pins(store, pin_geo)
     guide = geo_analysis.routing_guide(
         metrics, pins=[p for p, _ in catchment], role=sess.get("role") or "admin",
@@ -1769,7 +1783,7 @@ def geo_market_enrichment(
         raise HTTPException(403, "Only admins can refresh the external market check")
     metrics = _geo_metrics_or_none()
     if metrics is None:
-        raise HTTPException(503, "Geo metrics unavailable")
+        raise _masked_http(503, "geo metrics unavailable")
     pin = body.pin.strip()
     if pin not in (metrics.get("pin_geo") or {}):
         raise HTTPException(404, "Unknown PIN")
@@ -1811,7 +1825,7 @@ def chat(
     sess = _geo_session(request, authorization, x_session_token)
     brand = str(sess.get("brand_name") or "").strip() if sess.get("role") == "brand" else None
     if sess.get("role") == "brand" and not brand:
-        raise HTTPException(403, "Brand session missing brand_name")
+        raise HTTPException(403, "This brand account has no brand name assigned")
     return chatbot.run_chat(body, METRICS_JSON, brand_name=brand)
 
 

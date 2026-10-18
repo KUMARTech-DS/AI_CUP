@@ -10,7 +10,7 @@
   <script src="./select.js" defer></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Outfit:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
   <style>
     :root {
       --ink: #3B2733;
@@ -33,7 +33,7 @@
         linear-gradient(180deg, #FAF6EE 0%, #F6EEF0 100%);
     }
     h1, .display {
-      font-family: 'Cormorant Garamond', Georgia, serif;
+      font-family: Outfit, system-ui, sans-serif;
       font-weight: 700;
     }
     .mono { font-family: 'IBM Plex Mono', monospace; }
@@ -43,35 +43,6 @@
       border-radius: 14px;
       box-shadow: 0 12px 32px rgba(59, 39, 51,0.06);
     }
-    .field {
-      width: 100%;
-      background: #fff;
-      border: 1px solid var(--line);
-      color: var(--ink);
-      border-radius: 0.5rem;
-      padding: 0.55rem 0.65rem;
-      font-size: 0.8rem;
-    }
-    .field:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(197,159,176,0.35); }
-    select.field:not([multiple]) { appearance: none; -webkit-appearance: none; padding-right: 2.2rem; cursor: pointer; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%238A7480' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 8l4 4 4-4'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 0.7rem center; background-size: 16px; }
-    select.field:not([multiple]):focus { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%236B3A55' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 8l4 4 4-4'/%3E%3C/svg%3E"); }
-    select.field:disabled { cursor: not-allowed; }
-    .field:disabled { background: var(--sand); color: var(--ink); cursor: not-allowed; }
-    .btn-primary {
-      width: 100%;
-      padding: 0.85rem 1rem;
-      background: var(--accent);
-      color: #fff;
-      border: none;
-      border-radius: 12px;
-      box-shadow: 0 8px 20px rgba(107,58,85,0.25);
-      font-weight: 700;
-      font-size: 0.9rem;
-      cursor: pointer;
-      transition: background 0.2s ease, transform 0.2s ease;
-    }
-    .btn-primary:hover:not(:disabled) { background: #552C43; transform: translateY(-1px); }
-    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
     .btn-buy {
       display: inline-flex;
       align-items: center;
@@ -91,79 +62,12 @@
     }
     .btn-buy:hover { background: rgba(107, 58, 85,0.22); transform: translateY(-1px); }
     .btn-buy.bought { background: #5E7A60; color: #fff; border-color: #5E7A60; }
-    .wardrobe-rail, .looks-rail {
-      display: flex;
-      gap: 1rem;
-      overflow-x: auto;
-      padding: 0.5rem 0.25rem 1rem;
-      scroll-snap-type: x proximity;
-      scrollbar-width: thin;
-      scrollbar-color: var(--accent) var(--sand);
-    }
-    .ward-card {
-      flex: 0 0 140px;
-      width: 140px;
-      scroll-snap-align: start;
-      border-radius: 12px;
-      overflow: hidden;
-      border: 1px solid var(--line);
-      background: #fff;
-      animation: rise 0.45s ease both;
-    }
-    .ward-card img, .look-img {
+    .look-img {
       width: 100%;
       aspect-ratio: 3/4;
       object-fit: cover;
       background: var(--sand);
       display: block;
-    }
-    .look-card {
-      flex: 0 0 340px;
-      width: 340px;
-      scroll-snap-align: center;
-      border-radius: 16px;
-      border: 1px solid var(--line);
-      background: #fff;
-      overflow: hidden;
-      box-shadow: 0 14px 36px rgba(59, 39, 51,0.08);
-      transition: transform 0.35s ease, box-shadow 0.35s ease;
-      animation: rise 0.55s ease both;
-      display: flex;
-      flex-direction: column;
-    }
-    .look-card:hover {
-      transform: translateY(-6px) scale(1.01);
-      box-shadow: 0 22px 48px rgba(107, 58, 85,0.18);
-      border-color: var(--accent);
-    }
-    .look-card.rank-1 { border-color: var(--accent); box-shadow: 0 0 0 1px rgba(107, 58, 85,0.25), 0 18px 40px rgba(107, 58, 85,0.12); }
-    .look-card.similar { border-color: #DCC3CE; }
-    .pair-row {
-      display: grid;
-      grid-template-columns: 1fr auto 1fr;
-      gap: 0.4rem;
-      align-items: center;
-      padding: 0.75rem;
-      background: linear-gradient(135deg, #FBF5F3, #fff);
-    }
-    .plus {
-      width: 28px; height: 28px;
-      border-radius: 999px;
-      background: var(--ink);
-      color: #FAF6EE;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 12px; font-weight: 700;
-    }
-    .score-badge {
-      position: absolute;
-      top: 10px; right: 10px;
-      background: rgba(59, 39, 51,0.88);
-      color: #FAF6EE;
-      font-size: 11px;
-      font-weight: 700;
-      padding: 0.25rem 0.55rem;
-      border-radius: 999px;
-      font-family: 'IBM Plex Mono', monospace;
     }
     .img-ph {
       width: 100%;
@@ -207,35 +111,8 @@
       from { opacity: 0; transform: translateY(12px); }
       to { opacity: 1; transform: translateY(0); }
     }
-    .err { padding: .6rem .75rem; border-radius: 10px; background: rgba(180,60,60,.08); border: 1px solid rgba(180,60,60,.3); color: #a03a3a; font-size: 13px; }
+    .err { display: flex; align-items: flex-start; gap: .55rem; line-height: 1.4; padding: .6rem .75rem; border-radius: 10px; background: rgba(180,60,60,.08); border: 1px solid rgba(180,60,60,.3); color: #a03a3a; font-size: 13px; }
     .muted { color: var(--muted); font-size: 12px; }
-
-    /* Campaign preview (brand monitor) */
-    .sim-badge {
-      display: inline-flex; align-items: center; gap: .35rem;
-      border: 1px solid var(--accent); color: #552C43; background: #F6EEF0;
-      border-radius: 999px; padding: .2rem .6rem; font-size: 11px; font-weight: 700;
-    }
-    .phone {
-      width: 340px; max-width: 100%;
-      border: 10px solid #3B2733; border-radius: 34px;
-      background: #FAF6EE; overflow: hidden;
-      box-shadow: 0 20px 50px rgba(59,39,51,0.18);
-    }
-    .phone-bar { height: 22px; background: #3B2733; display: flex; justify-content: center; align-items: center; }
-    .phone-bar span { width: 70px; height: 6px; border-radius: 999px; background: #552C43; }
-    .phone-body { max-height: 640px; overflow-y: auto; padding: .85rem; }
-    .kpi-card { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: .75rem .85rem; }
-    .kpi-card .lbl { font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font-weight: 600; margin: 0; }
-    .kpi-card .val { font-family: 'IBM Plex Mono', monospace; font-size: 19px; margin: .25rem 0 0; }
-    .kpi-card .sub { font-size: 10px; color: var(--muted); margin: .1rem 0 0; }
-    .bar-track { width: 100%; height: 10px; border-radius: 999px; background: var(--sand); border: 1px solid var(--line); overflow: hidden; position: relative; }
-    .bar-fill { height: 100%; background: linear-gradient(90deg, #552C43, var(--accent)); border-radius: 999px; }
-    .timeline { position: relative; height: 34px; }
-    .timeline .track { position: absolute; top: 14px; left: 0; right: 0; height: 6px; border-radius: 999px; background: var(--sand); border: 1px solid var(--line); }
-    .timeline .done { position: absolute; top: 14px; left: 0; height: 6px; border-radius: 999px; background: var(--accent); }
-    .timeline .today { position: absolute; top: 4px; width: 2px; height: 26px; background: #3B2733; }
-    .chip { display: inline-flex; align-items: center; gap: .3rem; border: 1px solid var(--line); background: var(--sand); border-radius: 999px; padding: .2rem .6rem; font-size: 11px; }
 
     /* ===== Two-phone stage: SuffAI app home → Style Yourself ===== */
     .phones { display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-start; gap: 36px; padding: 8px 0 24px; }
@@ -257,7 +134,7 @@
     @keyframes noteSheen { 0%, 60% { transform: translateX(0); } 100% { transform: translateX(520%); } }
     .demo-note .dn-ic { width: 40px; height: 40px; flex: none; border-radius: 12px; display: grid; place-items: center; font-size: 17px; color: #2A0F1F; background: linear-gradient(135deg, #F3D58A, #C9A24A); }
     .demo-note .dn-txt { flex: 1; min-width: 0; }
-    .demo-note b { display: block; font-family: 'Cormorant Garamond', Georgia, serif; font-size: 1.15rem; font-weight: 700; letter-spacing: .02em; color: #fff; }
+    .demo-note b { display: block; font-family: Outfit, system-ui, sans-serif; font-size: 1.05rem; font-weight: 700; letter-spacing: .02em; color: #fff; }
     .demo-note p { margin: 2px 0 0; font-size: 12px; line-height: 1.45; color: #E6CFDA; }
     .demo-note em { font-style: normal; color: #F3D58A; font-weight: 600; }
     .demo-note .dn-tag { flex: none; display: inline-flex; align-items: center; gap: .4rem; padding: .35rem .7rem; border-radius: 999px; font-size: 11px; font-weight: 600; color: #F1DDE6; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.18); }
@@ -266,7 +143,6 @@
     @media (max-width: 640px) {
       .demo-note { display: grid; grid-template-columns: 40px minmax(0, 1fr); align-items: start; gap: 10px 12px; padding: 12px 14px; }
       .demo-note .dn-tag { grid-column: 2; justify-self: start; }
-      .demo-note b { font-size: 1.05rem; }
     }
     .ph-wrap.reveal { animation: phoneIn .6s cubic-bezier(.22,.8,.24,1) both; }
     @keyframes phoneIn { from { opacity: 0; transform: translateX(-40px) scale(.96); } }
@@ -365,7 +241,6 @@
     .sy-row { display: flex; align-items: center; gap: 10px; padding: 4px 14px 0; }
     .sy-row button { width: 32px; height: 32px; border-radius: 10px; border: 0; background: rgba(255,255,255,.16); color: #fff; cursor: pointer; }
     .sy-row b { display: block; font: 700 16px Outfit; } .sy-row small { font-size: 11px; opacity: .85; }
-    .sy-row .brand { margin-left: auto; font-size: 10px; font-weight: 700; padding: .25rem .6rem; border-radius: 999px; background: rgba(224,182,84,.22); color: #F3D58A; border: 1px solid rgba(243,213,138,.5); max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .sy-body { padding: 12px 0 40px; display: flex; flex-direction: column; gap: 16px; }
     .sy-sec { padding: 0 12px; }
     .sy-k { font-size: 9px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #A24D7A; }
@@ -397,9 +272,8 @@
     .sy-load i { font-size: 28px; margin-bottom: 8px; }
     .ph-empty { width: 330px; height: 690px; border-radius: 52px; border: 2px dashed #DCC3CE; display: grid; place-items: center; text-align: center; padding: 30px; color: #8A7480; font-size: 13px; }
     .ph-empty i { display: block; font-size: 30px; color: #C59FB0; margin-bottom: 10px; }
-    @media (prefers-reduced-motion: reduce) { .style-cta::before, .tgl .ring, .tap-hand, .ph-wrap.reveal, .style-cta .ripple, .demo-note, .demo-note::after, .demo-note .dot { animation: none !important; } }
 
-    /* Styling studio panel (replaces the filter sidebar) */
+    /* Styling Studio panel */
     .style-side { background: linear-gradient(180deg, #F6EEF0 0%, #FBF4F7 60%, #F3E6EC 100%); }
     /* Brand filter pill in the Style Yourself header */
     .sy-brand { margin-left: auto; flex: none; }
@@ -408,10 +282,9 @@
     .sy-row .csel-btn.sy-brand-sel svg { color: #F3D58A; width: 13px; height: 13px; }
     .sy-row .csel-btn.sy-brand-sel[aria-expanded="true"] { box-shadow: 0 0 0 3px rgba(243,213,138,.3); border-color: #F3D58A !important; }
 
-
-    /* ===== Styling studio: editorial story of what this tab does ===== */
+    /* ===== Styling Studio: editorial story of what this tab does ===== */
     .story { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; scrollbar-width: none; }
-    .story-h { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 2.35rem; line-height: .98; margin: 2px 0 0; color: #3B2733; letter-spacing: -.01em; }
+    .story-h { font-family: Outfit, system-ui, sans-serif; font-size: 2rem; font-weight: 700; line-height: 1.05; margin: 2px 0 0; color: #3B2733; letter-spacing: -.01em; }
     .story-h em { font-style: italic; background: linear-gradient(90deg, #6B3A55, #A24D7A 55%, #C9A24A); -webkit-background-clip: text; background-clip: text; color: transparent;
       background-size: 200% 100%; animation: inkShift 6s ease-in-out infinite alternate; }
     @keyframes inkShift { to { background-position: 100% 0; } }
@@ -425,17 +298,17 @@
     @keyframes chIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
     /* the story's spotlight walks 01 → 04 and loops */
     @keyframes chOn { 0%, 30%, 100% { background: transparent; box-shadow: none; } 3%, 25% { background: #fff; box-shadow: 0 10px 24px rgba(107,58,85,.12); } }
-    .ch-n { flex: none; font: 600 22px/1 'Cormorant Garamond', Georgia, serif; color: #C59FB0; min-width: 28px; }
+    .ch-n { flex: none; font: 600 22px/1 Outfit, system-ui, sans-serif; color: #C59FB0; min-width: 28px; }
     .chapters b { display: block; font-size: 13.5px; color: #3B2733; }
     .chapters p { margin: 2px 0 0; font-size: 12px; line-height: 1.45; color: #8A7480; }
     .chapters i { color: #A24D7A; font-style: italic; }
-    .story-quote { margin: auto 0 0; padding-top: 10px; border-top: 1px solid #EAD9E0; font: italic 600 1.2rem/1.2 'Cormorant Garamond', Georgia, serif; color: #6B3A55; }
+    .story-quote { margin: auto 0 0; padding-top: 10px; border-top: 1px solid #EAD9E0; font: 600 1.1rem/1.3 Outfit, system-ui, sans-serif; color: #6B3A55; }
     @media (prefers-reduced-motion: reduce) {
       .chapters li { opacity: 1; animation: none; } .story-h em { animation: none; }
-      .ad-banner, .pc, .cl, .ward-card, .look-card, .style-cta.busy .tgl::after, .toast { animation: none !important; transition: none !important; }
+      .style-cta::before, .tgl .ring, .tap-hand, .ph-wrap.reveal, .style-cta .ripple, .demo-note, .demo-note::after, .demo-note .dot,
+      .ad-banner, .pc, .cl, .style-cta.busy .tgl::after, .toast { animation: none !important; transition: none !important; }
     }
     /* Error state with a retry action */
-    .err { display: flex; align-items: flex-start; gap: .55rem; line-height: 1.4; }
     .err.hidden { display: none; }
     .err .err-ic { margin-top: 2px; }
     .err .err-msg { flex: 1; min-width: 0; overflow-wrap: anywhere; }
@@ -469,7 +342,7 @@
   <header class="glass z-20 border-b border-[#EAD9E0] px-4 py-3 flex-none flex items-center justify-between gap-4">
     <div class="min-w-0">
       <h1 id="pageTitle" class="display text-2xl m-0 tracking-wide">Your Style Assistant</h1>
-      <p id="pageSubtitle" class="muted m-0 mt-0.5">Complete your outfit · recommended for you · your wardrobe</p>
+      <p id="pageSubtitle" class="muted m-0 mt-0.5">Complete Your Outfit · Recommended for You · Your Wardrobe</p>
     </div>
     <div class="flex items-center gap-2">
       <div id="apiStatus" aria-live="polite" class="mono text-[11px] px-2 py-1 rounded-full border border-[#EAD9E0] bg-[#F6EEF0] text-[#552C43]">Loading…</div>
@@ -477,16 +350,16 @@
   </header>
 
   <main id="assistantMain" class="flex-1 flex flex-col md:flex-row min-h-0 overflow-hidden">
-    <aside class="style-side w-full md:w-80 md:max-w-[45vw] flex-none border-b md:border-b-0 md:border-r border-[#EAD9E0] flex flex-col p-4 gap-3 overflow-hidden" aria-label="Styling studio">
+    <aside class="style-side w-full md:w-80 md:max-w-[45vw] flex-none border-b md:border-b-0 md:border-r border-[#EAD9E0] flex flex-col p-4 gap-3 overflow-hidden" aria-label="Styling Studio">
       <div class="story">
-        <p class="section-kicker m-0">Styling studio</p>
+        <p class="section-kicker m-0">Styling Studio</p>
         <h2 class="story-h">Your closet,<br><em>reimagined.</em></h2>
         <p class="story-lead">We read what this customer already owns — then style it with the brand’s pieces, right inside their SuffAI app.</p>
         <ol class="chapters">
-          <li><span class="ch-n">01</span><div><b>The wardrobe</b><p>Every piece they own, read by AI — colour, fabric, fit and the categories they live in.</p></div></li>
-          <li><span class="ch-n">02</span><div><b>The missing piece</b><p>Brand items that finish an outfit they already love. <i>You have this + add that.</i></p></div></li>
-          <li><span class="ch-n">03</span><div><b>More of what they love</b><p>Similar picks in the styles they wear most — familiar, but new.</p></div></li>
-          <li><span class="ch-n">04</span><div><b>One tap</b><p>It all lands in the app as <i>Style Yourself</i> — swipe, love, buy.</p></div></li>
+          <li><span class="ch-n">01</span><div><b>The Wardrobe</b><p>Every piece they own, read by AI — colour, fabric, fit and the categories they live in.</p></div></li>
+          <li><span class="ch-n">02</span><div><b>The Missing Piece</b><p>Brand items that finish an outfit they already love. <i>You have this + add that.</i></p></div></li>
+          <li><span class="ch-n">03</span><div><b>More of What They Love</b><p>Similar picks in the styles they wear most — familiar, but new.</p></div></li>
+          <li><span class="ch-n">04</span><div><b>One Tap</b><p>It all lands in the app as <i>Style Yourself</i> — swipe, love, buy.</p></div></li>
         </ol>
         <p class="story-quote">“Style isn’t bought —<br>it’s completed.”</p>
       </div>
@@ -505,18 +378,18 @@
       </div>
 
       <div class="flex-1 overflow-y-auto p-4 sm:p-6">
-        <div class="demo-note" role="note" aria-label="About this preview">
+        <div class="demo-note" role="note" aria-label="About This Preview">
           <span class="dn-ic" aria-hidden="true"><i class="fa-solid fa-mobile-screen-button"></i></span>
           <div class="dn-txt">
-            <b>In-app experience · live replica</b>
-            <p>A working demo of how customers meet <em>Style Yourself</em> inside the SuffAI app. The phone and app home are a replica; the looks, picks and brand ad are real, from your ranked campaigns.</p>
+            <b>In-App Experience · Live Replica</b>
+            <p>A working demo of how customers meet <em>Style Yourself</em> inside the SuffAI app. The phone and app home are a replica; the looks, picks and brand ad are real, drawn from brands’ ranked campaigns.</p>
           </div>
-          <span class="dn-tag"><span class="dot" aria-hidden="true"></span>Demo preview</span>
+          <span class="dn-tag"><span class="dot" aria-hidden="true"></span>Demo Preview</span>
         </div>
         <div class="phones">
           <!-- Phone 1: SuffAI app home -->
           <figure class="ph-wrap">
-            <figcaption class="ph-cap">SuffAI app <span class="demo-pill">Replica</span></figcaption>
+            <figcaption class="ph-cap">SuffAI App <span class="demo-pill">Replica</span></figcaption>
             <div class="iph"><div class="iph-screen app">
               <span class="iph-island" aria-hidden="true"></span>
               <div class="iph-scroll">
@@ -524,7 +397,7 @@
                 <div class="app-hd">
                   <div class="app-row">
                     <span class="app-av" id="appAv">RK</span>
-                    <div class="min-w-0"><b id="appName">Ritesh Kumar</b><small><i class="fa-solid fa-location-dot"></i><span id="appLoc">Hsr layout</span><i class="fa-solid fa-chevron-down" style="font-size:9px"></i></small></div>
+                    <div class="min-w-0"><b id="appName">Ritesh Kumar</b><small><i class="fa-solid fa-location-dot"></i><span id="appLoc">HSR Layout</span><i class="fa-solid fa-chevron-down" style="font-size:9px" aria-hidden="true"></i></small></div>
                     <span class="app-ico"><span><i class="fa-brands fa-whatsapp"></i></span><span><i class="fa-regular fa-clock"></i></span><span><i class="fa-solid fa-bell"></i></span></span>
                   </div>
                 </div>
@@ -538,18 +411,18 @@
                     <span class="tgl" aria-hidden="true"><span class="ring"></span></span>
                     <i class="fa-solid fa-hand-pointer tap-hand" aria-hidden="true"></i>
                   </button>
-                  <p class="auto-note" id="autoNote" aria-live="polite" hidden></p>
+                  <p class="auto-note" id="autoNote" hidden></p>
                   <div class="chips2"><span><i class="b">%</i>View Coupons<i class="fa-solid fa-chevron-right"></i></span><span><i class="b">%</i>Refer &amp; Earn<i class="fa-solid fa-chevron-right"></i></span></div>
                   <p class="sec">Quick Ironing</p>
                   <div class="hs">
-                    <div class="iron"><div class="im"><i class="fa-solid fa-shirt"></i><b>IRONING IN 2 HRS</b><small>Quick Service</small></div><div class="bd"><b>2 Hrs Ironing- HSR # 1</b><span><span><i class="fa-regular fa-clock"></i> 2hrs</span><span><i class="fa-solid fa-star"></i> 4.6 (18)</span></span></div></div>
-                    <div class="iron"><div class="im"><i class="fa-solid fa-shirt"></i><b>IRONING IN 2 HRS</b><small>Quick Service</small></div><div class="bd"><b>2 Hrs Ironing- HSR # 2</b><span><span><i class="fa-regular fa-clock"></i> 2hrs</span><span><i class="fa-solid fa-star"></i> 4.5 (11)</span></span></div></div>
+                    <div class="iron"><div class="im"><i class="fa-solid fa-shirt"></i><b>IRONING IN 2 HRS</b><small>Quick Service</small></div><div class="bd"><b>2 Hrs Ironing – HSR #1</b><span><span><i class="fa-regular fa-clock"></i> 2 hrs</span><span><i class="fa-solid fa-star"></i> 4.6 (18)</span></span></div></div>
+                    <div class="iron"><div class="im"><i class="fa-solid fa-shirt"></i><b>IRONING IN 2 HRS</b><small>Quick Service</small></div><div class="bd"><b>2 Hrs Ironing – HSR #2</b><span><span><i class="fa-regular fa-clock"></i> 2 hrs</span><span><i class="fa-solid fa-star"></i> 4.5 (11)</span></span></div></div>
                   </div>
                   <p class="sec">Stores Near You</p>
                   <div class="store" role="img" aria-label="Store photo"></div>
                 </div>
               </div>
-              <div class="pickup" aria-hidden="true"><span><b>7:00 PM - 8:00 PM</b><small>Modify Pickup</small></span><i class="fa-solid fa-chevron-right"></i></div>
+              <div class="pickup" aria-hidden="true"><span><b>7:00 PM – 8:00 PM</b><small>Modify Pickup</small></span><i class="fa-solid fa-chevron-right"></i></div>
               <div class="app-foot" aria-hidden="true">
                 <span class="stat"><i class="fa-solid fa-shirt"></i><span><b>500K+</b><small>Clothes Cleaned</small></span></span>
                 <span class="cmp"><i class="fa-solid fa-tag"></i> Compare Price</span>
@@ -568,30 +441,30 @@
                 <div class="sb"><span class="ph-time">4:21</span><span class="r"><i class="fa-solid fa-signal"></i><i class="fa-solid fa-wifi"></i><span class="bat">10⚡</span></span></div>
                 <div class="sy-hd">
                   <div class="sy-row">
-                    <button type="button" id="styleBack" aria-label="Back to the app home"><i class="fa-solid fa-chevron-left"></i></button>
+                    <button type="button" id="styleBack" aria-label="Back to the App Home"><i class="fa-solid fa-chevron-left" aria-hidden="true"></i></button>
                     <div class="min-w-0"><b>Style Yourself</b><small id="syWho">Picked from your wardrobe</small></div>
-                    <label class="sy-brand"><span class="sr-only">Brand</span><select id="brandSelect" class="sy-brand-sel" disabled><option value="">All brands</option></select></label>
+                    <label class="sy-brand"><span class="sr-only">Brand</span><select id="brandSelect" class="sy-brand-sel" disabled><option value="">All Brands</option></select></label>
                   </div>
                 </div>
                 <div class="sy-body">
                   <section class="sy-sec">
-                    <p class="sy-k">1 · Outfit completion</p>
-                    <div class="sy-t"><h3>Complete your outfit</h3><span id="completeMeta"></span></div>
+                    <p class="sy-k">1 · Outfit Completion</p>
+                    <div class="sy-t"><h3>Complete Your Outfit</h3><span id="completeMeta"></span></div>
                     <div id="completeRail" class="p-rail"><p class="muted">Complementary looks appear here.</p></div>
                   </section>
                   <section class="sy-sec">
                     <p class="sy-k">2 · Recommended</p>
-                    <div class="sy-t"><h3>Since you have this, you may like this</h3><span id="recommendedMeta"></span></div>
+                    <div class="sy-t"><h3>Since You Have This, You May Like This</h3><span id="recommendedMeta"></span></div>
                     <div id="recommendedRail" class="p-rail"><p class="muted">Recommended picks appear here.</p></div>
                   </section>
                   <section class="sy-sec">
                     <p class="sy-k">3 · Closet</p>
-                    <div class="sy-t"><h3 id="wardrobeTitle">Here is your current wardrobe</h3><span id="wardrobeMeta"></span></div>
+                    <div class="sy-t"><h3 id="wardrobeTitle">Here Is Your Current Wardrobe</h3><span id="wardrobeMeta"></span></div>
                     <div id="wardrobeRail" class="p-rail"><p class="muted">Wardrobe pieces appear here.</p></div>
                   </section>
                 </div>
               </div>
-              <div class="sy-load" id="syLoad" hidden><div><i class="fa-solid fa-circle-notch fa-spin"></i><br>Styling your looks…</div></div>
+              <div class="sy-load" id="syLoad" hidden><div><i class="fa-solid fa-circle-notch fa-spin" aria-hidden="true"></i><br>Styling your looks…</div></div>
               <span class="iph-home" aria-hidden="true"></span>
             </div></div>
           </figure>
@@ -604,10 +477,8 @@
 
   <script>
     const $ = (id) => document.getElementById(id);
-    const endpoint = (path) => {
-      const base = (window.DASHBOARD_API || '').replace(/\/$/, '');
-      return base + path;
-    };
+    const endpoint = (path) => SuffaiSession.apiBase() + path;
+    const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
     const state = { loading: false, result: null };
     const session = SuffaiSession.getSession() || {};
@@ -665,7 +536,7 @@
         data-brand="${brand}"
         data-url="${url}"
         data-source="${escapeHtml(source || '')}">
-        <i class="fa-solid fa-bag-shopping" aria-hidden="true"></i> Buy this item
+        <i class="fa-solid fa-bag-shopping" aria-hidden="true"></i> Buy This Item
       </button>`;
     }
 
@@ -677,7 +548,7 @@
         return;
       }
       const brand = escapeHtml(ad.brand_name || '');
-      const cta = escapeHtml(ad.cta || 'Shop now');
+      const cta = escapeHtml(ad.cta || 'Shop Now');
       const landing = httpUrl(ad.landing_url), adImg = imgUrl(ad.image_url);
       const ctaEl = landing
         ? `<a class="ad-cta" href="${escapeHtml(landing)}" target="_blank" rel="noopener noreferrer">${cta}</a>`
@@ -686,7 +557,7 @@
         ? `<img class="ad-img" src="${escapeHtml(adImg)}" alt="${escapeHtml(ad.label || ad.brand_name || '')}" loading="lazy" />`
         : '<div class="ad-img"><i class="fa-solid fa-shirt" aria-hidden="true"></i></div>';
       box.innerHTML = `<div class="ad-banner"><span class="ad-tag">Ad</span><div>
-          <span class="ad-brand">${brand}</span><h4>${escapeHtml(ad.headline)}</h4><p>Styles picked for you by ${brand}.</p>
+          <span class="ad-brand">${brand}</span><h4>${escapeHtml(ad.headline)}</h4><p>${brand ? `Styles picked for you by ${brand}.` : 'Styles picked for you.'}</p>
           ${ad.offer_code ? `<span class="code">${escapeHtml(ad.offer_code)}</span><br>` : ''}${ctaEl}</div>${img}</div>`;
     }
 
@@ -727,7 +598,7 @@
       rail.innerHTML = looks.map((look, i) => {
         const own = (look.own || [])[0] || {}, own2 = (look.own || [])[1];
         const left = own2 ? `<div class="grid2">${imgOrPh(own.image_url, own.label)}${imgOrPh(own2.image_url, own2.label)}</div>` : imgOrPh(own.image_url, own.label);
-        return pairCard({ ...look, title: look.title || 'Complete your outfit' }, i, 'You have', left, '+', 'Add this', 'complete_outfit');
+        return pairCard({ ...look, title: look.title || 'Complete Your Outfit' }, i, 'You Have', left, '+', 'Add This', 'complete_outfit');
       }).join('');
     }
 
@@ -736,7 +607,7 @@
       if (!picks || !picks.length) { rail.innerHTML = `<p class="muted">${EMPTY_PICKS}</p>`; return; }
       rail.innerHTML = picks.map((pick, i) => {
         const liked = pick.liked || {};
-        return pairCard({ ...pick, title: pick.title || 'You may like' }, i, 'You have', imgOrPh(liked.image_url, liked.label), '→', 'You may like', 'recommended');
+        return pairCard({ ...pick, title: pick.title || 'You May Like' }, i, 'You Have', imgOrPh(liked.image_url, liked.label), '→', 'You May Like', 'recommended');
       }).join('');
     }
 
@@ -760,7 +631,7 @@
 
     function fillBrandFilter(brands, selected) {
       const sel = $('brandSelect');
-      sel.innerHTML = '<option value="">All brands</option>'
+      sel.innerHTML = '<option value="">All Brands</option>'
         + brands.map((b) => `<option value="${escapeHtml(b)}" ${b === selected ? 'selected' : ''}>${escapeHtml(b)}</option>`).join('');
       sel.disabled = !brands.length;
     }
@@ -776,6 +647,7 @@
       try {
         const res = await fetch(endpoint('/v1/style-assistant/feed' + (qs.toString() ? '?' + qs : '')), {
           headers: { Accept: 'application/json', ...SuffaiSession.authHeaders() },
+          signal: AbortSignal.timeout ? AbortSignal.timeout(30000) : undefined, // never leave the overlay spinning forever
         });
         const data = await res.json().catch(() => ({}));
         if (seq !== feedSeq) return;
@@ -791,24 +663,26 @@
         const recommended = data.recommended || [];
         const wardrobe = data.wardrobe || [];
         fillBrandFilter((data.brands || []).filter(Boolean), data.brand || '');
-        $('completeMeta').textContent = complete.length ? `${complete.length} looks${data.brand ? ' · ' + data.brand : ''}` : '';
-        $('recommendedMeta').textContent = recommended.length ? `${recommended.length} picks` : '';
-        $('wardrobeMeta').textContent = wardrobe.length ? `${wardrobe.length} pieces` : '';
+        $('completeMeta').textContent = complete.length ? `${plural(complete.length, 'look')}${data.brand ? ' · ' + data.brand : ''}` : '';
+        $('recommendedMeta').textContent = recommended.length ? plural(recommended.length, 'pick') : '';
+        $('wardrobeMeta').textContent = wardrobe.length ? plural(wardrobe.length, 'piece') : '';
         renderCompleteLooks(complete);
         renderRecommended(recommended);
         renderWardrobe(wardrobe);
         renderAd(data.ad);
         $('runHint').textContent = complete.length || recommended.length
-          ? `${complete.length + recommended.length} picks${data.brand ? ' from ' + data.brand : ''}.`
+          ? `${plural(complete.length + recommended.length, 'pick')}${data.brand ? ' from ' + data.brand : ''}.`
           : EMPTY_PICKS;
-        $('apiStatus').textContent = (data.brands || []).length ? `${data.brands.length} brand(s)` : 'No picks yet';
+        $('apiStatus').textContent = (data.brands || []).length ? plural(data.brands.length, 'brand') : 'No picks yet';
         paintAppUser();
         armAutoTap();
       } catch (e) {
         if (seq !== feedSeq) return;
         console.error('[style_assistant] feed', e);
-        setError(e.message || String(e));
-        renderAd(null);
+        setError(e && e.name === 'TimeoutError'
+          ? 'The server is taking too long to respond. Try again in a moment.'
+          : (e.message || String(e)));
+        if (!state.result) renderAd(null); // keep the ad that matches the picks still on screen
         $('runHint').textContent = 'Could not load picks.';
         $('apiStatus').textContent = 'Unavailable';
         // keep the filter in step with what is still on screen
@@ -841,7 +715,7 @@
       stopAutoTap();
       if ($('styleCta').getAttribute('aria-pressed') === 'true' || !styleReady()) return;
       autoLeft = AUTO_TAP_SEC;
-      const note = () => { $('autoNote').hidden = false; $('autoNote').innerHTML = `<i class="fa-solid fa-wand-magic-sparkles"></i> Opening your looks in ${autoLeft}s…`; };
+      const note = () => { $('autoNote').hidden = false; $('autoNote').innerHTML = `<i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i> Opening your looks in ${autoLeft}s…`; };
       note();
       autoTimer = setInterval(() => { autoLeft -= 1; if (autoLeft <= 0) { stopAutoTap(); openStyle(true); } else note(); }, 1000);
     }

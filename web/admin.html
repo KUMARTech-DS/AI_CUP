@@ -11,7 +11,7 @@
   <script src="./session.js"></script>
   <script src="./select.js" defer></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Outfit:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
   <style>
     :root {
       color-scheme: light;
@@ -46,7 +46,7 @@
         var(--cream);
       -webkit-font-smoothing: antialiased;
     }
-    h1 { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 700; }
+    h1 { font-family: Outfit, system-ui, sans-serif; font-weight: 700; }
     h2 { color: var(--ink); }
     :focus-visible { outline: 3px solid rgba(201, 162, 74, .6); outline-offset: 2px; }
     input, button, select { font-family: inherit; }
@@ -64,7 +64,7 @@
     .hero-in { position: relative; z-index: 1; max-width: 1320px; margin: 0 auto; }
     .hero-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
     .eyebrow { display: inline-flex; align-items: center; gap: .45rem; font-size: 10px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; color: var(--gold-lt); margin: 0 0 6px; }
-    .hero h1 { font-size: clamp(1.9rem, 3vw, 2.6rem); line-height: 1.05; color: #fff; margin: 0; }
+    .hero h1 { font-size: clamp(1.7rem, 2.6vw, 2.25rem); letter-spacing: -0.01em; line-height: 1.1; color: #fff; margin: 0; }
     .hero-sub { font-size: 13px; color: #d9bfcb; margin: 8px 0 0; max-width: 640px; line-height: 1.5; }
     .trust { display: flex; gap: 8px; flex-wrap: wrap; }
     .trust span {
@@ -101,7 +101,7 @@
     /* ---------- Layout ---------- */
     .wrap { max-width: 1320px; margin: 0 auto; padding: 22px 28px 64px; }
     .sec-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 0 0 14px; }
-    .sec-head h2 { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 1.7rem; font-weight: 700; color: var(--ink); margin: 0; line-height: 1.1; }
+    .sec-head h2 { font-family: Outfit, system-ui, sans-serif; font-size: 1.4rem; font-weight: 700; color: var(--ink); margin: 0; line-height: 1.1; }
     .sec-head p { margin: 4px 0 0; font-size: 12.5px; color: var(--muted); max-width: 680px; }
     .card {
       border: 1px solid var(--line);
@@ -218,7 +218,7 @@
     .kpi-text { font-size: 13px; margin-top: 4px; line-height: 1.5; }
 
     /* loading shimmer */
-    section[data-loading] .kpi-val, section[data-loading] .kpi-text, details[data-loading] .kpi-val {
+    section[data-loading] .kpi-val, section[data-loading] .kpi-text {
       color: transparent !important; border-radius: 6px; min-width: 80px; display: inline-block;
       background: linear-gradient(90deg, #f1e6ea 25%, #faf5f7 50%, #f1e6ea 75%); background-size: 200% 100%; animation: shimmer 1.2s linear infinite;
     }
@@ -310,7 +310,6 @@
       .hero { padding: 18px 16px 16px; }
       .tabnav { padding: 0 8px; }
       .wrap { padding: 16px 16px 48px; }
-      form.filters { position: static; }
       .f-title { display: none; }
       .f-actions { margin-left: 0; width: 100%; }
       .search input { min-width: 0; width: 100%; }
@@ -344,31 +343,31 @@
 </head>
 <body>
   <script>
-    if (!SuffaiSession.requireAuth('admin')) { /* redirected */ }
+    SuffaiSession.requireAuth('admin');
   </script>
 
   <header class="hero">
     <div class="hero-in">
       <div class="hero-row">
         <div>
-          <p class="eyebrow"><i class="fa-solid fa-shield-halved"></i> Central admin</p>
-          <h1>Admin intelligence</h1>
+          <p class="eyebrow"><i class="fa-solid fa-shield-halved"></i> Central Admin</p>
+          <h1>Admin Intelligence</h1>
           <p class="hero-sub">Real BigQuery customers, orders and garments plus Cloud SQL campaigns, in one place. Missing fields show "No data".</p>
         </div>
-        <div class="trust" aria-label="Data handling">
-          <span><i class="fa-solid fa-database"></i> Real data only</span>
-          <span><i class="fa-solid fa-mask"></i> No phone numbers shown</span>
-          <span><i class="fa-solid fa-lock"></i> Admin access only</span>
+        <div class="trust" aria-label="Data Handling">
+          <span><i class="fa-solid fa-database"></i> Real Data Only</span>
+          <span><i class="fa-solid fa-mask"></i> No Phone Numbers Shown</span>
+          <span><i class="fa-solid fa-lock"></i> Admin Access Only</span>
         </div>
       </div>
     </div>
   </header>
   <nav class="tabnav">
-    <div class="tabbar" role="tablist" aria-label="Admin sections">
+    <div class="tabbar" role="tablist" aria-label="Admin Sections">
       <button role="tab" id="tabbtn-customers" aria-controls="tab-customers" data-tab="customers" aria-selected="true"><i class="fa-solid fa-users" aria-hidden="true"></i>Customer Intelligence</button>
       <button role="tab" id="tabbtn-garments" aria-controls="tab-garments" data-tab="garments" aria-selected="false" tabindex="-1"><i class="fa-solid fa-shirt" aria-hidden="true"></i>Wardrobe &amp; Garments</button>
-      <button role="tab" id="tabbtn-brands" aria-controls="tab-brands" data-tab="brands" aria-selected="false" tabindex="-1"><i class="fa-solid fa-chart-pie" aria-hidden="true"></i>Brands Intelligence</button>
-      <button role="tab" id="tabbtn-campaigns" aria-controls="tab-campaigns" data-tab="campaigns" aria-selected="false" tabindex="-1"><i class="fa-solid fa-bullhorn" aria-hidden="true"></i>Campaigns Management</button>
+      <button role="tab" id="tabbtn-brands" aria-controls="tab-brands" data-tab="brands" aria-selected="false" tabindex="-1"><i class="fa-solid fa-chart-pie" aria-hidden="true"></i>Brand Intelligence</button>
+      <button role="tab" id="tabbtn-campaigns" aria-controls="tab-campaigns" data-tab="campaigns" aria-selected="false" tabindex="-1"><i class="fa-solid fa-bullhorn" aria-hidden="true"></i>Campaign Management</button>
       <span class="tab-ink" aria-hidden="true"></span>
     </div>
   </nav>
@@ -376,16 +375,16 @@
   <main class="wrap">
     <!-- ============ Tab 1: Customers ============ -->
     <section id="tab-customers" role="tabpanel" aria-labelledby="tabbtn-customers">
-      <div class="sec-head"><div><h2>Customer intelligence</h2><p>Who your customers are, how they're tiered and how they spend. Open any row for the full profile.</p></div></div>
+      <div class="sec-head"><div><h2>Customer Intelligence</h2><p>Who your customers are, how they're tiered and how they spend. Open Details on any row for the full profile.</p></div></div>
       <form class="card filters" id="custFilters">
         <span class="f-title"><i class="fa-solid fa-sliders"></i> Filters</span>
-        <label class="lbl">Name or phone
+        <label class="lbl">Name or Phone
           <span class="search"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><input id="custQ" type="text" placeholder="e.g. Priya or 98450" maxlength="80" autocomplete="off" /></span>
         </label>
         <div class="lbl">Brand<details class="ms" id="custBrand"></details></div>
-        <div class="lbl">PIN code<details class="ms" id="custPin"></details></div>
-        <div class="lbl">RFM tier<details class="ms" id="custRfm"></details></div>
-        <label class="check"><input type="checkbox" id="custQualified" /> Qualified only</label>
+        <div class="lbl">PIN Code<details class="ms" id="custPin"></details></div>
+        <div class="lbl">RFM Tier<details class="ms" id="custRfm"></details></div>
+        <label class="check"><input type="checkbox" id="custQualified" /> Qualified Only</label>
         <div class="f-actions">
           <span class="muted" data-status="customers" aria-live="polite"></span>
           <button type="button" class="reset" data-reset>Reset</button>
@@ -395,27 +394,27 @@
       <div class="err mb-4 hidden" data-error="customers" role="alert"></div>
 
       <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 mb-4">
-        <div class="card kpi feature"><span class="ic"><i class="fa-solid fa-users"></i></span><div><div class="kpi-label">Total customers</div><div class="kpi-val" id="kCustTotal">—</div></div></div>
-        <div class="card kpi"><span class="ic"><i class="fa-solid fa-circle-check"></i></span><div><div class="kpi-label" id="kQualLabel" title="">Qualified users</div><div class="kpi-val" id="kCustQual">—</div></div></div>
-        <div class="card kpi"><span class="ic"><i class="fa-solid fa-people-group"></i></span><div><div class="kpi-label">Cohort size</div><div class="kpi-val" id="kCohort">—</div></div></div>
-        <div class="card kpi"><span class="ic"><i class="fa-solid fa-indian-rupee-sign"></i></span><div><div class="kpi-label">Cohort spend</div><div class="kpi-val" id="kCohortSpend">—</div></div></div>
-        <div class="card kpi"><span class="ic"><i class="fa-solid fa-receipt"></i></span><div><div class="kpi-label">Avg orders</div><div class="kpi-val" id="kAvgOrders">—</div></div></div>
+        <div class="card kpi feature"><span class="ic"><i class="fa-solid fa-users"></i></span><div><div class="kpi-label">Total Customers</div><div class="kpi-val" id="kCustTotal">—</div></div></div>
+        <div class="card kpi"><span class="ic"><i class="fa-solid fa-circle-check"></i></span><div><div class="kpi-label" id="kQualLabel" title="">Qualified Users</div><div class="kpi-val" id="kCustQual">—</div></div></div>
+        <div class="card kpi"><span class="ic"><i class="fa-solid fa-people-group"></i></span><div><div class="kpi-label">Cohort Size</div><div class="kpi-val" id="kCohort">—</div></div></div>
+        <div class="card kpi"><span class="ic"><i class="fa-solid fa-indian-rupee-sign"></i></span><div><div class="kpi-label">Cohort Spend</div><div class="kpi-val" id="kCohortSpend">—</div></div></div>
+        <div class="card kpi"><span class="ic"><i class="fa-solid fa-receipt"></i></span><div><div class="kpi-label">Avg Orders</div><div class="kpi-val" id="kAvgOrders">—</div></div></div>
       </div>
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-        <div class="card"><div class="card-h"><div><h2><i class="fa-solid fa-ranking-star"></i>RFM tier breakdown</h2><p>Share of the cohort in each recency-frequency-monetary tier.</p></div></div><div class="chart" id="chRfm"></div></div>
-        <div class="card"><div class="card-h"><div><h2><i class="fa-solid fa-venus-mars"></i>Age × gender spread</h2><p>Customers per age band, stacked by gender.</p></div></div><div class="chart" id="chAgeGender"></div></div>
+        <div class="card"><div class="card-h"><div><h2><i class="fa-solid fa-ranking-star"></i>RFM Tier Breakdown</h2><p>Share of the cohort in each recency-frequency-monetary tier.</p></div></div><div class="chart" id="chRfm"></div></div>
+        <div class="card"><div class="card-h"><div><h2><i class="fa-solid fa-venus-mars"></i>Age × Gender Spread</h2><p>Customers per age band, stacked by gender.</p></div></div><div class="chart" id="chAgeGender"></div></div>
       </div>
 
       <div class="card">
         <div class="card-h">
-          <div><h2><i class="fa-solid fa-address-book"></i>Customer directory</h2><p>Open Details for a customer's full profile, wardrobe and spending.</p></div>
+          <div><h2><i class="fa-solid fa-address-book"></i>Customer Directory</h2><p>Open Details for a customer's full profile, wardrobe and spending.</p></div>
           <span class="muted" id="custCount"></span>
         </div>
         <div class="tbl">
           <table>
             <thead><tr>
               <th>Name</th><th>PIN</th><th>RFM</th><th>Tag</th>
-              <th class="num">Orders</th><th class="num">Spend</th><th>Last order</th><th></th>
+              <th class="num">Orders</th><th class="num">Spend</th><th>Last Order</th><th></th>
             </tr></thead>
             <tbody id="custBody"></tbody>
           </table>
@@ -426,11 +425,11 @@
 
     <!-- ============ Tab 2: Garments ============ -->
     <section id="tab-garments" role="tabpanel" aria-labelledby="tabbtn-garments" hidden>
-      <div class="sec-head"><div><h2>Wardrobe &amp; garments</h2><p>What sits in customers' wardrobes: categories, fabrics, patterns and the size curve.</p></div></div>
+      <div class="sec-head"><div><h2>Wardrobe &amp; Garments</h2><p>What sits in customers' wardrobes: categories, fabrics, patterns and the size curve.</p></div></div>
       <form class="card filters" id="garFilters">
         <span class="f-title"><i class="fa-solid fa-sliders"></i> Filters</span>
         <div class="lbl">Brand<details class="ms" id="garBrand"></details></div>
-        <div class="lbl">PIN code<details class="ms" id="garPin"></details></div>
+        <div class="lbl">PIN Code<details class="ms" id="garPin"></details></div>
         <div class="lbl">Commodity<details class="ms" id="garCommodity"></details></div>
         <div class="lbl">Fabric<details class="ms" id="garFabric"></details></div>
         <div class="lbl">Pattern<details class="ms" id="garPattern"></details></div>
@@ -444,16 +443,16 @@
       <div class="err mb-4 hidden" data-error="garments" role="alert"></div>
 
       <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-        <div class="card kpi feature"><span class="ic"><i class="fa-solid fa-shirt"></i></span><div><div class="kpi-label">Garments (filtered)</div><div class="kpi-val" id="kGarTotal">—</div></div></div>
-        <div class="card kpi"><span class="ic"><i class="fa-solid fa-box-archive"></i></span><div><div class="kpi-label">Tracked in wardrobes</div><div class="kpi-val" id="kGarTracked">—</div></div></div>
-        <div class="card kpi"><span class="ic"><i class="fa-solid fa-layer-group"></i></span><div><div class="kpi-label">Top fabrics</div><div class="kpi-text" id="kGarFabrics">—</div></div></div>
-        <div class="card kpi"><span class="ic"><i class="fa-solid fa-shapes"></i></span><div><div class="kpi-label">Dominant patterns</div><div class="kpi-text" id="kGarPatterns">—</div></div></div>
+        <div class="card kpi feature"><span class="ic"><i class="fa-solid fa-shirt"></i></span><div><div class="kpi-label">Garments (Filtered)</div><div class="kpi-val" id="kGarTotal">—</div></div></div>
+        <div class="card kpi"><span class="ic"><i class="fa-solid fa-box-archive"></i></span><div><div class="kpi-label">Tracked in Wardrobes</div><div class="kpi-val" id="kGarTracked">—</div></div></div>
+        <div class="card kpi"><span class="ic"><i class="fa-solid fa-layer-group"></i></span><div><div class="kpi-label">Top Fabrics</div><div class="kpi-text" id="kGarFabrics">—</div></div></div>
+        <div class="card kpi"><span class="ic"><i class="fa-solid fa-shapes"></i></span><div><div class="kpi-label">Dominant Patterns</div><div class="kpi-text" id="kGarPatterns">—</div></div></div>
       </div>
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
-        <div class="card lg:col-span-2"><div class="card-h"><div><h2><i class="fa-solid fa-table-cells"></i>Category × fabric</h2><p>Garments per category, stacked by fabric.</p></div></div><div class="chart" id="chComFab"></div></div>
-        <div class="card"><div class="card-h"><div><h2><i class="fa-solid fa-swatchbook"></i>Pattern mix</h2><p>Share of each pattern.</p></div></div><div class="chart" id="chPattern"></div></div>
+        <div class="card lg:col-span-2"><div class="card-h"><div><h2><i class="fa-solid fa-table-cells"></i>Category × Fabric</h2><p>Garments per category, stacked by fabric.</p></div></div><div class="chart" id="chComFab"></div></div>
+        <div class="card"><div class="card-h"><div><h2><i class="fa-solid fa-swatchbook"></i>Pattern Mix</h2><p>Share of each pattern.</p></div></div><div class="chart" id="chPattern"></div></div>
       </div>
-      <div class="card mb-4"><div class="card-h"><div><h2><i class="fa-solid fa-ruler"></i>Size curve</h2><p>How demand spreads across sizes.</p></div></div><div class="chart sm" id="chSize"></div></div>
+      <div class="card mb-4"><div class="card-h"><div><h2><i class="fa-solid fa-ruler"></i>Size Curve</h2><p>How demand spreads across sizes.</p></div></div><div class="chart sm" id="chSize"></div></div>
 
       <div class="card mb-4">
         <div class="card-h">
@@ -465,30 +464,30 @@
       </div>
 
       <details class="card section" id="uniqueSection">
-        <summary><i class="fa-solid fa-fingerprint"></i>Image-deduplicated garments <span class="muted" style="font-weight:400">· similarity service</span></summary>
+        <summary><i class="fa-solid fa-fingerprint"></i>Image-Deduplicated Garments <span class="muted" style="font-weight:400">· Similarity Service</span></summary>
         <form class="mt-4 mb-4 flex flex-wrap gap-3 items-end" id="uniqFilters">
           <label class="lbl">Brand<select id="uniqBrand" class="sel"><option value="">All brands</option></select></label>
-          <label class="lbl">PIN code<select id="uniqPin" class="sel"><option value="">All PINs</option></select></label>
+          <label class="lbl">PIN Code<select id="uniqPin" class="sel"><option value="">All PINs</option></select></label>
           <button type="submit" class="primary"><i class="fa-solid fa-filter"></i> Apply</button>
           <span class="muted self-center" id="uniqStatus" aria-live="polite"></span>
         </form>
         <div class="err mb-3 hidden" id="uniqErr" role="alert"></div>
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-          <div class="card kpi"><span class="ic"><i class="fa-solid fa-fingerprint"></i></span><div><div class="kpi-label">Unique garments</div><div class="kpi-val" id="kpiUnique">—</div></div></div>
-          <div class="card kpi"><span class="ic"><i class="fa-solid fa-eye"></i></span><div><div class="kpi-label">Total observations</div><div class="kpi-val" id="kpiObs">—</div></div></div>
-          <div class="card kpi"><span class="ic"><i class="fa-solid fa-user"></i></span><div><div class="kpi-label">Unique users</div><div class="kpi-val" id="kpiUsers">—</div></div></div>
+          <div class="card kpi"><span class="ic"><i class="fa-solid fa-fingerprint"></i></span><div><div class="kpi-label">Unique Garments</div><div class="kpi-val" id="kpiUnique">—</div></div></div>
+          <div class="card kpi"><span class="ic"><i class="fa-solid fa-eye"></i></span><div><div class="kpi-label">Total Observations</div><div class="kpi-val" id="kpiObs">—</div></div></div>
+          <div class="card kpi"><span class="ic"><i class="fa-solid fa-user"></i></span><div><div class="kpi-label">Unique Users</div><div class="kpi-val" id="kpiUsers">—</div></div></div>
         </div>
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
           <div><h3 class="text-sm font-semibold m-0 mb-2">By PIN</h3>
             <div class="tbl"><table><thead><tr><th>PIN</th><th class="num">Unique</th><th class="num">Observations</th></tr></thead><tbody id="byPin"></tbody></table></div>
             <div class="pager" id="byPinPager"></div></div>
-          <div><h3 class="text-sm font-semibold m-0 mb-2">By brand</h3>
+          <div><h3 class="text-sm font-semibold m-0 mb-2">By Brand</h3>
             <div class="tbl"><table><thead><tr><th>Brand</th><th class="num">Unique</th><th class="num">Observations</th></tr></thead><tbody id="byBrand"></tbody></table></div>
             <div class="pager" id="byBrandPager"></div></div>
         </div>
-        <h3 class="text-sm font-semibold m-0 mb-2">Recent unique garments</h3>
+        <h3 class="text-sm font-semibold m-0 mb-2">Recent Unique Garments</h3>
         <div class="tbl">
-          <table><thead><tr><th>Garment ID</th><th>Brand</th><th>GCS key</th><th class="num">Observations</th><th>Created</th></tr></thead>
+          <table><thead><tr><th>Garment ID</th><th>Brand</th><th>GCS Key</th><th class="num">Observations</th><th>Created</th></tr></thead>
             <tbody id="listBody"></tbody></table>
         </div>
         <div class="pager" id="listPager"></div>
@@ -497,14 +496,14 @@
 
     <!-- ============ Tab 3: Brands ============ -->
     <section id="tab-brands" role="tabpanel" aria-labelledby="tabbtn-brands" hidden>
-      <div class="sec-head"><div><h2>Brands intelligence</h2><p>Market share, co-ownership and taste across brands, so you can see who leads and where.</p></div></div>
+      <div class="sec-head"><div><h2>Brand Intelligence</h2><p>Market share, co-ownership and taste across brands, so you can see who leads and where.</p></div></div>
       <form class="card filters" id="brFilters">
         <span class="f-title"><i class="fa-solid fa-sliders"></i> Filters</span>
         <div class="lbl">Brands<details class="ms" id="brBrands"></details></div>
         <div class="lbl">Hubs / PINs<details class="ms" id="brPin"></details></div>
-        <div class="lbl">Customer tier<details class="ms" id="brRfm"></details></div>
+        <div class="lbl">Customer Tier<details class="ms" id="brRfm"></details></div>
         <div class="lbl">Commodity<details class="ms" id="brCommodity"></details></div>
-        <div class="lbl" title="Derived from each garment's gender field">Menu catalog<details class="ms" id="brMenu"></details></div>
+        <div class="lbl" title="Derived from each garment's gender field">Menu Catalogue<details class="ms" id="brMenu"></details></div>
         <div class="f-actions">
           <span class="muted" data-status="brands" aria-live="polite"></span>
           <button type="button" class="reset" data-reset>Reset</button>
@@ -514,21 +513,21 @@
       <div class="err mb-4 hidden" data-error="brands" role="alert"></div>
 
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-        <div class="card kpi feature"><span class="ic"><i class="fa-solid fa-boxes-stacked"></i></span><div><div class="kpi-label">Wardrobe items</div><div class="kpi-val" id="kBrItems">—</div></div></div>
+        <div class="card kpi feature"><span class="ic"><i class="fa-solid fa-boxes-stacked"></i></span><div><div class="kpi-label">Wardrobe Items</div><div class="kpi-val" id="kBrItems">—</div></div></div>
         <div class="card kpi"><span class="ic"><i class="fa-solid fa-tags"></i></span><div><div class="kpi-label">Brands</div><div class="kpi-val" id="kBrCount">—</div></div></div>
         <div class="card kpi"><span class="ic"><i class="fa-solid fa-crown"></i></span><div><div class="kpi-label">Leader</div><div class="kpi-text text-lg font-semibold" id="kBrLeader">—</div></div></div>
       </div>
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-        <div class="card"><div class="card-h"><div><h2><i class="fa-solid fa-chart-bar"></i>Market share ranking</h2><p>Top 15 brands by share of wardrobe items.</p></div></div><div class="chart lg" id="chShare"></div></div>
-        <div class="card"><div class="card-h"><div><h2><i class="fa-solid fa-border-all"></i>Wardrobe overlap</h2><p>Each brand split into the commodities customers own.</p></div></div><div class="chart lg" id="chTreemap"></div></div>
-        <div class="card"><div class="card-h"><div><h2><i class="fa-solid fa-link"></i>Brand co-ownership</h2><p>Customers who own both brands. Darker means more overlap.</p></div></div><div class="chart lg" id="chOverlap"></div></div>
-        <div class="card"><div class="card-h"><div><h2><i class="fa-solid fa-sun"></i>Taste sunburst</h2><p>Menu → commodity → colour.</p></div></div><div class="chart lg" id="chSunburst"></div>
+        <div class="card"><div class="card-h"><div><h2><i class="fa-solid fa-chart-bar"></i>Market Share Ranking</h2><p>Top 15 brands by share of wardrobe items.</p></div></div><div class="chart lg" id="chShare"></div></div>
+        <div class="card"><div class="card-h"><div><h2><i class="fa-solid fa-border-all"></i>Wardrobe Overlap</h2><p>Each brand split into the commodities customers own.</p></div></div><div class="chart lg" id="chTreemap"></div></div>
+        <div class="card"><div class="card-h"><div><h2><i class="fa-solid fa-link"></i>Brand Co-Ownership</h2><p>Customers who own both brands. Darker means more overlap.</p></div></div><div class="chart lg" id="chOverlap"></div></div>
+        <div class="card"><div class="card-h"><div><h2><i class="fa-solid fa-sun"></i>Taste Sunburst</h2><p>Menu → commodity → colour.</p></div></div><div class="chart lg" id="chSunburst"></div>
           <p class="muted m-0" id="brMenuNote"></p></div>
-        <div class="card"><div class="card-h"><div><h2><i class="fa-solid fa-ruler-combined"></i>Size demand matrix</h2><p>Items per commodity and size.</p></div></div><div class="chart" id="chSizeMatrix"></div></div>
-        <div class="card"><div class="card-h"><div><h2><i class="fa-solid fa-map-location-dot"></i>Regional skew across hubs</h2><p>Brand mix per PIN hub.</p></div></div><div class="chart" id="chRegional"></div></div>
+        <div class="card"><div class="card-h"><div><h2><i class="fa-solid fa-ruler-combined"></i>Size Demand Matrix</h2><p>Items per commodity and size.</p></div></div><div class="chart" id="chSizeMatrix"></div></div>
+        <div class="card"><div class="card-h"><div><h2><i class="fa-solid fa-map-location-dot"></i>Regional Skew Across Hubs</h2><p>Brand mix per PIN hub.</p></div></div><div class="chart" id="chRegional"></div></div>
       </div>
       <div class="card">
-        <div class="card-h"><div><h2><i class="fa-solid fa-magnifying-glass-chart"></i>Brand deep dives</h2><p>Reach, catalogue and taste for each brand.</p></div></div>
+        <div class="card-h"><div><h2><i class="fa-solid fa-magnifying-glass-chart"></i>Brand Deep Dives</h2><p>Reach, catalogue and taste for each brand.</p></div></div>
         <div class="cards grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" id="brCards"></div>
         <div class="pager" id="brPager"></div>
       </div>
@@ -536,12 +535,12 @@
 
     <!-- ============ Tab 4: Campaigns ============ -->
     <section id="tab-campaigns" role="tabpanel" aria-labelledby="tabbtn-campaigns" hidden>
-      <div class="sec-head"><div><h2>Campaigns management</h2><p>Every brand campaign with its status, audience and outcome. Delivery outcomes are simulated.</p></div></div>
+      <div class="sec-head"><div><h2>Campaign Management</h2><p>Every brand campaign with its status, audience and outcome. Delivery outcomes are simulated.</p></div></div>
       <form class="card filters" id="cmpFilters">
         <span class="f-title"><i class="fa-solid fa-sliders"></i> Filters</span>
         <div class="lbl">Brand<details class="ms" id="cmpBrand"></details></div>
         <div class="lbl">Status<details class="ms" id="cmpStatus"></details></div>
-        <div class="lbl">PIN code<details class="ms" id="cmpPin"></details></div>
+        <div class="lbl">PIN Code<details class="ms" id="cmpPin"></details></div>
         <div class="lbl">RFM<details class="ms" id="cmpRfm"></details></div>
         <div class="f-actions">
           <span class="muted" data-status="campaigns" aria-live="polite"></span>
@@ -554,25 +553,25 @@
       <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
         <div class="card kpi feature"><span class="ic"><i class="fa-solid fa-bullhorn"></i></span><div><div class="kpi-label">Campaigns</div><div class="kpi-val" id="kCmpTotal">—</div></div></div>
         <div class="card kpi"><span class="ic"><i class="fa-solid fa-bolt"></i></span><div><div class="kpi-label">Active</div><div class="kpi-val" id="kCmpActive">—</div></div></div>
-        <div class="card kpi"><span class="ic"><i class="fa-solid fa-percent"></i></span><div><div class="kpi-label">Avg conversion <span class="sim">Simulated</span></div><div class="kpi-val" id="kCmpConv">—</div></div></div>
-        <div class="card kpi"><span class="ic"><i class="fa-solid fa-ticket"></i></span><div><div class="kpi-label">Total redemptions <span class="sim">Simulated</span></div><div class="kpi-val" id="kCmpRed">—</div></div></div>
+        <div class="card kpi"><span class="ic"><i class="fa-solid fa-percent"></i></span><div><div class="kpi-label">Avg Conversion <span class="sim">Simulated</span></div><div class="kpi-val" id="kCmpConv">—</div></div></div>
+        <div class="card kpi"><span class="ic"><i class="fa-solid fa-ticket"></i></span><div><div class="kpi-label">Total Redemptions <span class="sim">Simulated</span></div><div class="kpi-val" id="kCmpRed">—</div></div></div>
       </div>
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-        <div class="card"><div class="card-h"><div><h2><i class="fa-solid fa-ticket"></i>Redemptions by brand <span class="sim">Simulated</span></h2><p>Simulated offer redemptions per brand.</p></div></div><div class="chart" id="chRedemptions"></div></div>
-        <div class="card"><div class="card-h"><div><h2><i class="fa-solid fa-list-check"></i>Status split by brand</h2><p>Campaigns per brand by lifecycle status.</p></div></div><div class="chart" id="chStatus"></div></div>
+        <div class="card"><div class="card-h"><div><h2><i class="fa-solid fa-ticket"></i>Redemptions by Brand <span class="sim">Simulated</span></h2><p>Simulated offer redemptions per brand.</p></div></div><div class="chart" id="chRedemptions"></div></div>
+        <div class="card"><div class="card-h"><div><h2><i class="fa-solid fa-list-check"></i>Status Split by Brand</h2><p>Campaigns per brand by lifecycle status.</p></div></div><div class="chart" id="chStatus"></div></div>
       </div>
       <p class="note mb-4" id="cmpNote"></p>
       <div class="card mb-4">
         <div class="card-h">
-          <div><h2><i class="fa-solid fa-rectangle-list"></i>Campaigns</h2><p>Cards show the essentials. Open All columns for the full table.</p></div>
-          <button type="button" class="ghost" id="btnAllCols" aria-expanded="false">All columns</button>
+          <div><h2><i class="fa-solid fa-rectangle-list"></i>Campaigns</h2><p>Cards show the essentials. Open All Columns for the full table.</p></div>
+          <button type="button" class="ghost" id="btnAllCols" aria-expanded="false">All Columns</button>
         </div>
         <div class="cards grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" id="cmpCards"></div>
         <div class="tbl mt-4" id="cmpTableWrap" hidden>
           <table>
             <thead><tr>
-              <th>Created</th><th>Brand</th><th>Name</th><th>Status</th><th>Run mode</th><th>Channels</th><th>Objective</th>
-              <th>Budget</th><th>Launched</th><th>Audience</th><th>SKUs</th><th>Eligible</th><th>Recs</th><th>Style serves</th>
+              <th>Created</th><th>Brand</th><th>Name</th><th>Status</th><th>Run Mode</th><th>Channels</th><th>Objective</th>
+              <th>Budget</th><th>Launched</th><th>Audience</th><th>SKUs</th><th>Eligible</th><th>Recs</th><th>Style Serves</th>
               <th title="Simulated metrics">Reach</th><th title="Simulated metrics">Impr.</th><th title="Simulated metrics">CTR</th>
               <th title="Simulated metrics">Conv.</th><th title="Simulated metrics">Rev.</th><th title="Simulated metrics">Lift</th>
               <th title="Simulated metrics">ROAS</th><th>Campaign ID</th>
@@ -600,11 +599,11 @@
     async function api(path, params, opts) {
       const q = params ? new URLSearchParams(Object.entries(params).filter(([, v]) => v !== '' && v != null && v !== false)).toString() : '';
       const res = await fetch(apiBase() + path + (q ? '?' + q : ''), {
-        method: (opts && opts.method) || 'GET',
         signal: opts && opts.signal,
         headers: { Accept: 'application/json', ...SuffaiSession.authHeaders() },
       });
       const data = await res.json().catch(() => ({}));
+      if (opts && opts.signal) opts.signal.throwIfAborted(); // body read aborted: don't hand back {}
       if (!res.ok) {
         const detail = data.detail ? SuffaiSession.formatApiDetail(data.detail) : '';
         throw new Error(detail || ('Request failed (HTTP ' + res.status + ')'));
@@ -704,9 +703,10 @@
     function msRender(id, label, options) {
       const el = document.getElementById(id);
       const keep = new Set(msValues(id));
+      options = options || [];
       el.dataset.label = label;
       el.innerHTML = '<summary></summary><div class="ms-pop">' + (options.length
-        ? (options.length > 1 ? '<label class="opt all"><input type="checkbox" data-all="1" /> Select all</label>' : '')
+        ? (options.length > 1 ? '<label class="opt all"><input type="checkbox" data-all="1" /> Select All</label>' : '')
           + options.map(o => '<label class="opt"><input type="checkbox" value="' + esc(o) + '"' + (keep.has(o) ? ' checked' : '') + ' /> ' + esc(o) + '</label>').join('')
         : '<div class="muted p-2">No data</div>') + '</div>';
       el.querySelectorAll('input:not([data-all])').forEach(i => i.addEventListener('change', () => msSummary(el)));
@@ -774,7 +774,7 @@
     }
     const STATUS_COLORS = { Active: ['#e8f3e6', '#2f6b2a'], Scheduled: ['#e6eef8', '#2b5a8f'], Completed: ['#f1eef0', '#6f6070'], Draft: ['#fdf4dc', '#8a6a12'], Discarded: ['#fbe9ea', '#a03a3a'] };
     function statusBadge(s) { const [bg, fg] = STATUS_COLORS[s] || ['#f6eef0', '#6b3a55']; return '<span class="badge" style="background:' + bg + ';color:' + fg + '">' + esc(s) + '</span>'; }
-    const shareList = (arr) => (arr && arr.length ? arr.map(x => esc(x.value) + ' <span class="muted">' + x.share + '%</span>').join('<br>') : '<span class="muted">No data</span>');
+    const shareList = (arr) => (arr && arr.length ? arr.map(x => esc(x.value) + ' <span class="muted">' + esc(x.share) + '%</span>').join('<br>') : '<span class="muted">No data</span>');
 
     // ---------------- tabs ----------------
     const loaders = {};
@@ -835,7 +835,7 @@
     async function loadCustomerOverview(signal) {
       const p = custParams();
       const o = await api('/v1/admin/intel/customers-overview', { rfm: p.rfm, pin: p.pin, brand: p.brand }, { signal });
-      msRender('custBrand', 'brands', o.options.brands || []);
+      msRender('custBrand', 'brands', o.options.brands);
       msRender('custRfm', 'tiers', o.options.rfm_segments);
       msRender('custPin', 'PINs', o.options.pin_codes);
       document.getElementById('kCustTotal').textContent = fmt(o.total_customers);
@@ -868,7 +868,7 @@
           <td data-label="Tag" class="muted">${esc(c.tag)}</td>
           <td data-label="Orders" class="num">${fmt(c.orders)}</td>
           <td data-label="Spend" class="num">${money(c.spend)}</td>
-          <td data-label="Last order">${nd(c.last_order)}</td>
+          <td data-label="Last Order">${nd(c.last_order)}</td>
           <td><button type="button" class="ghost" data-expand aria-expanded="false">Details</button></td>
         </tr>`).join('') : '<tr><td colspan="8">' + NO_DATA + '</td></tr>';
       pruneCharts(); // detail-row charts that were just replaced
@@ -900,8 +900,8 @@
     function renderCustomerDetail(td, d) {
       const uid = 'cd' + (++detailSeq); // unique per open, so reopened panels never collide with old ids
       const dm = d.demographics;
-      const bars = (arr) => (arr.length ? arr.map(c => `<div class="mb-2"><div class="flex justify-between text-xs"><span>${esc(c.value)}</span><span class="muted">${c.share}%</span></div>
-          <div class="bar-track"><div class="bar-fill" style="width:${Math.min(100, c.share)}%"></div></div></div>`).join('') : NO_DATA);
+      const bars = (arr) => (arr.length ? arr.map(c => `<div class="mb-2"><div class="flex justify-between text-xs"><span>${esc(c.value)}</span><span class="muted">${esc(c.share)}%</span></div>
+          <div class="bar-track"><div class="bar-fill" style="width:${Math.min(100, Number(c.share) || 0)}%"></div></div></div>`).join('') : NO_DATA);
       const topSize = d.sizes.reduce((a, s) => (!a || s.share > a.share ? s : a), null);
       td.innerHTML = `<div class="detail">
       <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
@@ -909,30 +909,30 @@
           <dl class="kv">
             <dt>Customer</dt><dd class="mono">${esc(dm.short_id)}</dd>
             <dt>PIN</dt><dd>${nd(dm.pin_code)}</dd>
-            <dt>Age group</dt><dd>${nd(dm.age_group)}</dd>
+            <dt>Age Group</dt><dd>${nd(dm.age_group)}</dd>
             <dt>Gender</dt><dd>${nd(dm.gender)}</dd>
             <dt>RFM</dt><dd>${rfmBadge(d.rfm_segment)}</dd>
             <dt>Tag</dt><dd>${nd(d.tag)}</dd>
             <dt>Menus</dt><dd>${dm.menus.length ? esc(dm.menus.join(', ')) : '<span class="muted">No data</span>'}</dd>
             <dt>LTV</dt><dd>${money(dm.ltv)}</dd>
             <dt>AOV</dt><dd>${money(dm.aov)}</dd>
-            <dt>Orders / month</dt><dd>${fmt(dm.orders_per_month)}</dd>
-            <dt>First order</dt><dd>${nd(dm.first_order)}</dd>
-            <dt>Last order</dt><dd>${nd(dm.last_order)}</dd>
+            <dt>Orders / Month</dt><dd>${fmt(dm.orders_per_month)}</dd>
+            <dt>First Order</dt><dd>${nd(dm.first_order)}</dd>
+            <dt>Last Order</dt><dd>${nd(dm.last_order)}</dd>
           </dl></div>
-        <div class="item-card dcard"><div class="kpi-label mb-2"><i class="fa-solid fa-star"></i>Top commodities</div>
-          ${d.top_commodities.length ? '<div class="grid grid-cols-2 gap-2 mb-3">' + d.top_commodities.map(c => `<div class="stat"><div class="mono">${c.share}%</div><div class="text-xs">${esc(c.value)}</div></div>`).join('') + '</div>' : NO_DATA}
-          <div class="kpi-label mb-2 mt-2"><i class="fa-solid fa-palette"></i>Colour preference</div>${bars(d.colors)}</div>
-        <div class="item-card dcard"><div class="kpi-label mb-2"><i class="fa-solid fa-ruler"></i>Size / fit</div>
-          ${topSize ? `<div class="stat mb-3"><div class="mono">${esc(topSize.value)}</div><div class="text-xs">Most owned size · ${topSize.share}%</div></div>` : ''}
-          ${d.sizes.length ? '<table class="compact"><thead><tr><th>Size</th><th class="num">Items</th><th class="num">Share</th></tr></thead><tbody>' + d.sizes.map(s => `<tr><td>${esc(s.value)}</td><td class="num">${s.count}</td><td class="num">${s.share}%</td></tr>`).join('') + '</tbody></table>' : NO_DATA}</div>
-        <div class="item-card dcard"><div class="kpi-label mb-2"><i class="fa-solid fa-jug-detergent"></i>Service split</div><div class="chart svc" id="${uid}svc"></div></div>
+        <div class="item-card dcard"><div class="kpi-label mb-2"><i class="fa-solid fa-star"></i>Top Commodities</div>
+          ${d.top_commodities.length ? '<div class="grid grid-cols-2 gap-2 mb-3">' + d.top_commodities.map(c => `<div class="stat"><div class="mono">${esc(c.share)}%</div><div class="text-xs">${esc(c.value)}</div></div>`).join('') + '</div>' : NO_DATA}
+          <div class="kpi-label mb-2 mt-2"><i class="fa-solid fa-palette"></i>Colour Preference</div>${bars(d.colors)}</div>
+        <div class="item-card dcard"><div class="kpi-label mb-2"><i class="fa-solid fa-ruler"></i>Size / Fit</div>
+          ${topSize ? `<div class="stat mb-3"><div class="mono">${esc(topSize.value)}</div><div class="text-xs">Most owned size · ${esc(topSize.share)}%</div></div>` : ''}
+          ${d.sizes.length ? '<table class="compact"><thead><tr><th>Size</th><th class="num">Items</th><th class="num">Share</th></tr></thead><tbody>' + d.sizes.map(s => `<tr><td>${esc(s.value)}</td><td class="num">${fmt(s.count)}</td><td class="num">${esc(s.share)}%</td></tr>`).join('') + '</tbody></table>' : NO_DATA}</div>
+        <div class="item-card dcard"><div class="kpi-label mb-2"><i class="fa-solid fa-jug-detergent"></i>Service Split</div><div class="chart svc" id="${uid}svc"></div></div>
       </div>
       <div class="grid grid-cols-1 xl:grid-cols-5 gap-4 mt-4">
-        <div class="item-card dcard xl:col-span-3"><div class="kpi-label mb-2"><i class="fa-solid fa-shirt"></i>Garment attributes (${fmt(d.garment_count)} items${d.garment_count > d.garments.length ? ', showing ' + d.garments.length : ''})</div>
+        <div class="item-card dcard xl:col-span-3"><div class="kpi-label mb-2"><i class="fa-solid fa-shirt"></i>Garment Attributes (${fmt(d.garment_count)} items${d.garment_count > d.garments.length ? ', showing ' + d.garments.length : ''})</div>
           <div class="overflow-x-auto">${d.garments.length ? '<table class="compact"><thead><tr><th>Garment</th><th>Commodity</th><th>Brand</th><th>Colour</th><th>Pattern</th><th>Size</th><th>Fabric</th></tr></thead><tbody id="' + uid + 'gb"></tbody></table>' : NO_DATA}</div>
           <div class="pager" id="${uid}gp"></div></div>
-        <div class="item-card dcard xl:col-span-2"><div class="kpi-label mb-2"><i class="fa-solid fa-chart-line"></i>Spending momentum</div><div class="chart mom" id="${uid}mom"></div></div>
+        <div class="item-card dcard xl:col-span-2"><div class="kpi-label mb-2"><i class="fa-solid fa-chart-line"></i>Spending Momentum</div><div class="chart mom" id="${uid}mom"></div></div>
       </div></div>`;
       if (d.garments.length) {
         clientPage(uid + 'gp', d.garments, (chunk) => {
@@ -951,8 +951,8 @@
         xAxis: { type: 'category', data: d.momentum.map(m => m.month) },
         yAxis: [{ type: 'value', name: '₹', axisLabel: { formatter: compact } }, { type: 'value', name: 'Orders', minInterval: 1, splitLine: { show: false } }],
         series: [
-          { name: 'Monthly spend', type: 'bar', data: d.momentum.map(m => m.spend), tooltip: { valueFormatter: money } },
-          { name: 'Cumulative spend', type: 'line', smooth: true, areaStyle: { opacity: 0.15 }, data: d.momentum.map(m => m.cumulative_spend), tooltip: { valueFormatter: money } },
+          { name: 'Monthly Spend', type: 'bar', data: d.momentum.map(m => m.spend), tooltip: { valueFormatter: money } },
+          { name: 'Cumulative Spend', type: 'line', smooth: true, areaStyle: { opacity: 0.15 }, data: d.momentum.map(m => m.cumulative_spend), tooltip: { valueFormatter: money } },
           { name: 'Orders', type: 'line', yAxisIndex: 1, data: d.momentum.map(m => m.orders), tooltip: { valueFormatter: fmt } },
         ],
       } : null);
@@ -970,7 +970,7 @@
       }, { signal });
       const o = data.options;
       msRender('garBrand', 'brands', o.brand);
-      msRender('garPin', 'PINs', o.pin_codes || []);
+      msRender('garPin', 'PINs', o.pin_codes);
       msRender('garCommodity', 'commodities', o.commodity);
       msRender('garFabric', 'fabrics', o.material);
       msRender('garPattern', 'patterns', o.pattern);
@@ -996,7 +996,7 @@
         series: [{ type: 'bar', name: 'Items', data: data.size_curve.map(s => s.count) },
                  { type: 'line', name: 'Curve', smooth: true, data: data.size_curve.map(s => s.count) }],
       } : null);
-      document.getElementById('garCount').textContent = fmt(data.total) + ' garments';
+      document.getElementById('garCount').textContent = fmt(data.total) + (data.total === 1 ? ' garment' : ' garments');
       document.getElementById('garCards').innerHTML = data.items.length ? data.items.map(g => `<div class="item-card">
           <div class="flex justify-between items-start mb-2"><div class="font-semibold">${nd(g.commodity)}</div><span class="mono">${esc((g.garment_id || '').slice(0, 8)) || '—'}</span></div>
           <dl class="kv">
@@ -1014,7 +1014,7 @@
       const keep = sel.value;
       const opts = [...new Set(values.filter(Boolean))].sort((a, b) => String(a).localeCompare(String(b)));
       sel.innerHTML = '<option value="">' + esc(allLabel) + '</option>'
-        + opts.map(v => '<option value="' + esc(v) + '"' + (v === keep ? ' selected' : '') + '>' + esc(v) + '</option>').join('');
+        + opts.map(v => '<option value="' + esc(v) + '"' + (String(v) === keep ? ' selected' : '') + '>' + esc(v) + '</option>').join('');
     }
     function rows(tbody, data, cols) {
       if (!data.length) {
@@ -1096,7 +1096,7 @@
       document.getElementById('brMenuNote').textContent = d.menu_note || '';
       document.getElementById('kBrItems').textContent = fmt(d.total_items);
       document.getElementById('kBrCount').textContent = fmt(d.brand_count);
-      document.getElementById('kBrLeader').innerHTML = d.ranking.length ? esc(d.ranking[0].brand) + ' <span class="muted">' + d.ranking[0].share + '%</span>' : '<span class="muted">No data</span>';
+      document.getElementById('kBrLeader').innerHTML = d.ranking.length ? esc(d.ranking[0].brand) + ' <span class="muted">' + esc(d.ranking[0].share) + '%</span>' : '<span class="muted">No data</span>';
       const rank = d.ranking.slice(0, 15).reverse();
       chart('chShare', rank.length ? {
         tooltip: { trigger: 'axis', formatter: (p) => esc(p[0].name) + ': ' + p[0].value + '% share' }, grid: { left: 110, right: 24, top: 8, bottom: 24 },
@@ -1141,24 +1141,22 @@
         series: rgBrands.map(b => ({ name: b, type: 'bar', stack: 'r', data: rg.series[b] })),
       } : null);
       clientPage('brPager', d.brands, (chunk) => { document.getElementById('brCards').innerHTML = chunk.length ? chunk.map(b => `<div class="item-card">
-          <div class="flex justify-between items-start mb-2"><div class="font-semibold">${esc(b.brand)}</div><span class="badge" style="background:#f6eef0;color:#6b3a55">${b.share}% share</span></div>
+          <div class="flex justify-between items-start mb-2"><div class="font-semibold">${esc(b.brand)}</div><span class="badge" style="background:#f6eef0;color:#6b3a55">${esc(b.share)}% share</span></div>
           <dl class="kv mb-2">
-            <dt>Wardrobe items</dt><dd>${fmt(b.items_in_wardrobes)}</dd>
-            <dt>Unique customers</dt><dd>${fmt(b.unique_customers)}</dd>
-            <dt>Catalogue items</dt><dd>${fmt(b.catalog_size)} commodity types</dd>
-            <dt>Top commodities</dt><dd>${b.top_commodities.length ? esc(b.top_commodities.join(', ')) : '<span class="muted">No data</span>'}</dd>
-            <dt>Top colours</dt><dd>${b.top_colors.length ? esc(b.top_colors.join(', ')) : '<span class="muted">No data</span>'}</dd>
+            <dt>Wardrobe Items</dt><dd>${fmt(b.items_in_wardrobes)}</dd>
+            <dt>Unique Customers</dt><dd>${fmt(b.unique_customers)}</dd>
+            <dt>Catalogue Size</dt><dd>${fmt(b.catalog_size)} commodity types</dd>
+            <dt>Top Commodities</dt><dd>${b.top_commodities.length ? esc(b.top_commodities.join(', ')) : '<span class="muted">No data</span>'}</dd>
+            <dt>Top Colours</dt><dd>${b.top_colors.length ? esc(b.top_colors.join(', ')) : '<span class="muted">No data</span>'}</dd>
           </dl>
-          ${b.catalog.length ? '<details><summary class="muted" style="cursor:pointer">Catalogue breakdown</summary><table class="mt-1"><tbody>' + b.catalog.slice(0, PAGE_SIZE).map(c => `<tr><td>${esc(c.commodity)}</td><td class="num">${fmt(c.count)}</td></tr>`).join('') + '</tbody></table>' + (b.catalog.length > PAGE_SIZE ? '<div class="muted">+' + (b.catalog.length - PAGE_SIZE) + ' more</div>' : '') + '</details>' : ''}
+          ${b.catalog.length ? '<details><summary class="muted" style="cursor:pointer">Catalogue Breakdown</summary><table class="mt-1"><tbody>' + b.catalog.slice(0, PAGE_SIZE).map(c => `<tr><td>${esc(c.commodity)}</td><td class="num">${fmt(c.count)}</td></tr>`).join('') + '</tbody></table>' + (b.catalog.length > PAGE_SIZE ? '<div class="muted">+' + (b.catalog.length - PAGE_SIZE) + ' more</div>' : '') + '</details>' : ''}
         </div>`).join('') : NO_DATA; });
     }
     loaders.brands = () => run('brands', loadBrands);
     document.getElementById('brFilters').addEventListener('submit', (e) => { e.preventDefault(); run('brands', loadBrands); });
 
     // ---------------- Tab 4: campaigns ----------------
-    const fmtImpactNum = (v) => (v == null || v === '' ? '—' : Number(v).toLocaleString());
-    const fmtImpactPct = (v) => (v == null || v === '' ? '—' : Number(v).toFixed(1) + '%');
-    const fmtImpactRoas = (v) => (v == null || v === '' ? '—' : Number(v).toFixed(1) + 'x');
+    const fixed1 = (v, unit) => (v == null || v === '' || !Number.isFinite(Number(v)) ? '—' : Number(v).toFixed(1) + unit);
     function campaignTableRow(c) {
       const pins = c.pin_codes || [];
       const aud = [
@@ -1181,13 +1179,13 @@
         <td>${esc(c.eligible_users ?? 0)}</td>
         <td>${esc(c.recommendations_computed ?? 0)}</td>
         <td>${esc(c.style_feed_serves ?? 0)}</td>
-        <td title="Simulated">${esc(fmtImpactNum(i.reach))}</td>
-        <td title="Simulated">${esc(fmtImpactNum(i.impressions))}</td>
-        <td title="Simulated">${esc(fmtImpactPct(i.ctr))}</td>
-        <td title="Simulated">${esc(fmtImpactNum(i.conversions))}</td>
+        <td title="Simulated">${fmt(i.reach)}</td>
+        <td title="Simulated">${fmt(i.impressions)}</td>
+        <td title="Simulated">${fixed1(i.ctr, '%')}</td>
+        <td title="Simulated">${fmt(i.conversions)}</td>
         <td title="Simulated">${esc(money(i.revenue))}</td>
-        <td title="Simulated">${esc(fmtImpactPct(i.lift))}</td>
-        <td title="Simulated">${esc(fmtImpactRoas(i.roas))}</td>
+        <td title="Simulated">${fixed1(i.lift, '%')}</td>
+        <td title="Simulated">${fixed1(i.roas, 'x')}</td>
         <td class="mono">${c.status === 'launched' ? `<a href="./index.html?tab=campaigns&amp;campaign_id=${encodeURIComponent(c.campaign_id)}" target="_top">${esc(c.campaign_id)}</a>` : esc(c.campaign_id || '')}</td>
       </tr>`;
     }
@@ -1201,7 +1199,7 @@
       const s = d.summary;
       document.getElementById('kCmpTotal').textContent = fmt(d.total);
       document.getElementById('kCmpActive').textContent = fmt(s.active);
-      document.getElementById('kCmpConv').textContent = s.avg_conversion_rate == null ? '—' : s.avg_conversion_rate.toFixed(2) + '%';
+      document.getElementById('kCmpConv').textContent = s.avg_conversion_rate == null ? '—' : Number(s.avg_conversion_rate).toFixed(2) + '%';
       document.getElementById('kCmpRed').textContent = fmt(s.total_redemptions);
       document.getElementById('cmpNote').textContent = d.note || '';
       const brands = Object.keys(s.by_brand || {});
@@ -1209,7 +1207,7 @@
       chart('chRedemptions', red.length ? {
         tooltip: { trigger: 'axis' }, grid: { left: 48, right: 16, top: 16, bottom: 56 },
         xAxis: { type: 'category', data: red.map(r => r[0]), axisLabel: { rotate: 20, interval: 0 } }, yAxis: { type: 'value' },
-        series: [{ type: 'bar', name: 'Redemptions (simulated)', data: red.map(r => r[1]) }],
+        series: [{ type: 'bar', name: 'Redemptions (Simulated)', data: red.map(r => r[1]) }],
       } : null);
       chart('chStatus', brands.length ? {
         tooltip: { trigger: 'axis' }, legend: { bottom: 0 }, grid: { left: 48, right: 16, top: 16, bottom: 64 },
@@ -1224,7 +1222,7 @@
             <dt>Target PINs</dt><dd>${c.target_pins.length ? esc(c.target_pins.length <= 3 ? c.target_pins.join(', ') : c.target_pins.slice(0, 3).join(', ') + ' +' + (c.target_pins.length - 3)) : '<span class="muted">No data</span>'}</dd>
             <dt>Target RFM</dt><dd>${esc(c.target_rfm)}</dd>
             <dt>Commodities</dt><dd>${c.featured_commodities.length ? esc(c.featured_commodities.join(', ')) : '<span class="muted">No data</span>'}</dd>
-            <dt>Conversion</dt><dd>${c.conversion_rate == null ? '<span class="muted">No data</span>' : c.conversion_rate.toFixed(2) + '% <span class="sim">Simulated</span>'}</dd>
+            <dt>Conversion</dt><dd>${c.conversion_rate == null ? '<span class="muted">No data</span>' : Number(c.conversion_rate).toFixed(2) + '% <span class="sim">Simulated</span>'}</dd>
             <dt>Redemptions</dt><dd>${c.redemptions == null ? '<span class="muted">No data</span>' : fmt(c.redemptions) + ' <span class="sim">Simulated</span>'}</dd>
           </dl></div>`).join('') : NO_DATA;
       document.getElementById('campaignBody').innerHTML = chunk.length ? chunk.map(c => campaignTableRow(c.raw)).join('') : '<tr><td colspan="22" class="muted">No campaigns for these filters</td></tr>';
@@ -1236,7 +1234,7 @@
       const wrap = document.getElementById('cmpTableWrap');
       wrap.hidden = !wrap.hidden;
       e.target.setAttribute('aria-expanded', String(!wrap.hidden));
-      e.target.textContent = wrap.hidden ? 'All columns' : 'Hide table';
+      e.target.textContent = wrap.hidden ? 'All Columns' : 'Hide Table';
     });
 
     // Filters render "All" until their options arrive (and stay usable if the load fails).

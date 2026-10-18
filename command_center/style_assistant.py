@@ -18,8 +18,6 @@ COSINE_MATCH_THRESHOLD = float(os.getenv("STYLE_COSINE_THRESHOLD", "0.75"))
 SIGNED_URL_MINUTES = int(os.getenv("STYLE_SIGNED_URL_MINUTES", "60"))
 
 # Outfit completion: same bucket must never pair (no shirt↔shirt / jeans↔jeans).
-CATEGORY_BUCKETS = ("top", "bottom", "outer", "dress", "footwear", "accessory", "unknown")
-
 COMPLEMENTARY: dict[str, frozenset[str]] = {
     "top": frozenset({"bottom", "outer", "footwear", "accessory", "dress"}),
     "bottom": frozenset({"top", "outer", "footwear", "accessory"}),
@@ -905,7 +903,10 @@ def customer_style_feed(user_uuid: str, *, brand: Optional[str] = None, limit: i
         if (r.get("payload") or {}).get("complete_outfit") or (r.get("payload") or {}).get("recommended")
     }
     for cid in shown:
-        brand_camp.set_campaign_impact(cid, bump_style_feed_serves=1)
+        try:
+            brand_camp.set_campaign_impact(cid, bump_style_feed_serves=1)
+        except Exception:  # a lost serve counter must never block the customer's feed
+            log.warning("style feed serve counter failed campaign=%s", cid, exc_info=True)
 
     return {
         "ok": True,

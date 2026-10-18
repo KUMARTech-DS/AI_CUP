@@ -7,15 +7,14 @@
   <title>SuffAI · Ads Lab</title>
   <script src="./config.js"></script>
   <script src="./session.js"></script>
-  <script src="./select.js" defer></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Outfit:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     :root { color-scheme: light; }
     body { font-family: Outfit, system-ui, sans-serif; background-color: #FAF6EE; color: #3B2733; }
     .font-mono { font-family: 'IBM Plex Mono', monospace; }
-    .font-display { font-family: 'Cormorant Garamond', Georgia, serif; }
+    .font-display { font-family: Outfit, system-ui, sans-serif; }
     :focus-visible { outline: 3px solid rgba(197,159,176,.7); outline-offset: 2px; }
     ::-webkit-scrollbar { width: 8px; height: 8px; }
     ::-webkit-scrollbar-track { background: #F6EEF0; }
@@ -32,9 +31,9 @@
       body { height: auto !important; min-height: 100vh; overflow-y: auto !important; }
       body > main, body > main > section, #mainScroll { overflow: visible !important; min-height: 0; }
       #sidebar { max-height: none !important; overflow: visible !important; }
-      #mainScroll > * { scroll-margin-top: 110px; }
+      #mainScroll > * { scroll-margin-top: 110px; } /* step jumps land below the sticky step bar, not under it */
+      #wizardSteps { margin-left: 40px; } /* clear the sidebar toggle tab */
     }
-    @media (max-width: 767px) { #wizardSteps { margin-left: 40px; } } /* clear the sidebar toggle tab */ /* step jumps land below the sticky step bar, not under it */
     .lab-hero { position: relative; overflow: hidden; color: #F7EAF0; border-bottom: 1px solid #3E1729;
       background: radial-gradient(60% 140% at 85% 0%, rgba(224,178,84,.26), transparent 60%), linear-gradient(110deg, #2A0F1F 0%, #4A1A33 55%, #6B3A55 100%); }
     .lab-hero .lh-ic { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; flex: none; color: #2A0F1F; font-size: 17px; background: linear-gradient(135deg, #F3D58A, #C9A24A); box-shadow: 0 6px 16px rgba(201,162,74,.3); }
@@ -60,11 +59,6 @@
     details.ms label.opt.all { font-weight: 600; border-bottom: 1px solid #EAD9E0; margin-bottom: .2rem; }
     details.ms label.opt input { accent-color: #6B3A55; }
     details.ms .ms-empty { padding: .4rem; font-size: .75rem; color: #8A7480; }
-    select.field[multiple] option { padding: .3rem .4rem; border-radius: .35rem; cursor: pointer; }
-    select.field[multiple] option:checked { background: #F6EEF0 linear-gradient(0deg,#F6EEF0,#F6EEF0); color: #6B3A55; font-weight: 600; }
-    select.field:not([multiple]) { appearance: none; -webkit-appearance: none; padding-right: 2.2rem; cursor: pointer; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%238A7480' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 8l4 4 4-4'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 0.7rem center; background-size: 16px; }
-    select.field:not([multiple]):focus { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%236B3A55' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 8l4 4 4-4'/%3E%3C/svg%3E"); }
-    select.field:disabled { cursor: not-allowed; }
     .form-err { padding: .55rem .7rem; border-radius: 10px; background: rgba(180,60,60,.08); border: 1px solid rgba(180,60,60,.3); color: #a03a3a; font-size: 12px; }
     
     .tag { display: inline-flex; align-items: center; gap: .3rem; border-radius: 999px; border: 1px solid #EAD9E0; padding: .15rem .5rem; font-size: 10px; color: #552C43; background: #F6EEF0; }
@@ -125,9 +119,6 @@
        Coverflow-style: the selected card is always centred; the others stack behind it symmetrically
        (left ones to the left, right ones to the right). JS sets --x/--s/--o/--z per card. */
     .deck-canvas {
-      background:
-        radial-gradient(60% 55% at 50% 42%, rgba(201,162,74,.10), transparent 70%),
-        radial-gradient(90% 85% at 50% 30%, #4A1A33 0%, #2E0F20 55%, #1C0812 100%);
       border: 1px solid #3E1729; border-radius: 18px;
       box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 22px 44px rgba(28,8,18,.22);
     }
@@ -189,10 +180,9 @@
     .cr-card.top .cr-rank { background: linear-gradient(135deg, #F3D58A, #C9A24A); border-color: #C9A24A; color: #2A0F1F; }
     .cr-status.bad { color: #a03a3a; border-color: rgba(180,60,60,.3); }
     .cr-ring { position: absolute; right: 12px; bottom: 12px; width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center;
-      background: conic-gradient(#6B3A55 calc(var(--p, 0) * 1%), #EAD9E0 0); box-shadow: 0 6px 14px rgba(59,39,51,.18); }
-    .cr-card.is-active .cr-ring { background: conic-gradient(#E0B654, #6B3A55 calc(var(--p, 0) * 1%), #EAD9E0 0); }
+      box-shadow: 0 6px 14px rgba(59,39,51,.18); }
     .cr-ring::before { content: ''; position: absolute; inset: 5px; border-radius: 50%; background: #fff; }
-    .cr-ring b { position: relative; font: 600 15px 'IBM Plex Mono', monospace; color: #3B2733; }
+    .cr-ring b { position: relative; font: 600 15px 'IBM Plex Mono', monospace; }
     .cr-ring.na b { font-size: 11px; color: #8A7480; }
 
     /* Details: scrollable on the centre card */
@@ -204,8 +194,7 @@
     .cr-name { font-weight: 600; font-size: 14px; color: #3B2733; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .cr-sub { font-size: 10.5px; color: #8A7480; text-transform: uppercase; letter-spacing: .08em; margin-top: 2px; }
     .cr-bar { flex: none; height: 4px; border-radius: 4px; background: #EAD9E0; overflow: hidden; }
-    .cr-bar i { display: block; height: 100%; width: calc(var(--p, 0) * 1%); background: linear-gradient(90deg, #C59FB0, #6B3A55); border-radius: 4px; }
-    .cr-card.is-active .cr-bar i { background: linear-gradient(90deg, #E0B654, #6B3A55); }
+    .cr-bar i { display: block; height: 100%; width: calc(var(--p, 0) * 1%); border-radius: 4px; }
     .cr-tags { display: flex; flex-wrap: wrap; gap: 5px; }
     .cr-card .tag { background: #fff; border-color: #EAD9E0; color: #552C43; }
     .cr-sec { border-top: 1px solid #EAD9E0; padding-top: 9px; }
@@ -233,7 +222,7 @@
     .launch-bar::after { content: ''; position: absolute; right: -60px; top: -80px; width: 260px; height: 260px; border-radius: 50%; background: radial-gradient(closest-side, rgba(224,178,84,.35), transparent); pointer-events: none; }
     .lb-ic { flex: none; width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; background: rgba(224,178,84,.15); border: 1px solid rgba(224,178,84,.45); color: #F3D58A; font-size: 18px; }
     .lb-text { flex: 1 1 320px; min-width: 0; }
-    .lb-text h3 { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 1.45rem; line-height: 1.1; color: #fff; }
+    .lb-text h3 { font-family: Outfit, system-ui, sans-serif; font-size: 1.25rem; font-weight: 700; line-height: 1.1; color: #fff; }
     .lb-text p { font-size: 12px; color: #D9BFCB; margin-top: 4px; }
     .lb-meta { display: flex; gap: 8px; flex-wrap: wrap; }
     .lb-meta span { font: 500 11px 'IBM Plex Mono', monospace; padding: .3rem .65rem; border-radius: 999px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14); color: #F1DDE6; }
@@ -257,7 +246,7 @@
     .cr-bar i, .cr-card.is-active .cr-bar i { background: linear-gradient(90deg, var(--band2), var(--band)); }
     .cr-card.r2 .cr-rank { background: linear-gradient(135deg, #F3F4F6, #A1A1AA); border-color: #A1A1AA; color: #27272A; }
     .cr-card.r3 .cr-rank { background: linear-gradient(135deg, #FAD3B0, #B4632B); border-color: #B4632B; color: #3B1A08; }
-    .cr-card .tag.tg-color { background: #E0F2FE; border-color: #BAE6FD; color: #0369A1; }
+    .cr-card .tag.tg-color, .cr-card .tag.tg-colour { background: #E0F2FE; border-color: #BAE6FD; color: #0369A1; }
     .cr-card .tag.tg-pattern { background: #EDE9FE; border-color: #DDD6FE; color: #6D28D9; }
     .cr-card .tag.tg-type { background: #CCFBF1; border-color: #99F6E4; color: #0F766E; }
     .cr-card .tag.tg-material { background: #FEF3C7; border-color: #FDE68A; color: #B45309; }
@@ -290,7 +279,6 @@
         linear-gradient(#EAD9E0, #EAD9E0) 0 44px / 55% 10px no-repeat; animation: skel 1.4s ease-in-out infinite; }
     @keyframes skel { 50% { opacity: .45; } }
     #demoTitle .spin { display: inline-block; margin-right: .5rem; color: #93C5FD; animation: ringSpin 1.2s linear infinite; }
-    @media (prefers-reduced-motion: reduce) { .demo-stage.ranking .cr-media::after, .demo-stage.ranking .cr-ring::after, .demo-stage.ranking .cr-bar i, #demoTitle .spin { animation: none !important; } }
     /* Current target (collapsible) */
     .target > summary { list-style: none; }
     .target > summary::-webkit-details-marker { display: none; }
@@ -336,7 +324,6 @@
     .thumbs.scanning .ph::after { content: ''; position: absolute; left: 0; right: 0; height: 30%; top: -30%;
       background: linear-gradient(180deg, transparent, rgba(37,99,235,.28), transparent); animation: scan 1.6s ease-in-out infinite; }
     @keyframes scan { to { top: 100%; } }
-    @media (prefers-reduced-motion: reduce) { .js-dot, .js-dot i, .js-line::after, .thumbs .ph::after, .job-live .dots::after, #jobStatusTag::before { animation: none !important; } }
     /* Ranking job: hourglass while running; bar is blue → green (done) / red (failed) */
     .hourglass { color: #2563EB; font-size: 13px; animation: hourglass 2.4s ease-in-out infinite; }
     @keyframes hourglass { 0%, 40% { transform: rotate(0); } 50%, 90% { transform: rotate(180deg); } 100% { transform: rotate(360deg); } }
@@ -407,12 +394,6 @@
     .wiz-step.done .wiz-num { background: #6B3A55; border-color: #6B3A55; color: #FFFFFF; }
     .wiz-sep { width: 18px; height: 1px; background: #DCC3CE; }
     .sim-badge { border-color: #6B3A55; color: #552C43; background: #F6EEF0; font-weight: 600; }
-    .obj-card { position: relative; display: flex; flex-direction: column; gap: .25rem; padding: .7rem .8rem; border: 1px solid #EAD9E0; border-radius: 10px; background: #FFFFFF; cursor: pointer; }
-    .obj-card input { position: absolute; opacity: 0; pointer-events: none; }
-    .obj-card:has(input:checked) { border-color: #6B3A55; box-shadow: 0 0 0 2px rgba(107,58,85,.18); }
-    .sku-pick { display: flex; align-items: center; gap: .6rem; padding: .5rem .6rem; border: 1px solid #EAD9E0; border-radius: 10px; background: #FFFFFF; cursor: pointer; }
-    .sku-pick:has(input:checked) { border-color: #6B3A55; background: #FFF9FB; }
-    .sku-pick.disabled { opacity: .5; cursor: not-allowed; }
     .est-tile { background: #FFFFFF; border: 1px solid #EAD9E0; border-radius: 10px; padding: .6rem .7rem; }
     .est-tile .lbl { font-size: 9px; text-transform: uppercase; letter-spacing: .08em; color: #8A7480; font-weight: 600; }
     .est-tile .val { font-family: 'IBM Plex Mono', monospace; font-size: 15px; color: #3B2733; margin-top: .2rem; }
@@ -431,7 +412,7 @@
     <div class="flex items-center gap-3 min-w-0">
       <span class="lh-ic" aria-hidden="true"><i class="fa-solid fa-ranking-star"></i></span>
       <div class="min-w-0">
-        <h1 class="font-display font-bold text-[1.7rem] leading-none">Ads Lab <span class="lh-pill">Segment fit</span></h1>
+        <h1 class="font-display font-bold text-[1.7rem] leading-none">Ads Lab <span class="lh-pill">Segment Fit</span></h1>
         <p class="text-[12px] mt-1 truncate">Rank your creatives for a chosen area, age, gender and RFM audience.</p>
       </div>
     </div>
@@ -441,18 +422,18 @@
   <main class="flex-1 flex flex-col md:flex-row min-h-0 overflow-hidden">
     <aside id="sidebar" aria-label="Brand, audience and upload" class="sidebar w-full md:w-80 md:max-w-[45vw] max-h-[50vh] md:max-h-none flex-none border-b md:border-b-0 md:border-r border-[#EAD9E0] bg-[#F6EEF0] flex flex-col p-4 gap-5 overflow-y-auto z-20">
       <section class="space-y-3">
-        <h2 class="text-xs font-bold uppercase tracking-wider text-[#3B2733] flex items-center gap-2"><span class="w-5 h-5 rounded bg-[#EAD9E0] text-[#3B2733] flex items-center justify-center text-[10px] border border-[#DCC3CE]">1</span> Brand &amp; audience</h2>
-        <label class="block text-[10px] text-[#8A7480] uppercase tracking-wider font-semibold">Brand name<input id="filterBrand" type="text" class="field mt-1" placeholder="e.g. Nike" autocomplete="organization" /></label>
-        <div class="block text-[10px] text-[#8A7480] uppercase tracking-wider font-semibold">PIN codes <span id="pinCount" class="normal-case tracking-normal font-normal text-[#6B3A55]"></span>
+        <h2 class="text-xs font-bold uppercase tracking-wider text-[#3B2733] flex items-center gap-2"><span class="w-5 h-5 rounded bg-[#EAD9E0] text-[#3B2733] flex items-center justify-center text-[10px] border border-[#DCC3CE]">1</span> Brand &amp; Audience</h2>
+        <label class="block text-[10px] text-[#8A7480] uppercase tracking-wider font-semibold">Brand Name<input id="filterBrand" type="text" class="field mt-1" placeholder="e.g. Nike" autocomplete="organization" /></label>
+        <div class="block text-[10px] text-[#8A7480] uppercase tracking-wider font-semibold">PIN Codes <span id="pinCount" class="normal-case tracking-normal font-normal text-[#6B3A55]"></span>
           <details class="ms mt-1" id="msArea"><summary>Loading areas…</summary></details>
           <select id="filterArea" multiple hidden aria-hidden="true" tabindex="-1"></select></div>
-        <div class="block text-[10px] text-[#8A7480] uppercase tracking-wider font-semibold">Age bucket
+        <div class="block text-[10px] text-[#8A7480] uppercase tracking-wider font-semibold">Age Bucket
           <details class="ms mt-1" id="msAge"><summary>All age groups</summary></details>
           <select id="filterAge" multiple hidden aria-hidden="true" tabindex="-1"></select></div>
         <div class="block text-[10px] text-[#8A7480] uppercase tracking-wider font-semibold">Gender
           <details class="ms mt-1" id="msGender"><summary>All genders</summary></details>
           <select id="filterGender" multiple hidden aria-hidden="true" tabindex="-1"></select></div>
-        <div class="block text-[10px] text-[#8A7480] uppercase tracking-wider font-semibold">RFM segment
+        <div class="block text-[10px] text-[#8A7480] uppercase tracking-wider font-semibold">RFM Segment
           <details class="ms mt-1" id="msRfm"><summary>All RFM segments</summary></details>
           <select id="filterRfm" multiple hidden aria-hidden="true" tabindex="-1"></select></div>
         <p class="text-[10px] text-[#8A7480] leading-relaxed">These filters define the audience your creatives are ranked against.</p>
@@ -467,16 +448,16 @@
         <div id="dropzone" role="button" tabindex="0" class="upload-zone rounded-xl flex flex-col items-center justify-center text-center p-5 cursor-pointer min-h-[130px]">
           <i class="fa-solid fa-cloud-arrow-up text-3xl text-[#6B3A55] mb-3"></i>
           <span class="text-xs text-[#3B2733] font-semibold">Click or drop SKU images</span>
-          <span class="text-[10px] text-[#8A7480] mt-1">JPG or PNG. Any file names.</span>
+          <span class="text-[10px] text-[#8A7480] mt-1">JPG or PNG, any file name.</span>
         </div>
         <div id="thumbs" class="thumbs" aria-label="Selected SKUs"></div>
         <p id="uploadSummary" class="text-[10px] text-[#8A7480]">No creatives uploaded.</p>
         <p class="text-[11px] text-[#3B2733]">Campaign brand: <strong id="brandUploadLabel" class="text-[#6B3A55]">(enter brand name above)</strong></p>
         <div class="run-dock">
-        <button id="runButton" type="button" class="w-full py-3 bg-[#6B3A55] hover:bg-[#552C43] disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl text-sm font-bold flex justify-center items-center gap-2 transition-all shadow-sm" disabled><i class="fa-solid fa-wand-magic-sparkles text-[#C59FB0]"></i><span>Extract &amp; rank SKUs</span></button>
+        <button id="runButton" type="button" class="w-full py-3 bg-[#6B3A55] hover:bg-[#552C43] disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl text-sm font-bold flex justify-center items-center gap-2 transition-all shadow-sm" disabled><i class="fa-solid fa-wand-magic-sparkles text-[#C59FB0]"></i><span>Extract &amp; Rank SKUs</span></button>
         <p id="runError" class="form-err hidden mt-2" role="alert"></p>
         </div>
-        <p class="text-[10px] text-[#8A7480] leading-relaxed">Extract &amp; rank runs in the background against every garment in the selected PINs. You will see the job size and an estimated finish time, and a popup when your campaign is ready.</p>
+        <p class="text-[10px] text-[#8A7480] leading-relaxed">Extract &amp; Rank runs in the background against every garment in the selected PINs. You will see the job size, an estimated finish time and a popup when your campaign is ready.</p>
       </section>
     </aside>
 
@@ -490,9 +471,9 @@
         <nav id="wizardSteps" class="glass-panel rounded-xl p-2 sticky top-0 z-[80] flex flex-wrap items-center gap-1 bg-white/95 backdrop-blur" aria-label="Campaign steps">
           <button type="button" class="wiz-step" data-step="opportunity" data-target="stepOpportunity"><span class="wiz-num">1</span><span>Opportunity</span></button>
           <span class="wiz-sep" aria-hidden="true"></span>
-          <button type="button" class="wiz-step" data-step="job" data-target="stepJob"><span class="wiz-num">2</span><span>SKUs &amp; ranking job</span></button>
+          <button type="button" class="wiz-step" data-step="job" data-target="stepJob"><span class="wiz-num">2</span><span>SKUs &amp; Ranking Job</span></button>
           <span class="wiz-sep" aria-hidden="true"></span>
-          <button type="button" class="wiz-step" data-step="runmode" data-target="stepRunMode"><span class="wiz-num">3</span><span>Choose run mode</span></button>
+          <button type="button" class="wiz-step" data-step="runmode" data-target="stepRunMode"><span class="wiz-num">3</span><span>Choose Run Mode</span></button>
           <span class="ml-auto tag sim-badge hidden sm:inline-flex" title="Campaign name, channels, budget and tracking live on the Campaigns tab."><i class="fa-solid fa-bullhorn"></i> Configure on Campaigns</span>
         </nav>
 
@@ -509,26 +490,19 @@
 
         <details id="stepOpportunity" class="target glass-panel rounded-xl p-4 sm:p-5" open>
           <summary class="target-sum">
-            <span class="target-h">Current target</span>
+            <span class="target-h">Current Target</span>
             <span id="segmentTitle" class="target-chips"><span class="tchip muted">Loading audience…</span></span>
             <span class="target-cust"><i class="fa-solid fa-users"></i><b id="audienceCustomers">—</b> customers</span>
             <span id="targetWarn" class="tchip warn hidden"></span>
             <i class="fa-solid fa-chevron-down target-chev" aria-hidden="true"></i>
           </summary>
-          <!-- kept for JS: coverage text + legacy fields (not shown) -->
-          <div class="hidden">
-            <p id="profileNote"></p><p id="audienceOrders"></p><p id="audienceRevenue"></p>
-            <div id="audienceCoverage"><p id="audienceCoverageTitle"></p><p id="audienceCoverageDetail"></p></div>
-            <div id="tasteCoverage"><p id="tasteCoverageTitle"></p><p id="tasteCoverageDetail"></p></div>
-          </div>
-
           <!-- Audience Taste Profile - Single Horizontal Scrollable Row (6 Categories) -->
           <div class="mt-4">
-            <h3 class="text-xs font-bold uppercase tracking-wider text-[#3B2733] mb-2">Audience taste profile</h3>
+            <h3 class="text-xs font-bold uppercase tracking-wider text-[#3B2733] mb-2">Audience Taste Profile</h3>
 
-            <div id="tasteRail" class="taste-rail" tabindex="0" role="region" aria-label="Horizontally scrollable audience taste categories">
+            <div id="tasteRail" class="taste-rail" tabindex="0" role="region" aria-label="Audience taste categories, scroll horizontally">
               <div class="taste-card">
-                <h4 class="taste-title"><i class="fa-solid fa-palette mr-1"></i> Colors</h4>
+                <h4 class="taste-title"><i class="fa-solid fa-palette mr-1"></i> Colours</h4>
                 <div id="insightColors" class="taste-body space-y-1.5"><span class="muted text-xs">No profile loaded</span></div>
               </div>
               <div class="taste-card">
@@ -558,8 +532,8 @@
         <section id="stepJob" class="glass-panel rounded-xl p-4 sm:p-5 space-y-4">
           <div class="flex items-start justify-between gap-3">
             <div>
-              <h3 class="text-xs font-bold uppercase tracking-wider text-[#3B2733]"><i class="fa-solid fa-gears text-[#6B3A55] mr-2"></i>Extract &amp; rank job</h3>
-              <p id="jobNote" class="text-[10px] text-[#8A7480] mt-1">Select PINs, upload SKU images and press <b>Submit ranking job</b>. You can leave this page; the job keeps running.</p>
+              <h3 class="text-xs font-bold uppercase tracking-wider text-[#3B2733]"><i class="fa-solid fa-gears text-[#6B3A55] mr-2"></i>Extract &amp; Rank Job</h3>
+              <p id="jobNote" class="text-[10px] text-[#8A7480] mt-1">Select PINs, upload SKU images and press <b>Extract &amp; Rank SKUs</b>. You can leave this page; the job keeps running.</p>
             </div>
             <span id="jobStatusTag" class="tag hidden"></span>
           </div>
@@ -577,7 +551,7 @@
               <div class="est-tile"><p class="lbl">Images</p><p id="jobImages" class="val">—</p><p id="jobImagesSub" class="rng">SKUs to rank</p></div>
               <div class="est-tile"><p class="lbl">Garments</p><p id="jobGarments" class="val">—</p><p class="rng">in selected PINs</p></div>
               <div class="est-tile"><p class="lbl">Comparisons</p><p id="jobComparisons" class="val">—</p><p class="rng">image × garment</p></div>
-              <div class="est-tile"><p class="lbl">Est. completion</p><p class="val flex items-center gap-2"><i id="jobHourglass" class="fa-solid fa-hourglass-half hourglass hidden" aria-hidden="true"></i><span id="jobEta">—</span></p><p id="jobEtaSub" class="rng">—</p></div>
+              <div class="est-tile"><p class="lbl">Est. Completion</p><p class="val flex items-center gap-2"><i id="jobHourglass" class="fa-solid fa-hourglass-half hourglass hidden" aria-hidden="true"></i><span id="jobEta">—</span></p><p id="jobEtaSub" class="rng">—</p></div>
             </div>
             <div>
               <div class="flex justify-between text-[10px] text-[#8A7480] mb-1"><span id="jobProgressLabel">Queued</span><span id="jobProgressPct">0%</span></div>
@@ -589,18 +563,18 @@
 
         <section>
           <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 mb-3">
-            <div><h3 class="text-sm font-bold text-[#3B2733]"><i class="fa-solid fa-layer-group text-[#6B3A55] mr-2"></i>Creative ranking for this segment</h3><p class="text-[10px] text-[#8A7480] mt-1">One card per uploaded file. Hover or click a card to bring it to the centre · use ‹ › or the arrow keys to browse.</p></div>
+            <div><h3 class="text-sm font-bold text-[#3B2733]"><i class="fa-solid fa-layer-group text-[#6B3A55] mr-2"></i>Creative Ranking for This Segment</h3><p class="text-[10px] text-[#8A7480] mt-1">One card per uploaded file. Hover or click a card to bring it to the centre · use ‹ › or the arrow keys to browse.</p></div>
             <div class="flex items-center gap-2">
-              <span id="staleNote" class="stale hidden"><i class="fa-solid fa-triangle-exclamation"></i> Audience changed — run Extract &amp; rank again</span>
+              <span id="staleNote" class="stale hidden"><i class="fa-solid fa-triangle-exclamation"></i> Audience changed — run Extract &amp; Rank again</span>
               <span id="rankCount" class="tag">0 creatives</span>
             </div>
           </div>
           <div id="emptyState" class="demo-stage deck-canvas">
-            <span class="demo-badge" id="demoBadge">Live demo</span>
+            <span class="demo-badge" id="demoBadge">Live Demo</span>
             <div id="demoRail"></div>
             <div class="demo-copy">
               <p id="demoTitle" class="font-display text-2xl text-[#F7EAF0]">Your SKUs will be ranked like this</p>
-              <p id="demoSub" class="text-xs text-[#C9A9B8] mt-1">Pick a brand and audience, upload SKU images, then <strong class="text-[#F3D58A]">Extract &amp; rank</strong>. Hover any card to bring it to the centre.</p>
+              <p id="demoSub" class="text-xs text-[#C9A9B8] mt-1">Pick a brand and audience, upload SKU images, then <strong class="text-[#F3D58A]">Extract &amp; Rank</strong>. Hover any card to bring it to the centre.</p>
             </div>
           </div>
           <div id="rankStats" class="rank-stats hidden" aria-live="polite"></div>
@@ -610,17 +584,17 @@
         <section id="stepRunMode" class="launch-bar" aria-labelledby="lbTitle">
           <div class="lb-ic" aria-hidden="true"><i class="fa-solid fa-rocket"></i></div>
           <div class="lb-text">
-            <h3 id="lbTitle">Activate on SuffAI · 1P campaign</h3>
+            <h3 id="lbTitle">Activate on SuffAI · 1P Campaign</h3>
             <p>Send your top-ranked creatives to this exact audience through your own channels — in-app, WhatsApp and SMS.</p>
             <p id="runModeNote" class="lb-note">Available once the ranking job completes.</p>
           </div>
           <div class="lb-meta" id="launchMeta"><span>— customers</span><span>0 creatives ranked</span></div>
-          <button type="button" id="run1pBtn" class="lb-link" disabled>Set up 1P campaign <i class="fa-solid fa-arrow-right"></i></button>
+          <button type="button" id="run1pBtn" class="lb-link" disabled>Set Up 1P Campaign <i class="fa-solid fa-arrow-right"></i></button>
         </section>
 
         <section class="glass-panel rounded-xl overflow-hidden">
-          <div class="p-4 border-b border-[#EAD9E0] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"><div><h3 class="text-xs font-bold uppercase tracking-wider text-[#3B2733]"><i class="fa-solid fa-table text-[#6B3A55] mr-2"></i>Segment ranking matrix</h3><p class="text-[10px] text-[#8A7480] mt-1">Same ranked SKUs as the cards above. Export to run the campaign on other platforms (3P).</p></div><button id="downloadButton" type="button" class="px-3 py-2 bg-[#6B3A55] hover:bg-[#552C43] rounded-lg text-xs font-bold text-white shadow-sm"><i class="fa-solid fa-file-csv mr-2"></i>Export for 3P (CSV)</button></div>
-          <div class="overflow-x-auto"><table class="w-full text-left text-xs whitespace-nowrap"><thead class="bg-[#F6EEF0] text-[#8A7480] font-mono text-[10px] uppercase"><tr><th class="px-4 py-3">Rank</th><th class="px-4 py-3">Creative</th><th class="px-4 py-3">Geo</th><th class="px-4 py-3">Age</th><th class="px-4 py-3">Gender</th><th class="px-4 py-3">RFM</th><th class="px-4 py-3">Extracted taste</th><th class="px-4 py-3 text-right">Segment fit</th></tr></thead><tbody id="matrixBody" class="divide-y divide-[#EAD9E0]"><tr><td colspan="8" class="px-4 py-8 text-center text-[#8A7480]">Upload images to populate the matrix.</td></tr></tbody></table></div>
+          <div class="p-4 border-b border-[#EAD9E0] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"><div><h3 class="text-xs font-bold uppercase tracking-wider text-[#3B2733]"><i class="fa-solid fa-table text-[#6B3A55] mr-2"></i>Segment Ranking Matrix</h3><p class="text-[10px] text-[#8A7480] mt-1">Same ranked SKUs as the cards above. Export to run the campaign on other platforms (3P).</p></div><button id="downloadButton" type="button" class="px-3 py-2 bg-[#6B3A55] hover:bg-[#552C43] rounded-lg text-xs font-bold text-white shadow-sm"><i class="fa-solid fa-file-csv mr-2"></i>Export for 3P (CSV)</button></div>
+          <div class="overflow-x-auto"><table class="w-full text-left text-xs whitespace-nowrap"><thead class="bg-[#F6EEF0] text-[#8A7480] font-mono text-[10px] uppercase"><tr><th class="px-4 py-3">Rank</th><th class="px-4 py-3">Creative</th><th class="px-4 py-3">Geo</th><th class="px-4 py-3">Age</th><th class="px-4 py-3">Gender</th><th class="px-4 py-3">RFM</th><th class="px-4 py-3">Extracted Taste</th><th class="px-4 py-3 text-right">Segment Fit</th></tr></thead><tbody id="matrixBody" class="divide-y divide-[#EAD9E0]"><tr><td colspan="8" class="px-4 py-8 text-center text-[#8A7480]">Upload images to populate the matrix.</td></tr></tbody></table></div>
         </section>
 
       </div>
@@ -632,14 +606,14 @@
       <div class="flex items-start gap-3">
         <div class="h-10 w-10 rounded-full bg-[#F6EEF0] border border-[#6B3A55] flex items-center justify-center flex-none"><i class="fa-solid fa-check text-[#6B3A55]"></i></div>
         <div>
-          <h2 id="createdTitle" class="text-base font-bold text-[#3B2733]">Your SKUs are ranked</h2>
+          <h2 id="createdTitle" class="text-base font-bold text-[#3B2733]">Your SKUs Are Ranked</h2>
           <p id="createdSummary" class="text-xs text-[#8A7480] mt-1"></p>
         </div>
       </div>
       <div class="flex flex-col sm:flex-row gap-2 justify-end">
-        <button id="createdCloseBtn" type="button" class="px-3 py-2 border border-[#EAD9E0] bg-white rounded-lg text-xs font-bold text-[#3B2733] hover:border-[#6B3A55]">View ranking</button>
-        <button id="created3pBtn" type="button" class="px-3 py-2 border border-[#6B3A55] bg-white rounded-lg text-xs font-bold text-[#6B3A55] hover:bg-[#F6EEF0]"><i class="fa-solid fa-file-csv mr-1"></i>Run on other platforms (3P)</button>
-        <button id="created1pBtn" type="button" class="px-3 py-2 rounded-lg text-xs font-bold text-[#2A0F1F] bg-gradient-to-br from-[#F3D58A] to-[#C9A24A] shadow-[0_8px_20px_rgba(201,162,74,.35)] hover:brightness-105"><i class="fa-solid fa-bullhorn mr-1"></i>Set up on SuffAI (1P)</button>
+        <button id="createdCloseBtn" type="button" class="px-3 py-2 border border-[#EAD9E0] bg-white rounded-lg text-xs font-bold text-[#3B2733] hover:border-[#6B3A55]">View Ranking</button>
+        <button id="created3pBtn" type="button" class="px-3 py-2 border border-[#6B3A55] bg-white rounded-lg text-xs font-bold text-[#6B3A55] hover:bg-[#F6EEF0]"><i class="fa-solid fa-file-csv mr-1"></i>Run on Other Platforms (3P)</button>
+        <button id="created1pBtn" type="button" class="px-3 py-2 rounded-lg text-xs font-bold text-[#2A0F1F] bg-gradient-to-br from-[#F3D58A] to-[#C9A24A] shadow-[0_8px_20px_rgba(201,162,74,.35)] hover:brightness-105"><i class="fa-solid fa-bullhorn mr-1"></i>Set Up on SuffAI (1P)</button>
       </div>
     </div>
   </div>
@@ -647,18 +621,18 @@
     'use strict';
     const $ = (id) => document.getElementById(id);
     const state = {
-      metrics: null, assets: [], results: [], profile: null, loading: false, campaign: null, campaignItems: [],
+      metrics: null, assets: [], profile: null, loading: false, campaign: null, campaignItems: [],
       sourceContext: null, pendingDraft: null, pendingCampaignId: null, job: null,
     };
     const CAMPAIGN_DRAFT_KEY = 'suffai_campaign_draft';
     const FILTER_KEYS = ['pin_code', 'age_group', 'gender', 'rfm_segment'];
     const GROUPS = {
-      color: { keys: ['colors', 'color_counts', 'primary_colors', 'color_distribution'], weight: 25 },
-      pattern: { keys: ['patterns', 'pattern_counts', 'pattern_distribution'], weight: 20 },
-      commodity: { keys: ['commodities', 'commodity_types', 'garment_types', 'names'], weight: 20 },
-      material: { keys: ['materials', 'material_types', 'material_counts'], weight: 15 },
-      size: { keys: ['sizes', 'size_counts', 'size_distribution'], weight: 10 },
-      brand: { keys: ['brands', 'brand_counts', 'brand_distribution'], weight: 10 }
+      color: { keys: ['colors', 'color_counts', 'primary_colors', 'color_distribution'] },
+      pattern: { keys: ['patterns', 'pattern_counts', 'pattern_distribution'] },
+      commodity: { keys: ['commodities', 'commodity_types', 'garment_types', 'names'] },
+      material: { keys: ['materials', 'material_types', 'material_counts'] },
+      size: { keys: ['sizes', 'size_counts', 'size_distribution'] },
+      brand: { keys: ['brands', 'brand_counts', 'brand_distribution'] }
     };
     const apiBase = () => (window.DASHBOARD_API || '').replace(/\/$/, '');
     const endpoint = (path) => (apiBase() ? apiBase() : '') + path;
@@ -696,7 +670,7 @@
       const g = normal(value);
       if (['f','female','woman','women'].includes(g)) return 'f';
       if (['m','male','man','men'].includes(g)) return 'm';
-      if (['u','unisex','unknown'].includes(g)) return g;
+      if (g === 'u' || g === 'unisex') return 'u';
       return g;
     }
     function normalizedValue(key, value) {
@@ -741,10 +715,10 @@
 
     /* Audience dropdowns: checkbox lists with "Select all", backed by hidden multi-selects (the source of truth). */
     const FILTER_DROPDOWNS = [
-      ['filterArea', 'msArea', 'Select PIN codes', 'PIN codes'],
-      ['filterAge', 'msAge', 'All age groups', 'Age bucket'],
+      ['filterArea', 'msArea', 'Select PIN codes', 'PIN Codes'],
+      ['filterAge', 'msAge', 'All age groups', 'Age Bucket'],
       ['filterGender', 'msGender', 'All genders', 'Gender'],
-      ['filterRfm', 'msRfm', 'All RFM segments', 'RFM segment'],
+      ['filterRfm', 'msRfm', 'All RFM segments', 'RFM Segment'],
     ];
     function syncFilterDropdown(selId, msId, emptyText, label) {
       const opts = Array.from($(selId).options).filter(o => o.value);
@@ -795,7 +769,7 @@
         ? 'No PIN selected'
         : (pins.length <= 2 ? pins.map(labelForPin).join(', ') : pins.length + ' PINs');
       return [
-        f.brand_name || 'Brand?',
+        f.brand_name || 'No brand',
         pinLabel,
         f.age_group || 'All ages',
         displayGender(f.gender),
@@ -841,7 +815,7 @@
       }).join('');
     }
     /* On first load, bring `target` to the top of the scroll `container`. Content above it may still grow
-       (late data), so keep it aligned until the user scrolls/clicks/types, or 25 s pass. */
+       (late data), so keep it aligned until the user scrolls/clicks/types, or 30 s pass. */
     function autoScrollTo(container, target, offset = 12) {
       if (!container || !target) return;
       const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -875,15 +849,7 @@
           headers: { Accept: 'application/json', ...SuffaiSession.authHeaders() },
         });
         const data = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          throw new Error(
-            (window.SuffaiSession && SuffaiSession.formatApiDetail
-              ? SuffaiSession.formatApiDetail(data.detail, null)
-              : null)
-            || (typeof data.detail === 'string' ? data.detail : null)
-            || `Metrics API returned HTTP ${res.status}`
-          );
-        }
+        if (!res.ok) throw new Error(apiError(data, `Metrics API returned HTTP ${res.status}`));
         state.metrics = data;
         const f = data.filters || {};
         const pins = (f.pin_codes || Object.keys(data.pin_geo || {})).map(String);
@@ -908,9 +874,8 @@
       } catch (e) {
         console.error('[ads_lab] unable to load metrics', e);
         setApiStatus(false, 'Audience data unavailable');
-        $('profileNote').textContent = `Could not load the audience profile: ${e.message}`;
         $('segmentTitle').innerHTML = '<span class="tchip warn"><i class="fa-solid fa-triangle-exclamation"></i>Audience data unavailable</span>';
-        $('targetWarn').textContent = 'Refresh the page to retry';
+        $('targetWarn').textContent = 'Refresh the page to retry.';
         $('targetWarn').classList.remove('hidden');
         const ms = $('msArea').querySelector('summary'); if (ms) ms.textContent = 'Areas unavailable';
       }
@@ -988,35 +953,20 @@
       const rows = m.garment_segment_cells || m.garment_cells || m.garmentCells || m.garment_profiles || m.segment_garment_cells || [];
       return Array.isArray(rows) ? rows : [];
     }
-    function tierLabel(keep, filters, exact = false) {
-      const names = {pin_code:'geo', age_group:'age', gender:'gender', rfm_segment:'RFM'};
-      if (!keep.length) return 'Overall observed profile';
-      const chosen = keep.map(k => names[k]);
-      const allSelected = FILTER_KEYS.every(k => filters[k]);
-      if (exact && allSelected) return 'Exact geo × age × gender × RFM segment';
-      if (exact) return `Profile for selected ${chosen.join(' × ')}`;
-      return `Broader profile: ${chosen.join(' × ')}`;
-    }
+    /* Exact selection first, then relax RFM → gender → age → geo until garment observations exist. */
     function filterTiers(filters) {
-      const selected = FILTER_KEYS.filter(k => filters[k]);
-      const tiers = [];
-      const dropOrder = ['rfm_segment','gender','age_group','pin_code'];
-      let keep = selected.slice();
-      tiers.push({keep: keep.slice(), label: tierLabel(keep, filters, true)});
-      for (const key of dropOrder) {
-        if (keep.includes(key)) {
-          keep = keep.filter(k => k !== key);
-          if (!tiers.some(t => t.keep.join('|') === keep.join('|'))) tiers.push({keep: keep.slice(), label: tierLabel(keep, filters, false)});
-        }
+      let keep = FILTER_KEYS.filter(k => filters[k]);
+      const tiers = [keep];
+      for (const key of ['rfm_segment', 'gender', 'age_group', 'pin_code']) {
+        if (keep.includes(key)) { keep = keep.filter(k => k !== key); tiers.push(keep); }
       }
-      if (!tiers.some(t => t.keep.length === 0)) tiers.push({keep: [], label: 'Overall observed profile'});
       return tiers;
     }
     function createProfile(filters) {
       const cells = metricCellRows();
       const tiers = filterTiers(filters);
-      for (const tier of tiers) {
-        const picked = cells.filter(c => matches(c, filters, tier.keep));
+      for (const keep of tiers) {
+        const picked = cells.filter(c => matches(c, filters, keep));
         const dist = {};
         for (const [group, config] of Object.entries(GROUPS)) {
           dist[group] = {};
@@ -1026,23 +976,9 @@
           }
         }
         const available = Object.values(dist).some(d => Object.keys(d).length > 0);
-        if (available) {
-          const selectedKeys = FILTER_KEYS.filter(k => Boolean(filters[k]));
-          return {
-            distributions: dist,
-            label: tier.label,
-            cellCount: picked.length,
-            requestedKeys: selectedKeys,
-            keptKeys: tier.keep.slice(),
-            isFallback: tier.keep.length !== selectedKeys.length || tier.keep.some(k => !selectedKeys.includes(k))
-          };
-        }
+        if (available) return { distributions: dist, cellCount: picked.length };
       }
-      return {
-        distributions: Object.fromEntries(Object.keys(GROUPS).map(k => [k, {}])),
-        label: 'No garment observations available', cellCount: 0,
-        requestedKeys: FILTER_KEYS.filter(k => Boolean(filters[k])), keptKeys: [], isFallback: true
-      };
+      return { distributions: Object.fromEntries(Object.keys(GROUPS).map(k => [k, {}])), cellCount: 0 };
     }
     function topN(distribution, limit = 8) {
       return Object.entries(distribution || {}).filter(([, n]) => Number(n) > 0).sort((a,b) => b[1]-a[1]).slice(0, limit);
@@ -1079,87 +1015,13 @@
     }
     function audienceStats(filters) {
       const rows = metricRowsForAudience();
+      if (!rows.length) return { customers: null, empty: false }; // metrics payload has no customer cells
       const selectedKeys = FILTER_KEYS.filter(k => Boolean(filters[k]));
-      if (rows.length) {
-        const matched = rows.filter(r => matches(r, filters, selectedKeys));
-        const sum = (key) => matched.reduce((acc, r) => acc + (Number(r[key] ?? 0) || 0), 0);
-        if (selectedKeys.length > 0 && matched.length === 0) {
-          return {
-            customers: 0, orders: 0, revenue: 0, source: 'Exact selected dimensions in customer_cells; no matching rows',
-            coverage: 'empty-segment', coverageTitle: 'NO CUSTOMER RECORDS FOR THIS FILTER COMBINATION',
-            coverageDetail: `The selected audience (${filtersLabel(filters)}) has no matching customers yet. Try widening one of the filters.`
-          };
-        }
-        let coverage, coverageTitle, coverageDetail;
-        if (selectedKeys.length === FILTER_KEYS.length) {
-          coverage = 'exact-segment';
-          coverageTitle = 'EXACT SEGMENT-LEVEL TOTALS';
-          coverageDetail = 'Customer totals match this exact geo × age × gender × RFM selection.';
-        } else if (selectedKeys.length === 0) {
-          coverage = 'overall';
-          coverageTitle = 'OVERALL TOTALS — NO SEGMENT FILTERS';
-          coverageDetail = 'Totals include all available customer cells.';
-        } else {
-          const used = selectedKeys.map(k => ({pin_code:'geo',age_group:'age',gender:'gender',rfm_segment:'RFM'}[k])).join(' × ');
-          const combined = FILTER_KEYS.filter(k => !filters[k]).map(k => ({pin_code:'geo',age_group:'age',gender:'gender',rfm_segment:'RFM'}[k])).join(', ');
-          coverage = 'partial-filter';
-          coverageTitle = 'FILTERED AUDIENCE TOTALS — UNSELECTED DIMENSIONS COMBINED';
-          coverageDetail = `Totals match the selected dimensions (${used}). Unselected dimensions (${combined || 'none'}) are intentionally combined.`;
-        }
-        return { customers:sum('customers'), orders:sum('orders'), revenue:sum('revenue'), source: 'customer_cells rolled up over unselected dimensions', coverage, coverageTitle, coverageDetail };
-      }
-      const pin = (filters.pin_codes || [])[0] || splitChoice(filters.pin_code)[0];
-      const area = pin ? state.metrics?.pin_geo?.[String(pin)] : null;
+      const matched = rows.filter(r => matches(r, filters, selectedKeys)); // unselected dimensions are rolled up
       return {
-        customers: null, orders: null, revenue: null,
-        source: area ? 'Only area aggregate is present' : 'Audience cell aggregates are missing',
-        coverage: area ? 'area-only' : 'missing',
-        coverageTitle: area ? 'AREA-LEVEL TOTALS AVAILABLE' : 'SEGMENT TOTALS UNAVAILABLE',
-        coverageDetail: area ? `API only provides area-level totals for ${labelForPin(pin)}.` : 'Metrics payload has no customer_cells.'
+        customers: matched.reduce((acc, r) => acc + (Number(r.customers ?? 0) || 0), 0),
+        empty: selectedKeys.length > 0 && matched.length === 0
       };
-    }
-    function renderCoverage(stats) {
-      const banner = $('audienceCoverage');
-      const title = $('audienceCoverageTitle');
-      const detail = $('audienceCoverageDetail');
-      banner.className = 'mt-4 rounded-lg border border-[#EAD9E0] bg-[#F6EEF0] p-3';
-      title.textContent = stats.coverageTitle || 'DATA COVERAGE STATUS';
-      detail.textContent = stats.coverageDetail || stats.source || '';
-    }
-    function renderTasteCoverage(profile, filters) {
-      const banner = $('tasteCoverage');
-      const title = $('tasteCoverageTitle');
-      const detail = $('tasteCoverageDetail');
-      let coverage, heading, explanation;
-      const selected = FILTER_KEYS.filter(k => Boolean(filters[k]));
-      if (!profile || !profile.cellCount || !Object.values(profile.distributions || {}).some(d => Object.keys(d || {}).length)) {
-        coverage = 'missing';
-        heading = 'NO GARMENT OBSERVATIONS FOR THIS PROFILE';
-        explanation = `No usable garment-observation aggregate is available for ${filtersLabel(filters)}.`;
-      } else if (selected.length === 0) {
-        coverage = 'overall';
-        heading = 'OVERALL GARMENT PROFILE — NO AUDIENCE FILTERS SELECTED';
-        explanation = `This profile pools all available garment observations (${profile.cellCount} grouped cells).`;
-      } else if (profile.isFallback) {
-        const retained = profile.keptKeys || [];
-        const retainedLabel = retained.length ? retained.map(k => ({pin_code:'geo',age_group:'age',gender:'gender',rfm_segment:'RFM'}[k] || k)).join(' × ') : 'overall observations';
-        coverage = retained.length === 1 && retained[0] === 'pin_code' ? 'area-only' : 'broader-fallback';
-        heading = coverage === 'area-only' ? 'AREA-LEVEL GARMENT PROFILE ONLY' : 'BROADER GARMENT PROFILE';
-        const relaxed = selected.filter(k => !retained.includes(k)).map(k => ({pin_code:'geo',age_group:'age',gender:'gender',rfm_segment:'RFM'}[k] || k));
-        explanation = `Observed garment preferences came from ${retainedLabel} (${profile.cellCount} grouped cell(s)); filters relaxed: ${relaxed.length ? relaxed.join(', ') : 'none'}.`;
-      } else if (selected.length === FILTER_KEYS.length) {
-        coverage = 'exact-segment';
-        heading = 'EXACT SEGMENT-LEVEL GARMENT PROFILE';
-        explanation = `Garment preference observations match all four selected dimensions. Matched cells: ${profile.cellCount}.`;
-      } else {
-        coverage = 'partial-filter';
-        heading = 'FILTERED GARMENT PROFILE — UNSELECTED DIMENSIONS COMBINED';
-        const used = selected.map(k => ({pin_code:'geo',age_group:'age',gender:'gender',rfm_segment:'RFM'}[k] || k)).join(' × ');
-        explanation = `Preferences respect selected dimensions (${used || 'none'}). Matched cells: ${profile.cellCount}.`;
-      }
-      banner.className = 'mt-3 rounded-lg border border-[#EAD9E0] bg-[#F6EEF0] p-3';
-      title.textContent = heading;
-      detail.textContent = explanation;
     }
 
     function fmtNumber(n) { return n === null || n === undefined || !Number.isFinite(Number(n)) ? '—' : Number(n).toLocaleString('en-IN', {maximumFractionDigits:0}); }
@@ -1193,14 +1055,11 @@
       $('staleNote').classList.toggle('hidden', !state.rankedKey || state.rankedKey === JSON.stringify(filters));
       const stats = audienceStats(filters);
       $('audienceCustomers').textContent = fmtNumber(stats.customers);
-      renderCoverage(stats);
-      renderTasteCoverage(state.profile, filters);
-      const warn = stats.coverage === 'empty-segment' ? 'No customers for this combination'
+      const warn = stats.empty ? 'No customers for this combination'
         : (!state.profile.cellCount ? 'No garment data for this audience' : '');
       $('targetWarn').textContent = warn;
       $('targetWarn').classList.toggle('hidden', !warn);
-      $('profileNote').textContent = `Taste profile: ${state.profile.label} · based on ${state.profile.cellCount} audience group${state.profile.cellCount === 1 ? '' : 's'}.`;
-      
+
       renderTastePercentages('insightColors', state.profile.distributions.color);
       renderTastePercentages('insightPatterns', state.profile.distributions.pattern);
       renderTastePercentages('insightSizes', state.profile.distributions.size);
@@ -1273,7 +1132,7 @@
       applyBrandLock();
       if (!state.assets.length) {
         agentAutoRunAfterFiles = true;
-        $('uploadSummary').textContent = 'AURA: select SKU images to extract & rank…';
+        $('uploadSummary').textContent = 'AURA: select SKU images to extract and rank…';
         if ($('fileInput')) $('fileInput').click();
         return;
       }
@@ -1361,14 +1220,7 @@
       } else {
         return;
       }
-      try {
-        window.parent.postMessage({
-          type: 'cc-agent-ack',
-          source: 'ads',
-          command: t,
-          ok: true,
-        }, '*');
-      } catch (_) { /* ignore */ }
+      notifyParent({ type: 'cc-agent-ack', source: 'ads', command: t, ok: true });
     }
 
     window.addEventListener('message', (ev) => {
@@ -1385,43 +1237,8 @@
       }
     });
 
-    function extractionAttrs(item) {
-      const a = item?.attributes || {}; const r = item?.raw_result || item?.result || {};
-      const take = (...values) => values.find(v => v !== undefined && v !== null && String(v).trim() && !['unknown','n/a','null'].includes(normal(v))) || '';
-      return {
-        color: take(a.color, r.primary_color, r.color, r.secondary_colors?.[0]),
-        pattern: take(a.pattern, r.pattern),
-        commodity: take(a.name, a.commodity_type, r.commodity_type, r.garment_type, r.name),
-        material: take(a.material, r.material_type, r.material),
-        size: take(a.size, r.size_normalized, r.size_raw, r.size),
-        brand: take(a.brand, r.brand_name, r.brand),
-        confidence: take(a.confidence, r.confidence, r.confidence_score)
-      };
-    }
-    function matchScore(attrs, profile) {
-      const dist = profile?.distributions || {};
-      const dimensions = [
-        ['color','color'], ['pattern','pattern'], ['commodity','commodity'], ['material','material'], ['size','size'], ['brand','brand']
-      ];
-      let weightedTotal = 0, usedWeight = 0, matchedDimensions = 0;
-      for (const [attr, group] of dimensions) {
-        const value = attrs[attr]; const distribution = dist[group] || {};
-        const pairs = Object.entries(distribution).filter(([, n]) => Number(n) > 0);
-        if (!value || !pairs.length) continue;
-        const max = Math.max(...pairs.map(([,n]) => Number(n)));
-        if (!max) continue;
-        const found = pairs.find(([name]) => normal(name) === normal(value));
-        const ratio = found ? Number(found[1]) / max : 0;
-        const weight = GROUPS[group].weight;
-        weightedTotal += ratio * weight; usedWeight += weight; matchedDimensions++;
-      }
-      if (usedWeight === 0) return { score: null, evidence: 0, reason: 'No overlapping extracted attributes and observed segment preferences' };
-      const score = Math.round((weightedTotal / usedWeight) * 100);
-      return { score, evidence: matchedDimensions, reason: `${matchedDimensions} attribute group(s) compared with observed preference counts` };
-    }
     const r2 = (v) => v === null || v === undefined || !Number.isFinite(Number(v)) ? '—' : String(Math.round(Number(v) * 100) / 100);
     function makeRankedAssets() {
-      const usedResultIndexes = new Set();
       const campaignByName = {};
       (state.campaignItems || []).forEach(row => {
         if (row && row.filename) campaignByName[normal(row.filename)] = row;
@@ -1430,35 +1247,21 @@
         ? state.assets
         : (state.campaignItems || []).map(r => ({ file: { name: r.filename || 'SKU' }, src: '' }));
       const ranked = assets.map((asset, index) => {
-        let resultIndex = state.results.findIndex((r, i) => !usedResultIndexes.has(i) && normal(r.filename) === normal(asset.file.name));
-        if (resultIndex < 0 && index < state.results.length && !usedResultIndexes.has(index)) resultIndex = index;
-        const item = resultIndex >= 0 ? state.results[resultIndex] : null;
-        if (resultIndex >= 0) usedResultIndexes.add(resultIndex);
         const camp = campaignByName[normal(asset.file.name)];
-        const attrs = camp?.attributes
+        const a = camp?.attributes || {};
+        const attrs = {
+          color: a.color || '', pattern: a.pattern || '', commodity: a.name || a.commodity || '',
+          material: a.material || '', size: a.size || '', brand: a.brand || '', confidence: a.confidence || ''
+        };
+        const fit = camp && camp.rank_score != null
           ? {
-              color: camp.attributes.color || '',
-              pattern: camp.attributes.pattern || '',
-              commodity: camp.attributes.name || camp.attributes.commodity || '',
-              material: camp.attributes.material || '',
-              size: camp.attributes.size || '',
-              brand: camp.attributes.brand || '',
-              confidence: camp.attributes.confidence || ''
+              score: Math.round(Number(camp.rank_score)),
+              reason: camp.sim_fit != null
+                ? `Campaign rank · similarity ${r2(camp.sim_fit)} · attribute fit ${r2(camp.attr_fit)} · frequency coverage ${r2(camp.freq_coverage)}`
+                : 'Rank from the Extract & Rank job'
             }
-          : extractionAttrs(item);
-        let fit;
-        if (camp && camp.rank_score != null) {
-          fit = {
-            score: Math.round(Number(camp.rank_score)),
-            evidence: 3,
-            reason: camp.sim_fit != null
-              ? `Campaign rank · similarity ${r2(camp.sim_fit)} · attribute fit ${r2(camp.attr_fit)} · frequency coverage ${r2(camp.freq_coverage)}`
-              : 'Rank from the extract & rank job'
-          };
-        } else {
-          fit = item?.ok ? matchScore(attrs, state.profile || createProfile(currentFilters())) : {score:null,evidence:0,reason:item?.error || camp?.error || 'Run campaign ranking to score'};
-        }
-        return { asset, item: item || camp, camp, attrs, fit, originalIndex:index, campaignRank: camp?.rank };
+          : { score: null, reason: camp?.error || 'Run Extract & Rank to score' };
+        return { asset, item: camp, camp, attrs, fit, originalIndex: index, campaignRank: camp?.rank };
       });
       ranked.sort((a,b) => {
         if (a.campaignRank != null && b.campaignRank != null && a.campaignRank !== b.campaignRank) return a.campaignRank - b.campaignRank;
@@ -1470,7 +1273,7 @@
       return ranked.map((item, i) => ({...item, rank: item.campaignRank || (i + 1)}));
     }
     function extractedTags(attrs) {
-      return [attrs.color && `Color: ${attrs.color}`, attrs.pattern && `Pattern: ${attrs.pattern}`, attrs.commodity && `Type: ${attrs.commodity}`, attrs.material && `Material: ${attrs.material}`, attrs.size && `Size: ${attrs.size}`, attrs.brand && `Brand: ${attrs.brand}`].filter(Boolean);
+      return [attrs.color && `Colour: ${attrs.color}`, attrs.pattern && `Pattern: ${attrs.pattern}`, attrs.commodity && `Type: ${attrs.commodity}`, attrs.material && `Material: ${attrs.material}`, attrs.size && `Size: ${attrs.size}`, attrs.brand && `Brand: ${attrs.brand}`].filter(Boolean);
     }
     /* ---------- Ranking deck (shared by real results and the demo) ---------- */
     function cardHTML(c) {
@@ -1478,20 +1281,20 @@
       const p = c.score ?? 0;
       const band = c.score == null ? '' : c.score >= 75 ? 'fit-hi' : c.score >= 50 ? 'fit-mid' : 'fit-lo';
       return `<article class="cr-card ${c.top ? 'top' : ''} ${band} ${c.rank <= 3 ? 'r' + c.rank : ''}" role="listitem" aria-label="Rank ${c.rank}: ${esc(c.name)}, fit ${c.score === null ? 'not scored' : c.score + ' of 100'}">
-          <div class="cr-media" ${c.bg ? `style="--bg:${c.bg}"` : ''}>${c.media}
-            <span class="cr-rank"><b>#${c.rank}</b>${c.top ? '<em>Top fit</em>' : ''}</span>
+          <div class="cr-media">${c.media}
+            <span class="cr-rank"><b>#${c.rank}</b>${c.top ? '<em>Top Fit</em>' : ''}</span>
             <span class="cr-status ${c.bad ? 'bad' : ''}">${esc(c.status)}</span>
             <span class="cr-ring ${c.score === null ? 'na' : ''}" style="--p:${p}"><b>${c.score === null ? 'N/A' : c.score}</b></span>
           </div>
           <div class="cr-body">
             <div><h4 class="cr-name" title="${esc(c.name)}">${esc(c.name)}</h4><p class="cr-sub">Rank #${c.rank}${c.of ? ` of ${c.of}` : ''} · Segment fit${c.score === null ? '' : ` ${c.score}/100`}</p></div>
             <div class="cr-bar" style="--p:${p}"><i></i></div>
-            <div class="cr-tags">${c.tags.length ? c.tags.map(t => `<span class="tag tg-${esc(String(t).split(':')[0].trim().toLowerCase())}">${esc(t)}</span>`).join('') : '<span class="text-xs text-[#8A7480]">No normalized attributes returned</span>'}</div>
+            <div class="cr-tags">${c.tags.length ? c.tags.map(t => `<span class="tag tg-${esc(String(t).split(':')[0].trim().toLowerCase())}">${esc(t)}</span>`).join('') : '<span class="text-xs text-[#8A7480]">No normalised attributes returned</span>'}</div>
             <p class="cr-scroll-hint">Scroll for details <i class="fa-solid fa-arrow-down"></i></p>
-            <div class="cr-sec"><h5>Why this rank</h5><p>${esc(c.reason)}</p></div>
-            ${c.breakdown && c.breakdown.length ? `<div class="cr-sec"><h5>Audience match by attribute</h5>${c.breakdown.map(b => `<div class="cr-row"><span>${esc(b.label)}</span><b title="${esc(b.value)}">${esc(b.value)}</b><em class="${b.rank && b.rank <= 3 ? 'hit' : ''}">${b.rank ? `#${b.rank} · ${b.share}%` : 'not seen'}</em><u style="--p:${b.fill}"></u>${b.rank !== 1 && b.top ? `<small>Audience favours ${esc(b.top)}</small>` : ''}</div>`).join('')}</div>` : ''}
-            ${c.signals && c.signals.length ? `<div class="cr-sec"><h5>Ranking signals</h5><div class="cr-kv">${c.signals.map(([k, v]) => `<div><span>${esc(k)}</span><b title="${esc(v)}">${esc(v)}</b></div>`).join('')}</div></div>` : ''}
-            ${c.rankedFor ? `<div class="cr-sec"><h5>Ranked for</h5><p>${esc(c.rankedFor)}</p></div>` : ''}
+            <div class="cr-sec"><h5>Why This Rank</h5><p>${esc(c.reason)}</p></div>
+            ${c.breakdown && c.breakdown.length ? `<div class="cr-sec"><h5>Audience Match by Attribute</h5>${c.breakdown.map(b => `<div class="cr-row"><span>${esc(b.label)}</span><b title="${esc(b.value)}">${esc(b.value)}</b><em class="${b.rank && b.rank <= 3 ? 'hit' : ''}">${b.rank ? `#${b.rank} · ${b.share}%` : 'not seen'}</em><u style="--p:${b.fill}"></u>${b.rank !== 1 && b.top ? `<small>Audience favours ${esc(b.top)}</small>` : ''}</div>`).join('')}</div>` : ''}
+            ${c.signals && c.signals.length ? `<div class="cr-sec"><h5>Ranking Signals</h5><div class="cr-kv">${c.signals.map(([k, v]) => `<div><span>${esc(k)}</span><b title="${esc(v)}">${esc(v)}</b></div>`).join('')}</div></div>` : ''}
+            ${c.rankedFor ? `<div class="cr-sec"><h5>Ranked For</h5><p>${esc(c.rankedFor)}</p></div>` : ''}
             ${c.file && c.file.length ? `<div class="cr-sec"><h5>File</h5><div class="cr-kv">${c.file.map(([k, v]) => `<div><span>${esc(k)}</span><b title="${esc(v)}">${esc(v)}</b></div>`).join('')}</div></div>` : ''}
           </div>
         </article>`;
@@ -1600,8 +1403,8 @@
       const avg = scored.length ? Math.round(scored.reduce((a, r) => a + r.fit.score, 0) / scored.length) : null;
       const stat = (ic, label, value) => `<div class="rank-stat"><i class="ic fa-solid ${ic}"></i><div class="min-w-0"><p>${label}</p><b title="${esc(value)}">${esc(value)}</b></div></div>`;
       el.innerHTML = [
-        stat('fa-trophy', 'Best fit', best ? `${best.fit.score} · ${best.asset.file.name}` : 'Run ranking'),
-        stat('fa-chart-simple', 'Average fit', avg === null ? '—' : `${avg}/100`),
+        stat('fa-trophy', 'Best Fit', best ? `${best.fit.score} · ${best.asset.file.name}` : 'Run ranking'),
+        stat('fa-chart-simple', 'Average Fit', avg === null ? '—' : `${avg}/100`),
         stat('fa-circle-check', 'Scored', `${scored.length} of ${list.length}`),
         stat('fa-users', 'Audience', `${$('audienceCustomers').textContent} customers`),
       ].join('');
@@ -1610,7 +1413,7 @@
     // Per-attribute comparison with the audience profile: where this SKU's value ranks among what the audience wears.
     function attrBreakdown(attrs, profile) {
       const dist = profile?.distributions || {};
-      return [['color', 'Color'], ['pattern', 'Pattern'], ['commodity', 'Type'], ['material', 'Material'], ['size', 'Size'], ['brand', 'Brand']].map(([k, label]) => {
+      return [['color', 'Colour'], ['pattern', 'Pattern'], ['commodity', 'Type'], ['material', 'Material'], ['size', 'Size'], ['brand', 'Brand']].map(([k, label]) => {
         const pairs = topN(k === 'brand' ? maskBrandDistribution(dist[k]) : dist[k], 100);
         const v = attrs[k];
         if (!v) return null;
@@ -1630,13 +1433,13 @@
     function cardSignals(row) {
       const c = row.camp || {}, fmt = (v) => v === null || v === undefined || v === '' ? '—' : (Number.isFinite(Number(v)) ? String(Math.round(Number(v) * 100) / 100) : String(v));
       const out = [];
-      if (row.camp) out.push(['Similarity fit', fmt(c.sim_fit)], ['Attribute fit', fmt(c.attr_fit)], ['Freq. coverage', fmt(c.freq_coverage)], ['PIN fit', fmt(c.pin_fit)], ['Rank score', fmt(c.rank_score)]);
-      if (row.attrs.confidence) out.push(['Extraction conf.', fmt(row.attrs.confidence)]);
+      if (row.camp) out.push(['Similarity Fit', fmt(c.sim_fit)], ['Attribute Fit', fmt(c.attr_fit)], ['Freq. Coverage', fmt(c.freq_coverage)], ['PIN Fit', fmt(c.pin_fit)], ['Rank Score', fmt(c.rank_score)]);
+      if (row.attrs.confidence) out.push(['Extraction Conf.', fmt(row.attrs.confidence)]);
       return out.filter(([, v]) => v !== '—'); // the detail API may omit some signals; don't show empty tiles
     }
 
     const deck = makeDeck($('creativeGrid'), { loop: true, autoplay: 3200, label: 'Ranked creative cards' });
-    // The deck + matrix show results only once Extract & rank has produced scores.
+    // The deck + matrix show results only once Extract & Rank has produced scores.
     function rankingReady() { return state.campaignItems.length > 0; }
     function renderCreatives() {
       const list = rankingReady() ? makeRankedAssets() : [];
@@ -1648,7 +1451,7 @@
       deck.set(list.map((row) => {
         const { asset, item, attrs, fit, rank } = row;
         return cardHTML({
-          media: asset.src ? `<img src="${asset.src}" alt="${esc(asset.file.name)}" loading="lazy">` : '<div class="w-full h-full grid place-items-center"><i class="fa-solid fa-shirt text-5xl text-[#DCC3CE]"></i></div>',
+          media: asset.src ? `<img src="${esc(asset.src)}" alt="${esc(asset.file.name)}" loading="lazy">` : '<div class="w-full h-full grid place-items-center"><i class="fa-solid fa-shirt text-5xl text-[#DCC3CE]"></i></div>',
           rank, top: rank === 1 && fit.score !== null, score: fit.score, name: asset.file.name,
           status: item ? (item.ok ? (item.status || 'Extracted') : 'Extraction failed') : 'Awaiting extraction',
           bad: item && !item.ok, tags: extractedTags(attrs), of: list.length, rankedFor: ranked,
@@ -1673,6 +1476,7 @@
           resolve(cv.toDataURL('image/jpeg', .82));
         };
         img.onerror = () => resolve('');
+        if (!src) { resolve(''); return; } // campaign loaded from the server: no local image
         img.src = src;
       });
     }
@@ -1695,28 +1499,28 @@
 
     /* ---------- Demo deck: illustrated garments on wooden hangers, looping until real SKUs arrive ---------- */
     const GARMENTS = {
-      shirt: { c: ['#F6EAD7', '#E0C9A8', '#8C7052'], bg: '#F8EEDF',
+      shirt: { c: ['#F6EAD7', '#E0C9A8', '#8C7052'],
         body: 'M72 50L48 62L34 150L50 155L62 98V206H138V98L150 155L166 150L152 62L128 50L112 50L100 70L88 50Z',
         extra: (o) => `<path d="M86 46L100 70L114 46L121 53L100 80L79 53Z" fill="#FFF8EE" stroke="${o}" stroke-width="1.4"/><path d="M100 72V206" stroke="${o}" stroke-opacity=".5"/>${[94, 118, 142, 166, 190].map(y => `<circle cx="104" cy="${y}" r="2.3" fill="${o}"/>`).join('')}<path d="M110 96h18v20h-18z" fill="none" stroke="${o}" stroke-opacity=".55"/><path d="M37 140l14 4M163 140l-14 4" stroke="${o}" stroke-opacity=".6" stroke-width="1.6"/>` },
-      skirt: { c: ['#E8BC5A', '#B9852A', '#6E4C10'], bg: '#FBF1DC',
+      skirt: { c: ['#E8BC5A', '#B9852A', '#6E4C10'],
         body: 'M70 70H130L164 206Q100 222 36 206Z',
         extra: (o) => `<path d="M70 58H130V70H70Z" fill="#C9962F" stroke="${o}" stroke-width="1.4"/><path d="M84 70L64 210M100 70V216M116 70L136 210M92 70L82 214M108 70L118 214" stroke="${o}" stroke-opacity=".35"/><rect x="74" y="46" width="8" height="14" rx="2" fill="#9C8B94"/><rect x="118" y="46" width="8" height="14" rx="2" fill="#9C8B94"/>` },
-      tee: { c: ['#EDC3CF', '#C98FA2', '#8E5368'], bg: '#FBEEF2',
+      tee: { c: ['#EDC3CF', '#C98FA2', '#8E5368'],
         body: 'M76 50L44 66L56 98L70 90V202H130V90L144 98L156 66L124 50Q100 68 76 50Z',
         extra: (o) => `<path d="M76 50Q100 68 124 50" fill="none" stroke="#F8DCE4" stroke-width="5"/><path d="M76 50Q100 68 124 50" fill="none" stroke="${o}" stroke-width="1.2"/><path d="M70 194H130M48 88l10-4M152 88l-10-4" stroke="${o}" stroke-opacity=".5" stroke-dasharray="3 3"/><circle cx="100" cy="128" r="16" fill="none" stroke="#FFF" stroke-opacity=".7" stroke-width="3"/><path d="M93 128l5 5 9-10" fill="none" stroke="#FFF" stroke-opacity=".8" stroke-width="3"/>` },
-      dress: { c: ['#9A3657', '#5E1A33', '#3D0F21'], bg: '#F7E6EC',
+      dress: { c: ['#9A3657', '#5E1A33', '#3D0F21'],
         body: 'M82 50Q100 62 118 50L124 104L160 210Q100 224 40 210L76 104Z',
         extra: (o) => `<path d="M82 50L78 38M118 50L122 38" stroke="${o}" stroke-width="2"/><path d="M76 104Q100 113 124 104" fill="none" stroke="#E0B654" stroke-width="4"/><path d="M88 120L72 208M112 120L128 208M100 118V216" stroke="#000" stroke-opacity=".18"/>` },
-      hoodie: { c: ['#A9C0A5', '#6F8C6C', '#435940'], bg: '#ECF3EA',
+      hoodie: { c: ['#A9C0A5', '#6F8C6C', '#435940'],
         body: 'M72 54Q100 30 128 54L154 68L166 160L150 164L140 108V204H60V108L50 164L34 160L46 68Z',
         extra: (o) => `<path d="M80 54Q100 80 120 54" fill="#58714F" stroke="${o}" stroke-width="1.4"/><path d="M94 70V100M106 70V100" stroke="#F4F1E6" stroke-width="2" stroke-linecap="round"/><path d="M74 150H126L120 182H80Z" fill="none" stroke="${o}" stroke-opacity=".6"/><path d="M60 196H140M36 152l14 4M164 152l-14 4" stroke="${o}" stroke-opacity=".6" stroke-width="2"/>` },
-      jacket: { c: ['#7797C6', '#45628E', '#2C4166'], bg: '#E9EFF8',
+      jacket: { c: ['#7797C6', '#45628E', '#2C4166'],
         body: 'M72 50L46 62L32 160L48 165L60 104V206H140V104L152 165L168 160L154 62L128 50Z',
         extra: (o) => `<path d="M72 50H88L96 70L82 78ZM128 50H112L104 70L118 78Z" fill="#5A7AAA" stroke="${o}" stroke-width="1.3"/><path d="M100 76V206M60 100Q100 110 140 100M70 114h22v18h-22zM108 114h22v18h-22zM60 194H140" fill="none" stroke="#E8C27A" stroke-dasharray="3 3" stroke-width="1.3"/>${[120, 150, 180].map(y => `<circle cx="104" cy="${y}" r="2.6" fill="#C9A24A"/>`).join('')}` },
-      sweater: { c: ['#CDBBE6', '#9C86C2', '#5E4A85'], bg: '#F2EDFA',
+      sweater: { c: ['#CDBBE6', '#9C86C2', '#5E4A85'],
         body: 'M74 52L46 64L36 170L54 174L62 104V204H138V104L146 174L164 170L154 64L126 52Q100 68 74 52Z',
         extra: (o) => `<path d="M74 52Q100 68 126 52" fill="none" stroke="#E6DCF4" stroke-width="6"/><path d="M62 196H138M38 162l16 4M162 162l-16 4" stroke="${o}" stroke-width="3" stroke-opacity=".5"/>${[84, 116].map(x => `<path d="M${x} 86q7 9 0 18q-7 9 0 18q7 9 0 18q-7 9 0 18q7 9 0 18" fill="none" stroke="${o}" stroke-opacity=".55" stroke-width="1.6"/>`).join('')}<path d="M100 84V190" stroke="${o}" stroke-opacity=".35" stroke-dasharray="1 4" stroke-width="2" stroke-linecap="round"/>` },
-      trousers: { c: ['#4A4246', '#1F1B1D', '#0F0D0E'], bg: '#F0ECEA',
+      trousers: { c: ['#4A4246', '#1F1B1D', '#0F0D0E'],
         body: 'M66 66H134L140 212H108L100 104L92 212H60Z',
         extra: (o) => `<path d="M66 54H134V66H66Z" fill="#2E282B" stroke="${o}"/><path d="M80 66V54M100 66V54M120 66V54" stroke="#6B6266"/><path d="M80 74L76 210M120 74L124 210" stroke="#FFF" stroke-opacity=".12"/><path d="M70 68Q78 88 90 76M130 68Q122 88 110 76" fill="none" stroke="#FFF" stroke-opacity=".2"/><rect x="73" y="44" width="8" height="12" rx="2" fill="#9C8B94"/><rect x="119" y="44" width="8" height="12" rx="2" fill="#9C8B94"/>` },
     };
@@ -1735,14 +1539,14 @@
         </g></svg>`;
     }
     const DEMO = [
-      ['shirt', 'linen-shirt-beige.jpg', 94, ['Color: Beige', 'Pattern: Striped', 'Type: Shirt', 'Material: Linen'], 'Matches the top colour, pattern and garment type for this audience.'],
-      ['skirt', 'pleated-skirt-mustard.jpg', 90, ['Color: Mustard', 'Pattern: Pleated', 'Type: Skirt', 'Material: Polyester'], 'Trending colour with a strong garment-type match.'],
-      ['tee', 'graphic-tee-rose.jpg', 86, ['Color: Rose', 'Pattern: Graphic Print', 'Type: T-Shirt', 'Material: Cotton'], 'Strong pattern and material match; colour is a secondary preference.'],
-      ['dress', 'wrap-dress-burgundy.jpg', 81, ['Color: Burgundy', 'Pattern: Solid', 'Type: Dress', 'Material: Silk'], 'Colour is a top-3 preference; garment type less common here.'],
-      ['hoodie', 'hoodie-sage.jpg', 76, ['Color: Sage', 'Pattern: Solid', 'Type: Hoodie', 'Material: Fleece'], 'Popular silhouette, but the colour is rarely seen in this audience.'],
-      ['jacket', 'denim-jacket.jpg', 71, ['Color: Blue', 'Pattern: Plain', 'Type: Denim Jacket', 'Material: Denim'], 'Garment type matches; material is a weaker preference.'],
-      ['sweater', 'cable-sweater-lilac.jpg', 66, ['Color: Lilac', 'Pattern: Cable Knit', 'Type: Sweater', 'Material: Wool'], 'Seasonal piece — fewer matching observations in this segment.'],
-      ['trousers', 'slim-trousers-black.jpg', 60, ['Color: Black', 'Pattern: Solid', 'Type: Trousers', 'Material: Polyester'], 'Few attribute overlaps with this audience’s wardrobe.'],
+      ['shirt', 'linen-shirt-beige.jpg', 94, ['Colour: Beige', 'Pattern: Striped', 'Type: Shirt', 'Material: Linen'], 'Matches the top colour, pattern and garment type for this audience.'],
+      ['skirt', 'pleated-skirt-mustard.jpg', 90, ['Colour: Mustard', 'Pattern: Pleated', 'Type: Skirt', 'Material: Polyester'], 'Trending colour with a strong garment-type match.'],
+      ['tee', 'graphic-tee-rose.jpg', 86, ['Colour: Rose', 'Pattern: Graphic Print', 'Type: T-Shirt', 'Material: Cotton'], 'Strong pattern and material match; colour is a secondary preference.'],
+      ['dress', 'wrap-dress-burgundy.jpg', 81, ['Colour: Burgundy', 'Pattern: Solid', 'Type: Dress', 'Material: Silk'], 'Colour is a top-3 preference; garment type is less common here.'],
+      ['hoodie', 'hoodie-sage.jpg', 76, ['Colour: Sage', 'Pattern: Solid', 'Type: Hoodie', 'Material: Fleece'], 'Popular silhouette, but the colour is rarely seen in this audience.'],
+      ['jacket', 'denim-jacket.jpg', 71, ['Colour: Blue', 'Pattern: Plain', 'Type: Denim Jacket', 'Material: Denim'], 'Garment type matches; material is a weaker preference.'],
+      ['sweater', 'cable-sweater-lilac.jpg', 66, ['Colour: Lilac', 'Pattern: Cable Knit', 'Type: Sweater', 'Material: Wool'], 'Seasonal piece — fewer matching observations in this segment.'],
+      ['trousers', 'slim-trousers-black.jpg', 60, ['Colour: Black', 'Pattern: Solid', 'Type: Trousers', 'Material: Polyester'], 'Few attribute overlaps with this audience’s wardrobe.'],
     ];
     const demoDeck = makeDeck($('demoRail'), { loop: true, autoplay: 2800, label: 'Demo ranking' });
     demoDeck.set(DEMO.map(([g, name, score, tags, reason], i) => cardHTML({
@@ -1753,7 +1557,7 @@
         const rank = seen ? 1 + j + Math.round((94 - score) / 12) : null, share = seen ? Math.max(4, Math.round(score / 5) - j * 3) : 0;
         return { label, value, rank, share, fill: seen ? Math.max(12, score - j * 14) : 0, top: ['Beige', 'Striped', 'Shirt', 'Cotton'][j] };
       }),
-      signals: [['Similarity fit', (score / 100 - .04).toFixed(2)], ['Attribute fit', (score / 100 - .09).toFixed(2)], ['Freq. coverage', (score / 100 - .15).toFixed(2)], ['Rank score', String(score)]]
+      signals: [['Similarity Fit', (score / 100 - .04).toFixed(2)], ['Attribute Fit', (score / 100 - .09).toFixed(2)], ['Freq. Coverage', (score / 100 - .15).toFixed(2)], ['Rank Score', String(score)]]
     })).join(''));
     function renderMatrix(list) {
       const f = currentFilters();
@@ -1762,19 +1566,19 @@
         const pins = f.pin_codes || (f.pin_code ? [f.pin_code] : []);
         const pinLabel = !pins.length ? 'No PIN' : (pins.length <= 2 ? pins.map(labelForPin).join(', ') : pins.length + ' PINs');
         return `<tr><td class="px-4 py-3 font-mono ${row.rank === 1 ? 'text-[#6B3A55] font-bold' : 'text-[#8A7480]'}">#${esc(row.rank)}</td><td class="px-4 py-3 text-[#3B2733] font-medium">${esc(row.asset.file.name)}</td><td class="px-4 py-3">${esc(pinLabel)}</td><td class="px-4 py-3">${esc(f.age_group || 'All ages')}</td><td class="px-4 py-3">${esc(displayGender(f.gender))}</td><td class="px-4 py-3">${esc(f.rfm_segment || 'All RFM')}</td><td class="px-4 py-3 whitespace-normal min-w-[220px]">${esc(taste)}</td><td class="px-4 py-3 text-right font-mono ${row.fit.score === null ? 'text-[#8A7480]' : 'text-[#6B3A55] font-bold'}">${row.fit.score === null ? 'N/A' : row.fit.score + '/100'}</td></tr>`;
-      }).join('') : '<tr><td colspan="8" class="px-4 py-8 text-center text-[#8A7480]">Run Extract &amp; rank to see the ranking.</td></tr>';
+      }).join('') : '<tr><td colspan="8" class="px-4 py-8 text-center text-[#8A7480]">Run Extract &amp; Rank to see the ranking.</td></tr>';
     }
 
     function readAsDataUrl(file) {
       return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => { const img = new Image(); img.onload = () => resolve({file, src:reader.result, w:img.naturalWidth, h:img.naturalHeight}); img.onerror = () => resolve({file, src:reader.result}); img.src = reader.result; }; reader.onerror = () => reject(new Error(`Could not read ${file.name}`)); reader.readAsDataURL(file); });
     }
     function assetsChanged() {
-      state.results = []; state.campaignItems = []; state.campaign = null; state.rankedKey = null; // old ranks don't apply to a changed set
+      state.campaignItems = []; state.campaign = null; state.rankedKey = null; // old ranks don't apply to a changed set
       const n = state.assets.length;
-      $('thumbs').innerHTML = state.assets.map((x, i) => `<div class="thumb"><div class="ph"><img src="${x.src}" alt="${esc(x.file.name)}"></div>
+      $('thumbs').innerHTML = state.assets.map((x, i) => `<div class="thumb"><div class="ph"><img src="${esc(x.src)}" alt="${esc(x.file.name)}"></div>
         <small title="${esc(x.file.name)}">${esc(x.file.name)}</small>
         <button type="button" class="rm" data-rm="${i}" aria-label="Remove ${esc(x.file.name)}"><i class="fa-solid fa-xmark"></i></button></div>`).join('');
-      $('uploadSummary').textContent = n ? `${n} SKU image${n === 1 ? '' : 's'} selected · run Extract & rank to score ${n === 1 ? 'it' : 'them'}.` : 'No creatives uploaded.';
+      $('uploadSummary').textContent = n ? `${n} SKU image${n === 1 ? '' : 's'} selected · run Extract & Rank to score ${n === 1 ? 'it' : 'them'}.` : 'No creatives uploaded.';
       $('runButton').disabled = state.loading || !n;
       $('clearSkus').disabled = state.loading || !n;
       refreshForFilters();
@@ -1788,7 +1592,7 @@
         const fresh = chosen.filter(f => !known.has(f.name + '|' + f.size));
         state.assets = state.assets.concat(await Promise.all(fresh.map(readAsDataUrl))); // add to the set, skip duplicates
         showRunError(fresh.length < chosen.length ? `${chosen.length - fresh.length} duplicate image(s) skipped.` : '');
-        assetsChanged();
+        if (fresh.length) assetsChanged(); // all duplicates: keep the current ranking
         if (agentAutoRunAfterFiles && state.assets.length) {
           agentAutoRunAfterFiles = false;
           await runAnalysis();
@@ -1889,7 +1693,6 @@
         if (!res.ok) throw new Error(apiError(data, `Job could not be submitted (HTTP ${res.status})`));
         state.campaign = null;
         state.campaignItems = [];
-        state.results = [];
         state.rankedKey = JSON.stringify(f);
         rememberJob(data.job.job_id);
         renderJob(data.job);
@@ -1919,10 +1722,10 @@
       const done = job.status === 'succeeded' || job.status === 'failed';
       renderJobStages(job);
       $('jobHourglass').classList.toggle('hidden', done);
-      startEtaCountdown(done ? null : job.eta_seconds, job.status === 'failed' ? 'Failed' : 'Done');
+      startEtaCountdown(done ? null : job.eta_seconds, !done ? 'Estimating…' : job.status === 'failed' ? 'Failed' : 'Done');
       $('jobEtaSub').textContent = done
-        ? (job.finished_at ? 'finished ' + String(job.finished_at).replace('T', ' ').slice(0, 16) : '')
-        : 'initial estimate ' + fmtDuration(job.est_seconds);
+        ? (job.finished_at ? 'Finished ' + String(job.finished_at).replace('T', ' ').slice(0, 16) : '')
+        : 'Initial estimate ' + fmtDuration(job.est_seconds);
       const pct = Math.max(0, Math.min(100, Number(job.progress_pct) || 0));
       $('jobProgressBar').style.width = (job.status === 'failed' ? Math.max(pct, 100) : pct) + '%';
       $('jobProgressBar').className = 'job-bar h-full transition-all ' + (job.status === 'succeeded' ? 'succeeded' : job.status === 'failed' ? 'failed' : 'running');
@@ -1933,7 +1736,7 @@
           + (job.failed_images ? ` · ${job.failed_images} failed` : '');
       $('jobNote').textContent = done
         ? 'Job finished.'
-        : 'Your job has been triggered. You can leave this page — it keeps running and resumes here.';
+        : 'Your job is running. You can leave this page; it keeps running and progress resumes here when you return.';
       const err = $('jobError');
       err.textContent = job.status === 'failed' ? (job.error || 'The job did not complete.') : '';
       err.classList.toggle('hidden', job.status !== 'failed');
@@ -2062,14 +1865,19 @@
       $('createdSummary').textContent = `${okCount} of ${job.total_images} SKU(s) ranked for ${fmtNumber(job.total_customers)} customers`
         + `${c.filters ? ' in ' + filtersLabel({ ...currentFilters(), ...c.filters }) : ''}. Choose how to run it.`;
       const m = $('createdModal');
+      if (m.classList.contains('hidden')) modalReturnFocus = document.activeElement;
       m.classList.remove('hidden');
       m.classList.add('flex');
       $('created1pBtn').focus();
     }
+    let modalReturnFocus = null;
     function hideCreatedModal() {
       const m = $('createdModal');
+      if (m.classList.contains('hidden')) return;
       m.classList.add('hidden');
       m.classList.remove('flex');
+      if (modalReturnFocus && modalReturnFocus.isConnected) modalReturnFocus.focus();
+      modalReturnFocus = null;
     }
 
     function scrollToStep(id) {

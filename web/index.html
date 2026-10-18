@@ -8,7 +8,7 @@
   <script src="./config.js"></script>
   <script src="./session.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Outfit:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet" />
   <link rel="icon" type="image/png" href="logo.png" />
   <style>
     :root {
@@ -49,20 +49,9 @@
     }
     .brand { display: flex; align-items: center; gap: 0.65rem; min-width: 0; }
     .brand-logo { height: 40px; width: auto; display: block; }
-    .brand-mark {
-      width: 36px; height: 36px;
-      border-radius: 10px;
-      background: var(--plum);
-      display: flex; align-items: center; justify-content: center;
-      font-family: 'Cormorant Garamond', Georgia, serif;
-      font-size: 18px;
-      font-weight: 700;
-      color: #fff;
-      box-shadow: 0 6px 16px rgba(107, 58, 85, 0.25);
-    }
     .brand h1 {
       margin: 0;
-      font-family: 'Cormorant Garamond', Georgia, serif;
+      font-family: Outfit, system-ui, sans-serif;
       font-size: 1.4rem;
       font-weight: 700;
       color: var(--plum);
@@ -181,7 +170,7 @@
     }
     dialog.profile-dlg::backdrop { background: rgba(59, 39, 51, 0.35); backdrop-filter: blur(2px); }
     .dlg-head { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.25rem; border-bottom: 1px solid var(--line); }
-    .dlg-head h2 { margin: 0; font-family: 'Cormorant Garamond', Georgia, serif; font-size: 1.5rem; color: var(--plum); }
+    .dlg-head h2 { margin: 0; font-family: Outfit, system-ui, sans-serif; font-size: 1.25rem; font-weight: 700; color: var(--plum); }
     .dlg-x { border: 0; background: none; color: var(--muted); cursor: pointer; padding: 0.35rem; border-radius: 8px; display: flex; }
     .dlg-x:hover { background: var(--raised); color: var(--plum); }
     .dlg-body { padding: 1.1rem 1.25rem; display: grid; gap: 0.9rem; }
@@ -193,11 +182,11 @@
     .fld { display: flex; flex-direction: column; gap: 0.3rem; }
     .fld.full { grid-column: 1 / -1; }
     .fld > span { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 600; color: var(--muted); }
-    .fld input, .fld select {
+    .fld input {
       font: inherit; font-size: 14px; color: var(--ink);
       padding: 0.6rem 0.75rem; border: 1.5px solid var(--line); border-radius: 10px; background: var(--panel); outline: 0;
     }
-    .fld input:focus, .fld select:focus { border-color: var(--plum); box-shadow: 0 0 0 3px rgba(197, 159, 176, 0.35); }
+    .fld input:focus { border-color: var(--plum); box-shadow: 0 0 0 3px rgba(197, 159, 176, 0.35); }
     .fld input[readonly] { background: var(--raised); color: var(--muted); cursor: default; }
     .fld input[aria-invalid="true"] { border-color: #c45a5a; }
     .fld input[aria-invalid="true"]:focus { box-shadow: 0 0 0 3px rgba(196, 90, 90, 0.2); }
@@ -317,7 +306,7 @@
     .aura-av img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: block; }
     .aura-av::after { content: ''; position: absolute; right: -1px; bottom: 0; width: 10px; height: 10px; border-radius: 50%; background: #5fbf6f; border: 2px solid var(--wine-2); }
     .aura-id { flex: 1; min-width: 0; }
-    .aura-id b { display: block; font-family: 'Cormorant Garamond', Georgia, serif; font-size: 1.2rem; font-weight: 700; letter-spacing: .14em; line-height: 1.05; }
+    .aura-id b { display: block; font-family: Outfit, system-ui, sans-serif; font-size: 1.05rem; font-weight: 700; letter-spacing: .12em; line-height: 1.05; }
     .aura-id .aura-ctx { display: block; margin-top: .15rem; font-size: 11px; font-weight: 400; color: #e6cfda; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .chat-tools { display: flex; gap: .3rem; flex: none; }
     .chat-tools button {
@@ -339,7 +328,7 @@
     .chat-empty { margin: auto 0; text-align: center; color: var(--muted); font-size: 12.5px; line-height: 1.55; padding: 0 .25rem; }
     .chat-empty .hello-av { width: 64px; height: 64px; margin: 0 auto .7rem; border-radius: 50%; border: 2px solid rgba(201, 162, 74, .6); box-shadow: 0 8px 22px rgba(42, 15, 31, .18); overflow: hidden; background: var(--wine); }
     .chat-empty .hello-av img { width: 100%; height: 100%; object-fit: cover; display: block; }
-    .chat-empty h3 { margin: 0 0 .25rem; font-family: 'Cormorant Garamond', Georgia, serif; font-size: 1.45rem; font-weight: 700; color: var(--ink); }
+    .chat-empty h3 { margin: 0 0 .25rem; font-family: Outfit, system-ui, sans-serif; font-size: 1.25rem; font-weight: 700; color: var(--ink); }
     .chat-suggest { display: grid; gap: .45rem; margin-top: .95rem; text-align: left; }
     .chat-popup.big .chat-suggest { grid-template-columns: repeat(3, 1fr); }
     .chat-suggest button {
@@ -409,7 +398,7 @@
       margin-bottom: 0.25rem;
     }
     .chat-confirm { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
-    .chat-confirm button {
+    .chat-confirm button, .cf-actions button {
       flex: 1;
       border: 0;
       border-radius: 8px;
@@ -420,8 +409,8 @@
       padding: 0.4rem 0.5rem;
       cursor: pointer;
     }
-    .chat-confirm button:hover { background: var(--plum-dk); }
-    .chat-confirm button.secondary { background: var(--panel); border: 1px solid var(--line); color: var(--muted); }
+    .chat-confirm button:hover, .cf-actions button:hover { background: var(--plum-dk); }
+    .chat-confirm button.secondary, .cf-actions button.secondary { background: var(--panel); border: 1px solid var(--line); color: var(--muted); }
     .chat-form-card {
       border: 1px solid var(--line);
       background: var(--raised);
@@ -467,19 +456,6 @@
     .cf-field.cf-invalid select, .cf-field.cf-invalid input, .cf-field.cf-invalid summary { border-color: #c0392b; }
     .cf-error { color: #c0392b; font-size: 11px; }
     .cf-actions { display: flex; gap: 0.5rem; }
-    .cf-actions button {
-      flex: 1;
-      border: 0;
-      border-radius: 8px;
-      background: var(--plum);
-      color: #fff;
-      font-size: 12px;
-      font-weight: 600;
-      padding: 0.4rem 0.5rem;
-      cursor: pointer;
-    }
-    .cf-actions button:hover { background: var(--plum-dk); }
-    .cf-actions button.secondary { background: var(--panel); border: 1px solid var(--line); color: var(--muted); }
     .chat-chips { display: flex; flex-wrap: wrap; gap: 0.35rem; padding: 0 0.7rem; }
     .chat-chips:empty { display: none; }
     .chat-chips .chip {
@@ -543,15 +519,15 @@
     </div>
     <div class="pm-info" id="pmInfo"></div>
     <div class="pm-actions">
-      <button type="button" class="pm-item" id="pmSettings"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Profile settings</button>
-      <button type="button" class="pm-item danger" id="pmLogout"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/></svg>Log out</button>
+      <button type="button" class="pm-item" id="pmSettings"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Profile Settings</button>
+      <button type="button" class="pm-item danger" id="pmLogout"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/></svg>Log Out</button>
     </div>
   </div>
 
   <dialog class="profile-dlg" id="profileDlg" aria-labelledby="dlgTitle">
     <form id="profileForm" method="dialog" novalidate>
       <div class="dlg-head">
-        <h2 id="dlgTitle">Profile settings</h2>
+        <h2 id="dlgTitle">Profile Settings</h2>
         <button type="button" class="dlg-x" id="dlgClose" aria-label="Close"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
       </div>
       <div class="dlg-body">
@@ -559,21 +535,21 @@
           <span class="avatar xl" id="avDlg"></span>
           <div class="btns">
             <input type="file" id="photoInput" accept="image/png,image/jpeg,image/webp" hidden />
-            <button type="button" class="btn ghost" id="photoUpload">Upload photo</button>
+            <button type="button" class="btn ghost" id="photoUpload">Upload Photo</button>
             <button type="button" class="btn ghost" id="photoRemove">Remove</button>
-            <div class="hint">PNG, JPG or WEBP, up to 5 MB. Cropped to a square.</div>
+            <div class="hint">PNG, JPG or WebP, up to 5 MB. Cropped to a square.</div>
           </div>
         </div>
         <div class="fgrid">
-          <label class="fld full"><span>Display name</span><input id="pfName" maxlength="60" required placeholder="Your name" autocomplete="name" /></label>
+          <label class="fld full"><span>Display Name</span><input id="pfName" maxlength="60" required placeholder="Your name" autocomplete="name" /></label>
           <label class="fld"><span>Email</span>
             <input id="pfEmail" type="email" maxlength="120" placeholder="name@gmail.com" autocomplete="email" spellcheck="false" autocapitalize="none" aria-describedby="pfEmailErr" />
             <small class="fld-err" id="pfEmailErr" aria-live="polite"></small></label>
-          <label class="fld"><span>Mobile number</span>
+          <label class="fld"><span>Mobile Number</span>
             <div class="ph"><em>+91</em><input id="pfPhone" type="tel" inputmode="numeric" maxlength="14" placeholder="98765 43210" autocomplete="tel-national" aria-describedby="pfPhoneErr" /></div>
             <small class="fld-err" id="pfPhoneErr" aria-live="polite"></small></label>
-          <label class="fld"><span>Job title</span><input id="pfTitle" maxlength="60" placeholder="e.g. Merchandising lead" autocomplete="organization-title" /></label>
-          <div class="fld"><span id="pfTabLbl">Open on sign-in</span>
+          <label class="fld"><span>Job Title</span><input id="pfTitle" maxlength="60" placeholder="e.g. Merchandising lead" autocomplete="organization-title" /></label>
+          <div class="fld"><span id="pfTabLbl">Open on Sign-In</span>
             <div class="csel">
               <button type="button" class="csel-btn" id="pfTabBtn" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="pfTabLbl pfTabText"><span id="pfTabText"></span><svg class="csel-chev" viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8l4 4 4-4"/></svg></button>
               <ul class="csel-list" id="pfTabList" role="listbox" aria-labelledby="pfTabLbl" hidden></ul>
@@ -590,7 +566,7 @@
         <small>Profile details are saved on this device.</small>
         <div style="display:flex;gap:.5rem">
           <button type="button" class="btn ghost" id="dlgCancel">Cancel</button>
-          <button type="submit" class="btn primary">Save changes</button>
+          <button type="submit" class="btn primary">Save Changes</button>
         </div>
       </div>
     </form>
@@ -623,12 +599,12 @@
     <div class="chat-log" id="chatLog" aria-live="polite">
       <div class="chat-empty" id="chatEmpty">
         <div class="hello-av" aria-hidden="true"><img src="./assets/fashion-stylist.svg" alt="" width="64" height="64" /></div>
-        <h3>Hi, I'm AURA</h3>
+        <h3>Hi, I’m AURA</h3>
         Ask about your audience, or have me set filters, rank SKUs and start a campaign.
         <div class="chat-suggest">
-          <button type="button" data-q="Summarise this audience"><i aria-hidden="true">✦</i><span>Summarise this audience<small>Who they are and what they wear</small></span></button>
-          <button type="button" data-q="Which PIN looks strongest for a store?"><i aria-hidden="true">⌖</i><span>Strongest PIN for a store?<small>Demand, share and the 4 km rule</small></span></button>
-          <button type="button" data-q="Find the best PIN for Champions and start a campaign"><i aria-hidden="true">➚</i><span>Start a campaign<small>Best PIN for Champions, end to end</small></span></button>
+          <button type="button" data-q="Summarise this audience"><i aria-hidden="true">✦</i><span>Summarise This Audience<small>Who they are and what they wear</small></span></button>
+          <button type="button" data-q="Which PIN looks strongest for a store?"><i aria-hidden="true">⌖</i><span>Strongest PIN for a Store?<small>Demand, share and the 4 km rule</small></span></button>
+          <button type="button" data-q="Find the best PIN for Champions and start a campaign"><i aria-hidden="true">➚</i><span>Start a Campaign<small>Best PIN for Champions, end to end</small></span></button>
         </div>
       </div>
     </div>
@@ -677,7 +653,7 @@
     }));
     function ensureFrameSrc(frame) {
       const src = frame.getAttribute('data-src');
-      if (src && (!frame.src || frame.src === 'about:blank' || frame.src.endsWith('about:blank'))) {
+      if (src && (!frame.src || frame.src.endsWith('about:blank'))) {
         frame.src = src + (src.includes('?') ? '&' : '?') + 'v=' + SHELL_LOADED; // never show a stale cached tab
       }
     }
@@ -688,10 +664,9 @@
         document.body.classList.remove('chat-open');
         chatFab.classList.remove('open');
         chatFab.setAttribute('aria-expanded', 'false');
+        chatFab.setAttribute('aria-label', 'Open AURA agent');
       }
     }
-
-    let pendingAction = null;
 
     const TAB_NAMES = { geo: 'Geo', ads: 'Ads Lab', campaigns: 'Campaigns', style: 'Style Assistant', admin: 'Admin' };
     function updateHint() {
@@ -855,7 +830,7 @@
       box.className = 'chat-confirm-box';
       const label = document.createElement('div');
       label.className = 'label';
-      label.textContent = action.label || 'Confirm action';
+      label.textContent = action.label || 'Confirm Action';
       const summary = document.createElement('div');
       summary.textContent = action.summary || '';
       const wrap = document.createElement('div');
@@ -869,11 +844,9 @@
       no.textContent = 'Cancel';
       yes.addEventListener('click', () => {
         box.remove();
-        pendingAction = null;
         sendAuraRequest({ message: '', confirm_token: action.token }, 'Confirmed: ' + (action.label || 'action'));
       });
       no.addEventListener('click', () => {
-        pendingAction = null;
         box.remove();
         appendBubble('assistant', 'Cancelled. Nothing was changed.');
       });
@@ -931,7 +904,7 @@
             allBox = document.createElement('input');
             allBox.type = 'checkbox';
             allLab.appendChild(allBox);
-            allLab.appendChild(document.createTextNode('Select all'));
+            allLab.appendChild(document.createTextNode('Select All'));
             list.appendChild(allLab);
           }
           opts.forEach((o) => {
@@ -1113,8 +1086,7 @@
         }
         applyUiCommands(data.ui_commands || []);
         appendBubble('assistant', data.answer || 'Done.');
-        pendingAction = data.pending_action || null;
-        if (pendingAction) appendConfirmBar(pendingAction);
+        if (data.pending_action) appendConfirmBar(data.pending_action);
         else if (data.input_form) appendFormCard(data.input_form);
         if (data.attached_images === 0 && stagedFiles.length) {
           stagedFiles = [];
@@ -1128,10 +1100,6 @@
         // Background job follow-ups must not pull focus out of the page the user is working in
         if (userEcho && document.body.classList.contains('chat-open')) input.focus();
       }
-    }
-
-    function sendAuraMessage(message) {
-      return sendAuraRequest({ message }, message);
     }
 
     let stagedFiles = [];
@@ -1338,7 +1306,7 @@
     });
 
     /* ---------- Profile (local, per user; no profile API exists) ---------- */
-    const ROLE_NAMES = { admin: 'Administrator', brand: 'Brand partner', customer: 'Customer' };
+    const ROLE_NAMES = { admin: 'Administrator', brand: 'Brand Partner', customer: 'Customer' };
     const $id = (id) => document.getElementById(id);
     const profileKey = () => 'suffai_profile:' + ((session && session.username) || '');
     function loadProfile() {
@@ -1370,7 +1338,7 @@
       $id('pmName').textContent = name;
       $id('pmSub').textContent = p.email || session.username;
       const rows = [['Role', ROLE_NAMES[session.role] || session.role]];
-      if (p.title) rows.push(['Job title', p.title]);
+      if (p.title) rows.push(['Job Title', p.title]);
       if (session.brand_name) rows.push(['Brand', session.brand_name]);
       if (session.customer_id) rows.push(['Customer ID', session.customer_id]);
       rows.push(['Access', allowed.map(t => TAB_NAMES[t] || t).join(' · ')]);
@@ -1433,7 +1401,7 @@
     }
     $id('pmSettings').addEventListener('click', openSettings);
 
-    /* "Open on sign-in" listbox: click, ↑/↓, Home/End, Enter/Space, Esc, Tab */
+    /* "Open on Sign-In" listbox: click, ↑/↓, Home/End, Enter/Space, Esc, Tab */
     function setTabChoice(v) {
       $id('pfTab').value = v;
       $id('pfTabText').textContent = TAB_NAMES[v] || v;
@@ -1535,7 +1503,7 @@
     $id('photoUpload').addEventListener('click', () => $id('photoInput').click());
     $id('photoRemove').addEventListener('click', () => { draftPhoto = null; paintAvatar($id('avDlg'), null, $id('pfName').value || displayName()); });
 
-    // Center-crop to 256px JPEG so the stored data URL stays small
+    // Center-crop to a 256px WebP so the stored data URL stays small
     function cropToSquare(file) {
       return new Promise((resolve, reject) => {
         const url = URL.createObjectURL(file);
@@ -1557,7 +1525,7 @@
       e.target.value = '';
       if (!file) return;
       $id('dlgErr').textContent = '';
-      if (!/^image\/(png|jpeg|webp)$/.test(file.type)) { $id('dlgErr').textContent = 'Please choose a PNG, JPG or WEBP image.'; return; }
+      if (!/^image\/(png|jpeg|webp)$/.test(file.type)) { $id('dlgErr').textContent = 'Please choose a PNG, JPG or WebP image.'; return; }
       if (file.size > 5 * 1024 * 1024) { $id('dlgErr').textContent = 'That image is over 5 MB. Please choose a smaller one.'; return; }
       try {
         draftPhoto = await cropToSquare(file);
@@ -1631,10 +1599,9 @@
         btn.hidden = !ok;
       });
 
-      // Prefer hash / ?tab= if allowed, else first allowed (customer → style)
       const params = new URLSearchParams(location.search);
       const hashTab = (location.hash || '').replace(/^#/, '');
-      // Path (/geo) first, then old #geo links, then ?tab= — activateTab rewrites the URL, so a stale ?tab= never wins on reload
+      // Path (/geo) first, then old #geo links, then ?tab=, then the saved default, else the first allowed tab. activateTab rewrites the URL, so a stale ?tab= never wins on reload
       const want = tabFromPath() || hashTab || params.get('tab') || loadProfile().default_tab || allowed[0];
       const start = allowed.indexOf(want) >= 0 ? want : allowed[0];
       document.getElementById('shellTop').style.visibility = 'visible';
@@ -1749,7 +1716,7 @@
       if (!message || document.getElementById('chatSend').disabled) return; // one turn at a time; text is kept
 
       input.value = '';
-      await sendAuraMessage(message);
+      await sendAuraRequest({ message }, message);
     });
 
     setTimeout(refreshAllContext, 1200);
