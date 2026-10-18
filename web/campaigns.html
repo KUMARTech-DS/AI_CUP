@@ -111,6 +111,7 @@
     .fields .full { grid-column: 1 / -1; }
     @media (max-width: 640px) { .fields { grid-template-columns: 1fr; } }
     label.f { display: block; font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+    .req { color: var(--bad); margin-left: 2px; }
     .in { width: 100%; margin-top: 5px; background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: .6rem .7rem; font-size: 13px; text-transform: none; letter-spacing: normal; font-weight: 400; color: var(--ink); transition: border-color .2s, box-shadow .2s; }
     .in:focus { outline: none; border-color: var(--plum); box-shadow: 0 0 0 3px rgba(197,159,176,.35); }
     .in.err { border-color: var(--bad); box-shadow: 0 0 0 3px rgba(163,48,31,.12); }
@@ -259,6 +260,8 @@
     .btn:hover { transform: translateY(-1px); box-shadow: 0 6px 14px rgba(59,39,51,.08); }
     .btn.primary { grid-column: 1 / -1; padding: .85rem; font-size: 14px; border: 0; color: var(--wine); background: linear-gradient(135deg, var(--gold-lt), var(--gold)); box-shadow: 0 10px 22px rgba(201,162,74,.35); }
     .btn.primary:hover { box-shadow: 0 14px 28px rgba(201,162,74,.45); }
+    .btn.danger { grid-column: 1 / -1; color: var(--bad); border-color: rgba(163,48,31,.35); }
+    .btn.danger:hover { background: rgba(163,48,31,.06); }
     .note { font-size: 11px; color: var(--muted); margin-top: 10px; line-height: 1.5; }
 
     /* History */
@@ -305,6 +308,11 @@
     .sample-bar p { flex: 1 1 360px; min-width: 0; }
     .sample-bar .sb-ic { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: #fff; color: #C9A24A; border: 1px solid #E8C27A; flex: none; }
     .sample-bar .btn { padding: .55rem .9rem; }
+    /* Until the campaign list arrives: no sample flash before the newest campaign opens */
+    .boot-note { display: none; min-height: 220px; place-items: center; margin-bottom: 18px; color: var(--muted); font-size: 13px; }
+    .boot-note i { margin-right: 8px; color: var(--plum); }
+    body.booting .boot-note { display: grid; }
+    body.booting #noDraft, body.booting #studio { display: none; }
     .btn:disabled { opacity: .45; cursor: not-allowed; transform: none; box-shadow: none; }
 
     .toast { position: fixed; left: 50%; bottom: 24px; z-index: 99; translate: -50% 20px; opacity: 0; pointer-events: none; display: flex; align-items: center; gap: 10px; max-width: min(560px, calc(100vw - 32px));
@@ -380,7 +388,7 @@
     @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
   </style>
 </head>
-<body>
+<body class="booting">
   <script>if (!SuffaiSession.requireAuth('campaigns')) { /* redirected */ }</script>
 
   <header class="hero">
@@ -400,6 +408,7 @@
   </header>
 
   <main class="wrap">
+    <p class="card boot-note" id="bootNote" role="status"><span><i class="fa-solid fa-circle-notch fa-spin" aria-hidden="true"></i>Loading your campaigns…</span></p>
     <section id="noDraft" class="sample-bar" role="note">
       <span class="sb-ic"><i class="fa-solid fa-wand-magic-sparkles"></i></span>
       <p><b>You're looking at a sample campaign.</b> Pick one of your campaigns below, or rank SKUs in Ads Lab and choose <b>Set Up 1P Campaign</b>.</p>
@@ -418,22 +427,23 @@
                 <button type="button" class="link" id="editAud">Change in Ads Lab</button>
               </div>
               <p class="src-note" id="sourceNote" hidden></p>
-              <div class="notice wait" id="processingNote" hidden><i class="fa-solid fa-circle-notch fa-spin"></i> The extract &amp; rank job for this campaign is still running. You can configure it once it completes.</div>
+              <div class="notice wait" id="processingNote" hidden><i class="fa-solid fa-circle-notch fa-spin"></i> The extract &amp; rank job for this campaign is still running. You can configure it once it completes, or stop it with <b>Cancel Ranking Job</b> in the Summary.</div>
               <div class="notice bad" id="errorNote" hidden>This campaign could not be ranked. Submit a new ranking job from Ads Lab.</div>
             </section>
 
             <section class="card step" id="s2">
-              <div class="step-head"><span class="num">2</span><h2>Creatives</h2><p id="crCount">Pick one creative</p></div>
+              <div class="step-head"><span class="num">2</span><h2>Creatives<span class="req" aria-hidden="true">*</span></h2><p id="crCount">Pick one creative</p></div>
               <div class="cgrid" id="crGrid" role="group" aria-label="Choose creatives"></div>
               <div class="seg" role="group" aria-label="Delivery mode">
                 <button type="button" data-mode="best" aria-pressed="true">Best Creative Only</button>
                 <button type="button" data-mode="ab" aria-pressed="false">A/B Test Selected</button>
               </div>
               <p class="hint" id="modeHint"></p>
+              <p class="ferr" id="eCreatives"></p>
             </section>
 
             <section class="card step" id="s3">
-              <div class="step-head"><span class="num">3</span><h2>Objective &amp; Channels</h2><p>Your first-party channels</p></div>
+              <div class="step-head"><span class="num">3</span><h2>Objective &amp; Channels<span class="req" aria-hidden="true">*</span></h2><p>Your first-party channels</p></div>
               <div class="radios" role="radiogroup" aria-label="Campaign objective" id="objGroup" style="margin-bottom:14px"></div>
               <div class="chgrid" id="chGrid" role="group" aria-label="Choose channels"></div>
               <p class="ferr" id="eChannels"></p>
@@ -442,11 +452,11 @@
             <section class="card step" id="s4">
               <div class="step-head"><span class="num">4</span><h2>Message</h2><p>Placeholders: {first_name}, {brand}, {link}</p></div>
               <div class="fields">
-                <label class="f full">Campaign Name<input class="in" id="fName" maxlength="120" autocomplete="off"><span class="ferr" id="eName"></span></label>
-                <label class="f full">Headline <span class="count" id="cHead">0/90</span><input class="in" id="fHead" maxlength="90" autocomplete="off"><span class="ferr" id="eHead"></span></label>
-                <label class="f full" id="waWrap" hidden>WhatsApp Message <span class="count" id="cWa">0/1000</span><textarea class="in" id="fWa" maxlength="1000"></textarea><span class="ferr" id="eWa"></span></label>
-                <label class="f full" id="smsWrap" hidden>SMS Message <span class="count" id="cSms">0/160</span><textarea class="in" id="fSms" maxlength="160"></textarea><span class="ferr" id="eSms"></span></label>
-                <label class="f">Button Text<input class="in" id="fCta" maxlength="24" value="Shop now" autocomplete="off"></label>
+                <label class="f full">Campaign Name<span class="req" aria-hidden="true">*</span><input class="in" id="fName" maxlength="120" autocomplete="off" required><span class="ferr" id="eName"></span></label>
+                <label class="f full">Headline<span class="req" aria-hidden="true">*</span> <span class="count" id="cHead">0/90</span><input class="in" id="fHead" maxlength="90" autocomplete="off" required><span class="ferr" id="eHead"></span></label>
+                <label class="f full" id="waWrap" hidden>WhatsApp Message<span class="req" aria-hidden="true">*</span> <span class="count" id="cWa">0/1000</span><textarea class="in" id="fWa" maxlength="1000" required></textarea><span class="ferr" id="eWa"></span></label>
+                <label class="f full" id="smsWrap" hidden>SMS Message<span class="req" aria-hidden="true">*</span> <span class="count" id="cSms">0/160</span><textarea class="in" id="fSms" maxlength="160" required></textarea><span class="ferr" id="eSms"></span></label>
+                <label class="f">Button Text <span class="count">optional</span><input class="in" id="fCta" maxlength="24" value="Shop now" autocomplete="off"></label>
                 <label class="f">Offer Code <span class="count">optional</span><input class="in mono" id="fCode" maxlength="15" autocomplete="off" placeholder="e.g. NEW15"><span class="ferr" id="eCode"></span></label>
                 <label class="f full">Landing Page URL <span class="count">optional</span><input class="in" id="fUrl" type="url" inputmode="url" placeholder="https://yourstore.com/collection" autocomplete="off"><span class="ferr" id="eUrl"></span>
                   <span class="url-out" id="urlOut"></span></label>
@@ -469,9 +479,9 @@
                 <ul id="recReasons"></ul>
               </div>
               <div class="fields">
-                <label class="f">Budget (₹)<input class="in" id="campaignBudget" type="number" min="500" step="500"><span class="ferr" id="eBudget"></span></label>
-                <label class="f">Duration (Days)<input class="in" id="campaignDays" type="number" min="1" max="365" step="1" value="14"><span class="ferr" id="eDays"></span></label>
-                <label class="f">Start Date<input class="in" id="campaignStart" type="date"><span class="ferr" id="eStart"></span></label>
+                <label class="f">Budget (₹)<span class="req" aria-hidden="true">*</span><input class="in" id="campaignBudget" type="number" min="500" step="500" required><span class="ferr" id="eBudget"></span></label>
+                <label class="f">Duration (Days)<span class="req" aria-hidden="true">*</span><input class="in" id="campaignDays" type="number" min="1" max="365" step="1" value="14" required><span class="ferr" id="eDays"></span></label>
+                <label class="f">Start Date <span class="count">optional</span><input class="in" id="campaignStart" type="date"><span class="ferr" id="eStart"></span></label>
                 <label class="f">Daily Budget<span class="in mono" id="dailyBudget" style="display:block;background:var(--raised)">—</span></label>
                 <label class="f">Frequency Cap<select class="in" id="fCap"><option value="1d">1 message per day</option><option value="3d" selected>1 message per 3 days</option><option value="7d">1 message per week</option></select></label>
                 <label class="switch" style="align-self:end;padding-bottom:10px"><input type="checkbox" id="fQuiet" checked> Respect quiet hours (9 PM – 9 AM)</label>
@@ -499,6 +509,9 @@
             <button type="button" class="btn primary" id="launchBtn"><i class="fa-solid fa-rocket"></i> Confirm &amp; Start Campaign</button>
             <button type="button" class="btn" id="saveBtn"><i class="fa-regular fa-floppy-disk"></i> Save Draft</button>
             <button type="button" class="btn" id="discardBtn"><i class="fa-regular fa-trash-can"></i> Discard</button>
+          </div>
+          <div class="actions" id="rankingBar" hidden>
+            <button type="button" class="btn danger" id="cancelRankBtn"><i class="fa-solid fa-circle-stop"></i> Cancel Ranking Job</button>
           </div>
           <p class="note">The campaign stays a draft until you confirm. Running is simulated: no messages or ads are sent to customers. Delivery, cost and outcome metrics are generated for tracking.</p>
         </section>
@@ -737,7 +750,7 @@
       attributes: { color, name: commodity }, thumb: garmentImg(kind, c1, c2, o),
     }));
 
-    /* Ads Lab hands over local thumbnails for the campaign it just opened (the API has no image URLs here). */
+    /* Ads Lab hands over local thumbnails for the campaign it just opened; used when the API has no signed image URL. */
     function readThumbs(campaignId) {
       try {
         const h = JSON.parse(localStorage.getItem('suffai_1p_handoff') || 'null');
@@ -745,7 +758,18 @@
         return Object.fromEntries(h.creatives.filter(c => c.thumb).map(c => [String(c.name).toLowerCase(), c.thumb]));
       } catch (_) { return {}; }
     }
-    const thumbOf = (s) => s ? s.thumb || state.thumbs[String(s.original_filename || '').toLowerCase()] || '' : '';
+    const brokenImgs = new Set(); // signed URLs that failed (expired / unreachable): fall back instead of retrying
+    const thumbOf = (s) => {
+      if (!s) return '';
+      const url = s.image_url && !brokenImgs.has(s.image_url) ? s.image_url : '';
+      return s.thumb || url || state.thumbs[String(s.original_filename || '').toLowerCase()] || '';
+    };
+    document.addEventListener('error', (e) => {
+      const img = e.target;
+      if (img.tagName !== 'IMG' || !(state.skus || []).some(s => s.image_url === img.getAttribute('src'))) return;
+      brokenImgs.add(img.getAttribute('src'));
+      renderCreatives(); renderPreview();
+    }, true);
 
     /* ---------- Campaign list ---------- */
     async function loadCampaigns() {
@@ -758,6 +782,11 @@
         if (state.current) {
           const fresh = state.campaigns.find(c => c.campaign_id === state.current.campaign_id);
           if (fresh && fresh.status !== state.current.status) loadCampaign(fresh.campaign_id);
+        } else if (!loadsInFlight && state.campaigns.length && state.campaigns[0].campaign_id !== autoOpened) {
+          // Showing the sample but the brand has campaigns (opened directly, or one was just created / discarded):
+          // open the newest. Tried once per campaign so a failing load doesn't repeat on every refresh.
+          autoOpened = state.campaigns[0].campaign_id;
+          loadCampaign(autoOpened);
         }
         clearTimeout(state.pollTimer);
         if (state.campaigns.some(c => c.status === 'processing')) state.pollTimer = setTimeout(loadCampaigns, 10000);
@@ -974,10 +1003,11 @@
     });
 
     /* ---------- Load + fill ---------- */
-    let loadSeq = 0;
+    let loadSeq = 0, loadsInFlight = 0, autoOpened = null;
     async function loadCampaign(id, sourceContext, opts) {
       if (!id) return;
       const seq = ++loadSeq; // a slower, older response must not overwrite the campaign the user picked last
+      loadsInFlight++;
       try {
         const data = await api('/v1/ads-lab/campaigns/' + encodeURIComponent(id));
         if (seq !== loadSeq) return;
@@ -991,14 +1021,24 @@
         state.current = c;
         state.skus = (Array.isArray(data.skus) ? data.skus : []).slice().sort((a, b) => (a.rank || 999) - (b.rank || 999));
         state.thumbs = readThumbs(c.campaign_id);
+        autoOpened = null; // only a failed auto-open is remembered
+        endBoot();
         fillStudio(c);
         renderHistory();
         publishContext();
         if (opts && opts.focus === 'analysis') requestAnimationFrame(focusAnalysis);
       } catch (e) {
         if (seq !== loadSeq) return;
+        endBoot();
         toast(storageOffline(e) ? 'Campaign storage is unavailable right now.' + (state.current ? '' : ' Showing the sample campaign.') : e.message, 'fa-triangle-exclamation');
+      } finally {
+        loadsInFlight--;
       }
+    }
+    function endBoot() {
+      if (!document.body.classList.contains('booting')) return;
+      document.body.classList.remove('booting');
+      syncPreviewTabs(); // the active channel is read from the layout, which was empty while hidden
     }
     function readStoredSource(id) {
       try { const raw = sessionStorage.getItem('suffai_campaign_source_' + id); return raw ? JSON.parse(raw) : null; } catch (_) { return null; }
@@ -1070,11 +1110,12 @@
       $('campaignStart').value = savedStart && (savedStart >= todayIso() || !EDITABLE.includes(c.status)) ? savedStart : todayIso();
       $('campaignStart').min = EDITABLE.includes(c.status) || c.status === 'sample' ? todayIso() : '';
       $('campaignBudget').value = c.budget_inr != null ? Math.round(Number(c.budget_inr)) : '';
-      showErrs([]);
+      clearFieldErrs();
 
       const canEdit = editable();
       $('configFields').disabled = !canEdit;
       $('actionBar').hidden = !canEdit;
+      $('rankingBar').hidden = c.status !== 'processing';
       renderAnalysis(c);
       renderCreatives(); renderChannels(); renderAll();
       if (canEdit) fetchRecommendation(c.budget_inr == null);
@@ -1220,9 +1261,30 @@
     }
     const PV_ORDER = ['email', 'whatsapp', 'sms', 'push', 'in_app'];
     const modeClass = (ch) => PREVIEW_ONLY[ch] ? 'off soon' : (state.channels.includes(ch) ? '' : 'off');
+    // Update in place: replacing the nodes on every keystroke re-decodes the images and replays the fade-in, so the phone blinks.
+    function patchChildren(from, to) {
+      const olds = Array.from(from.childNodes), news = Array.from(to.childNodes);
+      news.forEach((n, i) => {
+        const o = olds[i];
+        if (!o) from.appendChild(n);
+        else if (o.nodeType !== n.nodeType || o.nodeName !== n.nodeName) from.replaceChild(n, o);
+        else if (o.nodeType !== Node.ELEMENT_NODE) { if (o.nodeValue !== n.nodeValue) o.nodeValue = n.nodeValue; }
+        else {
+          for (const a of Array.from(o.attributes)) if (!n.hasAttribute(a.name)) o.removeAttribute(a.name);
+          for (const a of Array.from(n.attributes)) if (o.getAttribute(a.name) !== a.value) o.setAttribute(a.name, a.value);
+          patchChildren(o, n);
+        }
+      });
+      olds.slice(news.length).forEach(o => o.remove());
+    }
+    function patchHTML(el, html) {
+      const tpl = document.createElement('template');
+      tpl.innerHTML = html;
+      patchChildren(el, tpl.content);
+    }
     function renderPreview() {
       const feed = $('screen'), top = feed.scrollTop;
-      feed.innerHTML = PV_ORDER.map(ch => `<section class="mode ${modeClass(ch)}" data-mode="${ch}" aria-label="${PV_NAMES[ch]} preview">${previewHTML(ch)}</section>`).join('');
+      patchHTML(feed, PV_ORDER.map(ch => `<section class="mode ${modeClass(ch)}" data-mode="${ch}" aria-label="${PV_NAMES[ch]} preview">${previewHTML(ch)}</section>`).join(''));
       feed.scrollTop = top; // keep the reader's place while they type
       syncPreviewTabs();
     }
@@ -1230,7 +1292,7 @@
       const feed = $('screen'), modes = Array.from(feed.children);
       const cur = modes.reduce((acc, m) => (m.offsetTop <= feed.scrollTop + 60 ? m : acc), modes[0]);
       if (cur) state.preview = cur.dataset.mode;
-      $('pvTabs').innerHTML = PV_ORDER.map(k => `<button type="button" role="tab" data-pv="${k}" class="${state.channels.includes(k) ? 'inc' : ''}" aria-selected="${k === state.preview}">${PV_NAMES[k]}</button>`).join('');
+      patchHTML($('pvTabs'), PV_ORDER.map(k => `<button type="button" role="tab" data-pv="${k}" class="${state.channels.includes(k) ? 'inc' : ''}" aria-selected="${k === state.preview}">${PV_NAMES[k]}</button>`).join(''));
       feed.parentElement.style.setProperty('--hi', state.preview === 'push' ? '#fff' : '#111');
       const n = PV_ORDER.indexOf(state.preview) + 1, len = $('fSms').value.length;
       $('pvNote').textContent = `${PV_NAMES[state.preview]} · ${n} of ${PV_ORDER.length}`
@@ -1475,6 +1537,7 @@
       renderSummary();
       renderPreview();
       syncStartBar();
+      if (!$('errs').hidden) showErrs(validate(configBody()));
     }
     function syncStartBar() {
       const c = state.current;
@@ -1522,9 +1585,9 @@
         $(eid).textContent = msg || ''; if (msg) errs.push(msg);
       };
       mark('fName', 'eName', body.campaign_name ? '' : 'Campaign name is required.');
-      mark('fHead', 'eHead', body.creative.headline ? '' : 'Add a headline.');
-      mark('fWa', 'eWa', body.channels.includes('whatsapp') && !body.message_template.whatsapp ? 'Write the WhatsApp message.' : '');
-      mark('fSms', 'eSms', body.channels.includes('sms') && !body.message_template.sms ? 'Write the SMS message.' : '');
+      mark('fHead', 'eHead', body.creative.headline ? '' : 'Headline is required.');
+      mark('fWa', 'eWa', body.channels.includes('whatsapp') && !body.message_template.whatsapp ? 'WhatsApp message is required.' : '');
+      mark('fSms', 'eSms', body.channels.includes('sms') && !body.message_template.sms ? 'SMS message is required.' : '');
       const code = $('fCode').value.trim();
       mark('fCode', 'eCode', !code || /^[A-Za-z0-9_-]{3,15}$/.test(code) ? '' : 'Use 3–15 letters, numbers, - or _ (no spaces).');
       const url = $('fUrl').value.trim();
@@ -1532,31 +1595,46 @@
       if (url) { try { if (!/^https?:$/.test(new URL(url).protocol)) urlErr = 'Link must start with http:// or https://.'; } catch (_) { urlErr = 'Enter a full link, e.g. https://yourstore.com/sale'; } }
       mark('fUrl', 'eUrl', urlErr);
       const b = body.budget_inr;
-      mark('campaignBudget', 'eBudget', !(Number.isFinite(b) && b > 0) ? 'Enter a budget (or use the recommended budget).'
+      mark('campaignBudget', 'eBudget', !$('campaignBudget').value.trim() ? 'Budget is required. Enter an amount or use the recommended budget.'
+        : !(Number.isFinite(b) && b > 0) ? 'Enter a budget above ₹0.'
         : b > 100000000 ? 'Budget can be at most ₹10,00,00,000.' : '');
       const rawDays = $('campaignDays').value.trim(), d = Number(rawDays);
-      mark('campaignDays', 'eDays', rawDays && Number.isInteger(d) && d >= 1 && d <= 365 ? '' : 'Enter a whole number of days from 1 to 365.');
+      mark('campaignDays', 'eDays', !rawDays ? 'Duration is required.'
+        : Number.isInteger(d) && d >= 1 && d <= 365 ? '' : 'Enter a whole number of days from 1 to 365.');
       const start = $('campaignStart').value;
       mark('campaignStart', 'eStart', !start ? '' : !/^\d{4}-\d{2}-\d{2}$/.test(start) ? 'Pick a valid start date.'
         : start < todayIso() ? 'Start date can’t be in the past.' : '');
-      if (!body.channels.length) errs.push('Select at least one channel.');
-      if (!body.selected_sku_ids.length) errs.push('Select at least one creative.');
-      if (state.mode === 'ab' && body.selected_sku_ids.length < 2) errs.push('A/B testing needs two or more creatives.');
+      const crErr = !body.selected_sku_ids.length ? 'Select at least one creative.'
+        : state.mode === 'ab' && body.selected_sku_ids.length < 2 ? 'A/B testing needs two or more creatives.' : '';
+      $('eCreatives').textContent = crErr;
+      if (crErr) errs.push(crErr);
+      const chErr = body.channels.length ? '' : 'Select at least one channel.';
+      $('eChannels').textContent = chErr;
+      if (chErr) errs.push(chErr);
       return errs;
     }
     function showErrs(errs) {
       $('errs').hidden = !errs.length;
       $('errs').innerHTML = errs.map(e => `<li>${esc(e)}</li>`).join('');
     }
+    function clearFieldErrs() {
+      showErrs([]);
+      document.querySelectorAll('#form .in.err').forEach(el => { el.classList.remove('err'); el.setAttribute('aria-invalid', 'false'); });
+      document.querySelectorAll('#form .ferr').forEach(el => { el.textContent = ''; });
+    }
     function checked() {
       const body = configBody(), errs = validate(body);
       showErrs(errs);
-      if (errs.length) { toast('Fix the highlighted fields first.', 'fa-triangle-exclamation'); document.querySelector('.in.err')?.focus(); return null; }
+      if (errs.length) {
+        toast('Fix the highlighted fields first.', 'fa-triangle-exclamation');
+        const first = document.querySelector('#form .in.err, #form p.ferr:not(:empty)');
+        if (first?.matches('.in')) first.focus(); else first?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        return null;
+      }
       return body;
     }
     $('form').addEventListener('input', (e) => {
       renderAll();
-      if (!$('errs').hidden) showErrs(validate(configBody()));
       if (e.target.id === 'campaignDays' || e.target.name === 'objective') scheduleRecommendation();
       if (e.target.id === 'campaignBudget') scheduleEstimate();
     });
@@ -1610,12 +1688,38 @@
       } catch (e) { toast(e.message, 'fa-triangle-exclamation'); }
       finally { state.busy = false; }
     }
+    async function onCancelRanking() {
+      const c = state.current;
+      if (state.busy || !c || c.status !== 'processing') return;
+      if (!confirm('Cancel the ranking job for this campaign? It stops after the image in progress, nothing is saved and the campaign is discarded.')) return;
+      state.busy = true;
+      const btn = $('cancelRankBtn');
+      btn.disabled = true;
+      try {
+        const list = await api('/v1/ads-lab/campaign-jobs?active=true&limit=100');
+        const job = (list.jobs || []).find(j => j.campaign_id === c.campaign_id);
+        if (!job) {
+          toast('The ranking job has already finished.', 'fa-circle-info');
+          await loadCampaign(c.campaign_id);
+          return;
+        }
+        await api('/v1/ads-lab/campaign-jobs/' + encodeURIComponent(job.job_id) + '/cancel', { method: 'POST' });
+        showSample();
+        toast('Ranking job cancelled', 'fa-circle-stop');
+        loadCampaigns();
+        publishContext();
+      } catch (e) {
+        toast(e.status === 409 ? 'The ranking job has already finished.' : e.message, 'fa-triangle-exclamation');
+        if (e.status === 409) loadCampaign(c.campaign_id);
+      } finally { state.busy = false; btn.disabled = false; }
+    }
     /* ---------- Shell messaging ---------- */
     function publishContext() {
       if (!window.parent || window.parent === window) return;
       try {
         window.parent.postMessage({
           type: 'cc-context', source: 'campaigns',
+          campaign_id: state.current ? (state.current.campaign_id || null) : null,
           campaign_name: state.current ? (state.current.campaign_name || null) : null,
           status: state.current ? state.current.status : null,
         }, '*');
@@ -1642,6 +1746,7 @@
     $('launchBtn').addEventListener('click', onLaunch);
     $('launchBtn2').addEventListener('click', onLaunch);
     $('discardBtn').addEventListener('click', onDiscard);
+    $('cancelRankBtn').addEventListener('click', onCancelRanking);
     $('anRefreshBtn').addEventListener('click', () => { if (state.current) loadCampaign(state.current.campaign_id); });
     $('refreshBtn').addEventListener('click', loadCampaigns);
     $('histPager').addEventListener('click', (e) => {
@@ -1671,10 +1776,13 @@
     $('tzNote').textContent = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
 
     showSample();
-    loadCampaigns();
     const initialParams = new URLSearchParams(location.search);
     const initialId = initialParams.get('campaign_id');
     if (initialId) loadCampaign(initialId, null, { focus: initialParams.get('focus') });
+    // loadCampaigns opens the newest campaign unless a load from the URL / AURA / Ads Lab is already running;
+    // whichever load runs ends the boot state, otherwise (no campaigns, storage offline) the sample shows now.
+    loadCampaigns().then(() => { if (!loadsInFlight) endBoot(); });
+    setTimeout(endBoot, 10000); // requests have no timeout: never keep the studio hidden
   </script>
 </body>
 </html>

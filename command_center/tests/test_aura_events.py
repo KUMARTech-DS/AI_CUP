@@ -62,6 +62,13 @@ def test_ranking_failed_returns_masked_problem(fake_db, monkeypatch):
     assert resp["input_form"] is None
 
 
+def test_cancelled_job_is_reported_as_cancelled(fake_db, monkeypatch):
+    monkeypatch.setattr(campaign_jobs, "get_job", lambda sess, jid: _job("cancelled", processed_images=1))
+    resp = _event(_sess(token="tok-ev-cancel"), "ranking_failed", JOB_ID)
+    assert resp["ok"] is True and resp["answer"].startswith("The ranking job was cancelled")
+    assert "did not complete" not in resp["answer"] and resp["input_form"] is None
+
+
 def test_foreign_or_bad_job_id_is_masked(fake_db, monkeypatch):
     def foreign(sess, jid):
         raise svc.ServiceError("not_found", "job not found", 404)

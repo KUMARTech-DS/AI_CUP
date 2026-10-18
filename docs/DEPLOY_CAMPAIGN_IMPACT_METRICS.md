@@ -353,6 +353,7 @@ WhatsApp and SMS are **simulated**: nothing is sent. Their reach, delivery, read
 - When `CLOUD_TASKS_QUEUE` is set, each run is a Cloud Tasks HTTP task to `POST /internal/campaign-jobs/{job_id}/run`, signed with an OIDC token for `TASKS_SERVICE_ACCOUNT`. The route rejects any other caller with 403.
 - When `CLOUD_TASKS_QUEUE` is **not** set, the job runs in a background thread on the instance that received it. This is fine locally and for small demos only (see Instances below).
 - If a job stops making progress for `CAMPAIGN_JOB_STALE_SEC` (for example after an instance restart), the next status poll re-dispatches it.
+- `POST /v1/ads-lab/campaign-jobs/{job_id}/cancel` (the **Cancel Job** button in Ads Lab, **Cancel Ranking Job** on the Campaigns page) stops a queued or running job. In one transaction it marks the job `failed` with `error_code = 'cancelled'` (the API reports `status: "cancelled"`), marks pending SKUs failed and sets the campaign to `ignored`, so its picks never reach the Style Assistant feed. The worker checks before each image and stops; the image in progress finishes first. A job that already finished returns 409. No migration is needed.
 
 ### 0. Redeploy `suffai-similarity` (new `compare-pins` endpoint)
 
@@ -481,6 +482,7 @@ API spot-checks (after login, from the browser Network tab):
 ```bash
 # POST /v1/ads-lab/campaign-jobs            → {"job": {"status":"queued", "total_customers", "total_images", "comparisons", "est_seconds", ...}}
 # GET  /v1/ads-lab/campaign-jobs/{job_id}   → status running → succeeded, progress_pct, eta_seconds
+# POST /v1/ads-lab/campaign-jobs/{job_id}/cancel → {"job": {"status":"cancelled", ...}}; 409 if it already finished
 # POST /v1/ads-lab/campaigns/{id}/budget-recommendation  {"objective":"conversion","duration_days":14,"channels":["in_app","whatsapp"]}
 # POST /v1/ads-lab/campaigns/{id}/export    → {"items": [...]} and status exported
 ```

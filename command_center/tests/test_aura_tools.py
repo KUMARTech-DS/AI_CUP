@@ -213,6 +213,19 @@ def test_configure_maps_ranks_to_skus_server_side(fake_db):
     assert "launch_campaign" in out.result["next"]
 
 
+def test_configure_without_headline_uses_a_default(fake_db):
+    _, calls = fake_db
+    ctx = _ctx()
+    out = aura_agent.execute_tool(
+        "configure_campaign",
+        {"campaign": "Zara Summer", "campaign_name": "Zara Summer", "objective": "conversion",
+         "budget_inr": 50000, "duration_days": 14, "sku_ranks": [1]},
+        ctx,
+    )
+    assert out.result["ok"] is True, out.result
+    assert calls["config"][-1][1]["creative"]["headline"] == "New Tee picked for you"
+
+
 def test_open_campaign_setup_opens_draft_without_launch(fake_db):
     db, calls = fake_db
     ctx = _ctx()

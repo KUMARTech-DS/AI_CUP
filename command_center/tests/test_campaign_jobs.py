@@ -225,7 +225,8 @@ def test_internal_worker_route_requires_oidc(monkeypatch):
 @pytest.fixture
 def worker(monkeypatch):
     skus = {f"sku-{i}": "pending" for i in range(7)}
-    state = {"lease": True, "finished": None, "released": 0, "enqueued": 0, "status": [], "processed": [], "personalised": []}
+    state = {"lease": True, "finished": None, "released": 0, "enqueued": 0, "status": [], "processed": [],
+             "personalised": [], "cancel_after": None}
     fail = set()
     monkeypatch.setenv("CAMPAIGN_JOB_CHUNK", "3")
     monkeypatch.setattr(jobs, "_lease", lambda jid: {"job_id": jid, "campaign_id": CID} if state["lease"] else None)
@@ -253,7 +254,21 @@ def worker(monkeypatch):
     monkeypatch.setattr(bc, "sku_progress", progress)
     monkeypatch.setattr(bc, "set_campaign_status", lambda cid, st, msg=None: state["status"].append(st))
     monkeypatch.setattr(jobs, "_release", lambda jid, p=None: state.__setitem__("released", state["released"] + 1))
-    monkeypatch.setattr(jobs, "_finish", lambda jid, st, **kw: state.__setitem__("finished", (st, kw.get("error_code"))))
+
+    def cancelled():
+        return state["cancel_after"] is not None and len(state["processed"]) >= state["cancel_after"]
+
+    monkeypatch.setattr(jobs, "_is_active", lambda jid: not cancelled())
+
+    def finish(jid, st, **kw):
+        if cancelled():
+            return False
+        state["finished"] = (st, kw.get("error_code"))
+        if kw.get("campaign_status"):
+            state["status"].append(kw["campaign_status"])
+        return True
+
+    monkeypatch.setattr(jobs, "_finish", finish)
     monkeypatch.setattr(jobs, "_enqueue_override", lambda jid: state.__setitem__("enqueued", state["enqueued"] + 1))
     monkeypatch.setattr(jobs, "_mark_personalising", lambda jid, p: None)
 
@@ -331,6 +346,107 @@ def test_local_runner_drains_without_enqueue(worker):
     jobs._run_locally(JOB)
     assert all(v == "done" for v in skus.values())
     assert state["enqueued"] == 0
+
+
+def test_cancel_stops_worker_before_next_image(worker):
+    skus, state, _ = worker
+    state["cancel_after"] = 2
+    r = jobs.run_chunk(JOB)
+    assert r == {"ok": True, "status": "cancelled"}
+    assert len(state["processed"]) == 2
+    assert state["enqueued"] == 0 and state["finished"] is None and state["status"] == []
+
+
+def test_local_runner_exits_on_cancel(worker):
+    skus, state, _ = worker
+    state["cancel_after"] = 4
+    jobs._run_locally(JOB)
+    assert len(state["processed"]) == 4
+    assert state["finished"] is None and state["status"] == [] and state["personalised"] == []
+
+
+def test_cancel_during_personalise_does_not_mark_ranked(worker, monkeypatch):
+    skus, state, _ = worker
+
+    def personalise(cid):
+        state["cancel_after"] = 0  # brand cancels while picks are being saved
+        return {}
+
+    monkeypatch.setattr(style_asst, "personalise_campaign", personalise)
+    for _ in range(3):
+        r = jobs.run_chunk(JOB)
+    assert r["status"] == "cancelled"
+    assert state["finished"] is None and state["status"] == []
+
+
+# ---------------------------------------------------------------------------
+# Cancel API
+# ---------------------------------------------------------------------------
+
+
+def _job_row(**over):
+    row = {
+        "job_id": JOB, "campaign_id": CID, "brand_name": "Zara", "status": "running",
+        "total_images": 4, "processed_images": 1, "failed_images": 0, "total_customers": 100,
+        "total_garments": 0, "comparisons": 0, "est_seconds": 48, "error_code": None,
+        "created_at": None, "started_at": None, "finished_at": None,
+    }
+    row.update(over)
+    return row
+
+
+def test_job_view_reports_cancelled_without_error():
+    v = jobs.job_view(_job_row(status="failed", error_code=jobs.CANCELLED, processed_images=2))
+    assert v["status"] == "cancelled" and v["stage"] == "cancelled"
+    assert v["error"] is None and v["eta_seconds"] == 0 and v["progress_pct"] == 50.0
+
+
+@pytest.fixture
+def cancel_env(monkeypatch):
+    monkeypatch.setenv("DATABASE_URL", "postgresql://fake")
+    rows = {JOB: _job_row()}
+    calls = []
+    monkeypatch.setattr(jobs, "fetch_job", lambda jid: dict(rows[jid]) if jid in rows else None)
+
+    def cancel(jid, cid):
+        calls.append((jid, cid))
+        if rows[jid]["status"] not in ("queued", "running"):
+            return None
+        rows[jid].update(status="failed", error_code=jobs.CANCELLED)
+        return dict(rows[jid])
+
+    monkeypatch.setattr(jobs, "_cancel", cancel)
+    return rows, calls
+
+
+def test_cancel_job_stops_active_job(cancel_env):
+    rows, calls = cancel_env
+    out = jobs.cancel_job({"token": "t", "role": "brand", "brand_name": "Zara"}, JOB)
+    assert out["status"] == "cancelled" and out["job_id"] == JOB
+    assert calls == [(JOB, CID)]
+
+
+def test_cancel_job_rejects_finished_and_foreign(cancel_env):
+    rows, calls = cancel_env
+    rows[JOB]["status"] = "succeeded"
+    with pytest.raises(svc.ServiceError) as exc:
+        jobs.cancel_job({"token": "t", "role": "admin"}, JOB)
+    assert exc.value.status == 409 and calls == []
+    rows[JOB]["status"] = "running"
+    with pytest.raises(svc.ServiceError) as exc:
+        jobs.cancel_job({"token": "t", "role": "brand", "brand_name": "Nike"}, JOB)
+    assert exc.value.status == 404 and calls == []
+    with pytest.raises(svc.ServiceError) as exc:
+        jobs.cancel_job({"token": "t", "role": "customer", "customer_id": "c1"}, JOB)
+    assert exc.value.status in (401, 403) and calls == []
+
+
+def test_cancel_job_race_with_completion_is_409(cancel_env, monkeypatch):
+    rows, calls = cancel_env
+    monkeypatch.setattr(jobs, "_cancel", lambda jid, cid: None)
+    with pytest.raises(svc.ServiceError) as exc:
+        jobs.cancel_job({"token": "t", "role": "brand", "brand_name": "Zara"}, JOB)
+    assert exc.value.status == 409
 
 
 # ---------------------------------------------------------------------------

@@ -27,6 +27,8 @@ from campaign_service import ImageInput, ServiceError
 log = logging.getLogger("command_center.campaign_jobs")
 
 FINAL_STATUSES = ("succeeded", "failed")
+# Stored as status 'failed' + this error_code (no schema change); reported to clients as status 'cancelled'.
+CANCELLED = "cancelled"
 
 
 def _env_float(name: str, default: float) -> float:
@@ -202,7 +204,12 @@ def _release(job_id: str, progress: Optional[dict[str, Any]] = None) -> None:
 
 
 def _finish(job_id: str, status: str, *, error_code: Optional[str] = None,
-            progress: Optional[dict[str, Any]] = None) -> None:
+            progress: Optional[dict[str, Any]] = None,
+            campaign_status: Optional[str] = None, campaign_error: Optional[str] = None) -> bool:
+    """Close an active job and, in the same transaction, set its campaign status.
+
+    False (and nothing written) when the job already finished or was cancelled.
+    """
     params: list[Any] = [status, error_code]
     extra = ""
     if progress is not None:
@@ -216,10 +223,71 @@ def _finish(job_id: str, status: str, *, error_code: Optional[str] = None,
                 UPDATE campaign_jobs
                 SET status = %s, error_code = %s, lease_until = NULL,
                     finished_at = now(), updated_at = now(){extra}
-                WHERE job_id = %s
+                WHERE job_id = %s AND status IN ('queued', 'running')
+                RETURNING campaign_id::text
                 """,
                 tuple(params),
             )
+            r = cur.fetchone()
+            if not r:
+                return False
+            if campaign_status:
+                cur.execute(
+                    "UPDATE brand_campaigns SET status = %s, error_message = %s, updated_at = now() WHERE campaign_id = %s",
+                    (campaign_status, campaign_error, r[0]),
+                )
+            return True
+
+
+def _is_active(job_id: str) -> bool:
+    with brand_camp.connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT status FROM campaign_jobs WHERE job_id = %s", (job_id,))
+            r = cur.fetchone()
+            return bool(r) and r[0] in ("queued", "running")
+
+
+def _cancel(job_id: str, campaign_id: str) -> Optional[dict[str, Any]]:
+    """Atomically stop an active job, drop its pending SKUs and discard its campaign; None if it already finished."""
+    with brand_camp.connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"""
+                UPDATE campaign_jobs
+                SET status = 'failed', error_code = %s, lease_until = NULL,
+                    finished_at = now(), updated_at = now(),
+                    processed_images = s.done + s.failed, failed_images = s.failed
+                FROM (
+                  SELECT COUNT(*) FILTER (WHERE process_status = 'done') AS done,
+                         COUNT(*) FILTER (WHERE process_status = 'failed') AS failed
+                  FROM brand_skus WHERE campaign_id = %s
+                ) s
+                WHERE job_id = %s AND status IN ('queued', 'running')
+                RETURNING {_JOB_COLS}
+                """,
+                (CANCELLED, campaign_id, job_id),
+            )
+            r = cur.fetchone()
+            if not r:
+                return None
+            cur.execute(
+                """
+                UPDATE brand_skus
+                SET process_status = 'failed', compare_error = 'cancelled', processed_at = now()
+                WHERE campaign_id = %s AND process_status = 'pending'
+                """,
+                (campaign_id,),
+            )
+            cur.execute(
+                """
+                UPDATE brand_campaigns
+                SET status = 'ignored', error_message = 'Ranking cancelled',
+                    ignored_at = COALESCE(ignored_at, now()), updated_at = now()
+                WHERE campaign_id = %s
+                """,
+                (campaign_id,),
+            )
+            return _job_row(r)
 
 
 def _mark_personalising(job_id: str, progress: dict[str, Any]) -> None:
@@ -336,8 +404,10 @@ def job_view(job: dict[str, Any], progress: Optional[dict[str, Any]] = None) -> 
     processed = job["processed_images"]
     pending = max(0, total - processed)
     per_image = progress.get("avg_seconds") if progress else None
+    cancelled = job["status"] == "failed" and job.get("error_code") == CANCELLED
+    status = CANCELLED if cancelled else job["status"]
     if job["status"] in FINAL_STATUSES:
-        eta, stage = 0, job["status"]
+        eta, stage = 0, status
     elif total and pending == 0 and job["status"] == "running":
         eta, stage = _env_int("PERSONALISE_ETA_SEC", 30), "personalising"
     else:
@@ -347,7 +417,7 @@ def job_view(job: dict[str, Any], progress: Optional[dict[str, Any]] = None) -> 
         "job_id": job["job_id"],
         "campaign_id": job["campaign_id"],
         "brand_name": job["brand_name"],
-        "status": job["status"],
+        "status": status,
         "stage": stage,
         "total_images": total,
         "processed_images": processed,
@@ -358,7 +428,7 @@ def job_view(job: dict[str, Any], progress: Optional[dict[str, Any]] = None) -> 
         "est_seconds": job["est_seconds"],
         "eta_seconds": eta,
         "progress_pct": round(processed / total * 100, 1) if total else 0.0,
-        "error": svc_public_error(job.get("error_code")),
+        "error": None if cancelled else svc_public_error(job.get("error_code")),
         "created_at": job["created_at"],
         "started_at": job["started_at"],
         "finished_at": job["finished_at"],
@@ -496,6 +566,22 @@ def _maybe_recover(job: dict[str, Any]) -> None:
         log.warning("stalled job recovery failed job=%s", job["job_id"], exc_info=True)
 
 
+def cancel_job(sess: Optional[dict[str, Any]], job_id: str) -> dict[str, Any]:
+    """Stop a queued / running job; the worker halts before its next image and the campaign is discarded."""
+    job = _load_job_for(sess, job_id)
+    if job["status"] in FINAL_STATUSES:
+        raise ServiceError("invalid_input", "This ranking job has already finished", 409)
+    try:
+        stopped = _cancel(job["job_id"], job["campaign_id"])
+    except Exception as exc:
+        log.exception("cancel failed job=%s", job["job_id"])
+        raise ServiceError("unavailable", "The ranking job could not be cancelled", 503) from exc
+    if not stopped:
+        raise ServiceError("invalid_input", "This ranking job has already finished", 409)
+    log.info("campaign job cancelled job=%s campaign=%s", stopped["job_id"], stopped["campaign_id"])
+    return job_view(stopped)
+
+
 def get_job(sess: Optional[dict[str, Any]], job_id: str) -> dict[str, Any]:
     job = _load_job_for(sess, job_id)
     _maybe_recover(job)
@@ -551,10 +637,13 @@ def run_chunk(job_id: str, *, enqueue_next: bool = True) -> dict[str, Any]:
                 )
             except ServiceError:
                 log.exception("pipeline unavailable job=%s", job_id)
-                _finish(job_id, "failed", error_code="unavailable")
-                brand_camp.set_campaign_status(cid, "error", "Ranking service unavailable")
+                _finish(job_id, "failed", error_code="unavailable",
+                        campaign_status="error", campaign_error="Ranking service unavailable")
                 return {"ok": True, "status": "failed"}
             for sku in pending:
+                if not _is_active(job_id):
+                    log.info("campaign job stopped (cancelled) job=%s", job_id)
+                    return {"ok": True, "status": CANCELLED}
                 try:
                     svc.process_sku(pctx, sku_uuid=sku["sku_uuid"], object_key=sku["gcs_object_key"])
                 except Exception:
@@ -570,13 +659,15 @@ def run_chunk(job_id: str, *, enqueue_next: bool = True) -> dict[str, Any]:
             if enqueue_next:
                 enqueue(job_id)
             return {"ok": True, "continue": True, "progress": progress}
+        if not _is_active(job_id):
+            return {"ok": True, "status": CANCELLED, "progress": progress}
         if progress["done"] == 0:
-            _finish(job_id, "failed", error_code="all_failed", progress=progress)
-            brand_camp.set_campaign_status(cid, "error", "No images could be processed")
+            _finish(job_id, "failed", error_code="all_failed", progress=progress,
+                    campaign_status="error", campaign_error="No images could be processed")
             return {"ok": True, "status": "failed", "progress": progress}
         _personalise(job_id, cid, progress)
-        brand_camp.set_campaign_status(cid, "ranked")
-        _finish(job_id, "succeeded", progress=progress)
+        if not _finish(job_id, "succeeded", progress=progress, campaign_status="ranked"):
+            return {"ok": True, "status": CANCELLED, "progress": progress}
         return {"ok": True, "status": "succeeded", "progress": progress}
     except Exception:
         try:

@@ -512,6 +512,8 @@ def update_campaign_config(
     name = (campaign_name or "").strip()
     if not name:
         raise ValueError("campaign_name is required")
+    if not str((creative or {}).get("headline") or "").strip():
+        raise ValueError("headline is required")
     if objective not in OBJECTIVES:
         raise ValueError(f"objective must be one of {', '.join(OBJECTIVES)}")
     budget = float(budget_inr or 0)
