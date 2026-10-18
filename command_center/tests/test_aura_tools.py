@@ -413,7 +413,7 @@ def test_rank_submits_background_job(fake_db, monkeypatch):
     out = aura_agent.execute_tool("rank_uploaded_skus", {"pin_codes": ["560008"]}, ctx)
     assert out.result["ok"] is True and out.result["job_triggered"] is True
     assert out.result["total_customers"] == 1200 and out.result["eta_minutes"] == 2.0
-    assert {"type": "track_job", "job_id": JOB_ID} in out.ui_commands
+    assert {"type": "track_job", "job_id": JOB_ID, "quiet": True} in out.ui_commands
     assert seen["images"] == 1 and seen["pin_codes"] == ["560008"]
     assert ctx.state.active_job_id == JOB_ID and ctx.state.active_campaign_id == OWN
     assert aura_agent._staging.count(sess["token"]) == 0
@@ -645,4 +645,4 @@ def test_audience_rank_submit_triggers_job(fake_db, monkeypatch):
     resp = _submit(sess, form["form_id"], {"pin_codes": [pin], "age_groups": "", "genders": "", "rfm_segments": ""})
     assert resp["ok"] is True and "Ranking started" in resp["answer"]
     assert seen["pin_codes"] == [pin]
-    assert {"type": "track_job", "job_id": JOB_ID} in resp["ui_commands"]
+    assert {"type": "track_job", "job_id": JOB_ID, "quiet": True} in resp["ui_commands"]

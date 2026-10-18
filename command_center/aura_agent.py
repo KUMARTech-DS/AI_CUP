@@ -82,6 +82,8 @@ CAMPAIGN JOURNEY (take action with tools wherever it helps; do not just explain)
 3. SKUs: the brand attaches product images in this chat (paperclip). Use list_uploaded_images,
    then rank_uploaded_skus. If nothing is attached, ask the brand to attach images. If the
    ranking audience is unclear, call request_inputs kind=audience purpose=rank_skus.
+   After images are attached, the audience form is shown automatically; do not start ranking
+   without it.
    Ranking runs as a background job: report the job size (customers, images, comparisons) and the
    estimated completion time, then check progress with get_ranking_job. Do not configure until
    the job has completed.
@@ -130,6 +132,9 @@ class AgentChatRequest(BaseModel):
     filter_context: Optional[dict[str, Any]] = None
     confirm_token: Optional[str] = Field(default=None, max_length=200)
     form_response: Optional["FormResponse"] = None
+    # Sent by the shell, never typed by the user: handled without the model.
+    event: Optional[Literal["uploads_ready", "ranking_done", "ranking_failed"]] = None
+    job_id: Optional[str] = Field(default=None, max_length=64)
 
 
 class FormResponse(BaseModel):
@@ -882,10 +887,10 @@ def _t_rank_skus(ctx: ToolContext, args: RankArgs) -> ToolOutput:
             "ok": True,
             "job_triggered": True,
             **_job_view(job),
-            "next": "Tell the brand the job is running with its size and estimated time; a popup "
-                    "appears in Ads Lab when ranking completes. Check with get_ranking_job.",
+            "next": "Tell the brand the job is running with its size and estimated time; the ranking "
+                    "and run options are posted in this chat when it completes. Check with get_ranking_job.",
         },
-        [{"type": "track_job", "job_id": job["job_id"]}],
+        [{"type": "track_job", "job_id": job["job_id"], "quiet": True}],
     )
 
 
@@ -1874,6 +1879,57 @@ def _ok(request_id: str, answer: str, cmds: list[dict[str, Any]], pending: Optio
     }
 
 
+def _ranking_summary(res: dict[str, Any]) -> str:
+    total = int(res.get("total_images") or 0)
+    ok = max(0, int(res.get("processed_images") or 0) - int(res.get("failed_images") or 0))
+    top = [s for s in (res.get("skus") or []) if s.get("usable")][:3]
+    picks = ", ".join(
+        f"#{s.get('rank')} {s.get('garment') or s.get('file') or 'SKU'}"
+        + (f" ({s['fit_score']})" if s.get("fit_score") is not None else "")
+        for s in top
+    )
+    return (f"Ranking finished: {ok} of {total} SKU(s) ranked for {int(res.get('total_customers') or 0):,} customers."
+            + (f" Top picks: {picks}." if picks else "")
+            + " Choose how to run it below; nothing is running yet.")
+
+
+def _handle_event(ctx: ToolContext, body: AgentChatRequest) -> Union[dict[str, Any], JSONResponse]:
+    """Shell-driven next steps (images attached, ranking job finished) without a model call."""
+    rid, state = ctx.request_id, ctx.state
+    form: Optional[dict[str, Any]] = None
+    cmds: list[dict[str, Any]] = []
+    if body.event == "uploads_ready":
+        n = _staging.count(ctx.token)
+        if not n:
+            answer = "Attach your SKU images with the paperclip."
+        else:
+            form = _store_form(ctx, _audience_form(ctx, "rank_skus"))
+            answer = f"{n} image(s) attached. Confirm the audience and I'll rank them."
+    else:
+        try:
+            job_id = str(uuid.UUID(str(body.job_id or "").strip()))
+        except ValueError:
+            return _err("invalid_input", rid)
+        state.active_job_id = job_id
+        out = execute_tool("get_ranking_job", {}, ctx)
+        res = out.result
+        if res.get("ok") is False:
+            log.info("request_id=%s aura event %s failed code=%s", rid, body.event, res.get("error_code"))
+            return _err(str(res.get("error_code") or "action_failed"), rid)
+        status = res.get("status")
+        if status == "succeeded":
+            answer, form, cmds = _ranking_summary(res), out.form, out.ui_commands
+        elif status == "failed":
+            answer = (f"The ranking job did not complete: {res.get('problem') or 'please try again.'}"
+                      " Try clearer product photos, then attach them again.")
+        else:
+            answer = f"Ranking is still running ({res.get('progress_pct') or 0}% done). I'll post the results when it finishes."
+    answer = _finalize_answer(answer, ctx)
+    _remember(state, f"[event {body.event}]", answer)
+    log.info("request_id=%s aura event=%s form=%s", rid, body.event, bool(form))
+    return _ok(rid, answer, cmds, input_form=form, attached_images=_staging.count(ctx.token))
+
+
 def run_agent(
     body: AgentChatRequest,
     *,
@@ -1927,6 +1983,9 @@ def run_agent(
         answer = _finalize_answer(msg, ctx)
         _remember(state, "[confirmed]", answer)
         return _ok(request_id, answer, cmds, attached_images=_staging.count(token))
+
+    if body.event:
+        return _handle_event(ctx, body)
 
     relay: Optional[str] = None
     if body.form_response is not None:

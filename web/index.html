@@ -692,6 +692,22 @@
       setTimeout(fire, frame.contentDocument && frame.contentDocument.readyState === 'complete' ? 50 : 400);
     }
 
+    const AURA_JOBS_KEY = 'suffai_aura_jobs';
+    function auraJobs() {
+      try { const v = JSON.parse(sessionStorage.getItem(AURA_JOBS_KEY) || '[]'); return Array.isArray(v) ? v : []; } catch (_) { return []; }
+    }
+    function rememberAuraJob(jobId, on) {
+      const ids = auraJobs().filter(id => id !== jobId);
+      if (on) ids.push(jobId);
+      try { sessionStorage.setItem(AURA_JOBS_KEY, JSON.stringify(ids.slice(-10))); } catch (_) { /* ignore */ }
+    }
+    // Only jobs AURA started get a follow-up in chat; Ads Lab Run-button jobs keep the popup.
+    function auraJobFinished(jobId, event) {
+      if (!jobId || auraJobs().indexOf(jobId) < 0) return;
+      rememberAuraJob(jobId, false);
+      sendAuraRequest({ event, job_id: jobId }, null);
+    }
+
     function applyUiCommands(commands) {
       const list = Array.isArray(commands) ? commands : [];
       list.forEach((cmd) => {
@@ -724,6 +740,7 @@
         }
         if (t === 'track_job' || t === 'export_campaign') {
           if (allowed.indexOf('ads') < 0) return;
+          if (t === 'track_job' && cmd.job_id) rememberAuraJob(String(cmd.job_id), true);
           if (window.__CC_CONTEXT__.active_tab !== 'ads') activateTab('ads');
           sendAgentCommand('ads', cmd);
           return;
@@ -1109,6 +1126,7 @@
       const attach = document.getElementById('chatAttach');
       attach.disabled = true;
       appendBubble('user', 'Attached ' + files.length + ' image(s)');
+      let staged = false;
       try {
         const res = await fetch('/v1/agent/uploads', {
           method: 'POST',
@@ -1122,12 +1140,13 @@
         }
         stagedFiles = Array.isArray(data.files) ? data.files : [];
         renderStagedChips();
-        appendBubble('assistant', stagedFiles.length + ' image(s) ready. Ask me to rank them for your audience.');
+        staged = true;
       } catch (_) {
         appendBubble('assistant', 'Connection problem. Please check your network and try again.', true);
       } finally {
         attach.disabled = false;
       }
+      if (staged) await sendAuraRequest({ event: 'uploads_ready' }, null);
     }
 
     document.getElementById('chatAttach').addEventListener('click', () => document.getElementById('chatFile').click());
@@ -1202,6 +1221,11 @@
         if (allowed.indexOf('campaigns') >= 0 && tabs.campaigns.src && !tabs.campaigns.src.endsWith('about:blank')) {
           sendAgentCommand('campaigns', { type: 'refresh_campaigns' });
         }
+        auraJobFinished(String(data.job_id || ''), 'ranking_done');
+        return;
+      }
+      if (data.type === 'cc-campaign-job-failed') {
+        auraJobFinished(String(data.job_id || ''), 'ranking_failed');
         return;
       }
       if (data.type === 'open-tab' && ev.origin === location.origin && TAB_NAMES[data.tab]) {

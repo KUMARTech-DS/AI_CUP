@@ -1228,7 +1228,7 @@
         }
       } else if (t === 'track_job') {
         const jobId = String(cmd.job_id || '');
-        if (jobId) { rememberJob(jobId); pollJob(jobId); scrollToStep('stepJob'); }
+        if (jobId) { if (cmd.quiet) markQuietJob(jobId, true); rememberJob(jobId); pollJob(jobId); scrollToStep('stepJob'); }
       } else {
         return;
       }
@@ -1716,6 +1716,16 @@
     function rememberedJob() {
       try { return localStorage.getItem(JOB_KEY) || ''; } catch (_) { return ''; }
     }
+    // Jobs started from AURA: the chat posts the next step, so no popup here.
+    const QUIET_JOBS_KEY = 'suffai_rank_job_quiet';
+    function quietJobs() {
+      try { const v = JSON.parse(localStorage.getItem(QUIET_JOBS_KEY) || '[]'); return Array.isArray(v) ? v : []; } catch (_) { return []; }
+    }
+    function markQuietJob(jobId, on) {
+      const ids = quietJobs().filter(id => id !== jobId);
+      if (on) ids.push(jobId);
+      try { localStorage.setItem(QUIET_JOBS_KEY, JSON.stringify(ids.slice(-10))); } catch (_) { /* ignore */ }
+    }
 
     async function runAnalysis() {
       if (!state.assets.length || state.loading) return;
@@ -1809,12 +1819,19 @@
         renderJob(job);
         if (job.status === 'succeeded') {
           rememberJob('');
+          const quiet = quietJobs().indexOf(job.job_id) >= 0;
+          markQuietJob(job.job_id, false);
           await loadCampaignById(job.campaign_id);
-          showCreatedModal(job);
-          notifyParent({ type: 'cc-campaign-created', campaign_id: job.campaign_id });
+          if (!quiet) showCreatedModal(job);
+          notifyParent({ type: 'cc-campaign-created', campaign_id: job.campaign_id, job_id: job.job_id });
           return;
         }
-        if (job.status === 'failed') { rememberJob(''); return; }
+        if (job.status === 'failed') {
+          rememberJob('');
+          markQuietJob(job.job_id, false);
+          notifyParent({ type: 'cc-campaign-job-failed', campaign_id: job.campaign_id, job_id: job.job_id });
+          return;
+        }
         scheduleJobPoll(jobId);
       } catch (e) {
         console.error('[ads_lab] job poll failed', e);
