@@ -215,22 +215,6 @@ def sim_fit_01(cosine: float) -> float:
     return max(0.0, min(1.0, (float(cosine) + 1.0) / 2.0))
 
 
-def list_style_users(*, limit: int = 200) -> list[str]:
-    with brand_camp.connect() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                SELECT user_uuid, COUNT(*) AS n
-                FROM user_wardrobe
-                GROUP BY user_uuid
-                ORDER BY n DESC, user_uuid
-                LIMIT %s
-                """,
-                (limit,),
-            )
-            return [str(r[0]) for r in cur.fetchall() if r[0]]
-
-
 def _wardrobe_rows_from_cursor(cur_rows: list[Any]) -> list[dict[str, Any]]:
     rows = []
     for r in cur_rows:
@@ -755,17 +739,13 @@ def build_customer_picks(
     return payload, (max(scores) if scores else None)
 
 
-def _same_gender(a: Any, b: Any) -> bool:
-    return str(a or "").strip()[:1].upper() == str(b or "").strip()[:1].upper()
-
-
 def eligible_customers(campaign: dict[str, Any]) -> list[str]:
     """Wardrobe owners in the campaign PINs, narrowed by age / gender / RFM when customer data is known."""
     users = brand_camp.eligible_user_uuids_for_campaign(campaign)
-    age = str(campaign.get("age_group") or "").strip()
-    gender = str(campaign.get("gender") or "").strip()
-    rfm = str(campaign.get("rfm_segment") or "").strip().lower()
-    if not users or not (age or gender or rfm):
+    ages = brand_camp.audience_values(campaign.get("age_group"))
+    genders = {g[0] for g in brand_camp.audience_values(campaign.get("gender"))}
+    rfms = brand_camp.audience_values(campaign.get("rfm_segment"))
+    if not users or not (ages or genders or rfms):
         return users
     try:
         import admin_intel
@@ -780,11 +760,11 @@ def eligible_customers(campaign: dict[str, Any]) -> list[str]:
         return users
 
     def matches(c: dict[str, Any]) -> bool:
-        if age and str(c.get("age_group") or "") != age:
+        if ages and str(c.get("age_group") or "").strip().lower() not in ages:
             return False
-        if gender and not _same_gender(c.get("gender"), gender):
+        if genders and str(c.get("gender") or "").strip()[:1].lower() not in genders:
             return False
-        if rfm and str(c.get("rfm_segment") or "").strip().lower() != rfm:
+        if rfms and str(c.get("rfm_segment") or "").strip().lower() not in rfms:
             return False
         return True
 

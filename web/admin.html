@@ -56,6 +56,11 @@
       letter-spacing: normal;
     }
     input:focus { border-color: var(--plum); box-shadow: 0 0 0 3px rgba(197, 159, 176, 0.35); }
+    select.sel {
+      background: var(--panel); border: 1.5px solid var(--line); color: var(--ink); border-radius: 10px;
+      padding: 0.55rem 0.8rem; font-size: 13px; min-width: 150px; text-transform: none; letter-spacing: normal; font-weight: 500;
+    }
+    select.sel:focus { border-color: var(--plum); outline: 0; box-shadow: 0 0 0 3px rgba(197, 159, 176, 0.35); }
     button.primary {
       background: var(--plum);
       border: none;
@@ -158,8 +163,9 @@
         <label class="lbl">Name or phone
           <input id="custQ" type="text" placeholder="e.g. Priya or 98450" maxlength="80" autocomplete="off" />
         </label>
-        <div class="lbl">RFM tier<details class="ms" id="custRfm"></details></div>
+        <div class="lbl">Brand<details class="ms" id="custBrand"></details></div>
         <div class="lbl">PIN code<details class="ms" id="custPin"></details></div>
+        <div class="lbl">RFM tier<details class="ms" id="custRfm"></details></div>
         <label class="lbl" style="flex-direction:row;align-items:center;gap:0.4rem;padding-bottom:0.6rem">
           <input type="checkbox" id="custQualified" /> Qualified only
         </label>
@@ -201,8 +207,9 @@
     <!-- ============ Tab 2: Garments ============ -->
     <section id="tab-garments" role="tabpanel" hidden>
       <form class="card mb-4 flex flex-wrap gap-3 items-end" id="garFilters">
-        <div class="lbl">Commodity<details class="ms" id="garCommodity"></details></div>
         <div class="lbl">Brand<details class="ms" id="garBrand"></details></div>
+        <div class="lbl">PIN code<details class="ms" id="garPin"></details></div>
+        <div class="lbl">Commodity<details class="ms" id="garCommodity"></details></div>
         <div class="lbl">Fabric<details class="ms" id="garFabric"></details></div>
         <div class="lbl">Pattern<details class="ms" id="garPattern"></details></div>
         <div class="lbl">Size<details class="ms" id="garSize"></details></div>
@@ -235,8 +242,8 @@
       <details class="card section" id="uniqueSection">
         <summary>Image-deduplicated garments (similarity service)</summary>
         <form class="mt-3 mb-3 flex flex-wrap gap-3 items-end" id="uniqFilters">
-          <label class="lbl">PIN code<input id="uniqPin" type="text" placeholder="e.g. 560038" maxlength="6" inputmode="numeric" /></label>
-          <label class="lbl">Brand<input id="uniqBrand" type="text" placeholder="Any brand" /></label>
+          <label class="lbl">Brand<select id="uniqBrand" class="sel"><option value="">All brands</option></select></label>
+          <label class="lbl">PIN code<select id="uniqPin" class="sel"><option value="">All PINs</option></select></label>
           <button type="submit" class="primary">Apply</button>
           <span class="muted self-center" id="uniqStatus" aria-live="polite"></span>
         </form>
@@ -248,15 +255,18 @@
         </div>
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
           <div><h3 class="text-sm font-semibold m-0 mb-2">By PIN</h3>
-            <table><thead><tr><th>PIN</th><th class="num">Unique</th><th class="num">Observations</th></tr></thead><tbody id="byPin"></tbody></table></div>
+            <table><thead><tr><th>PIN</th><th class="num">Unique</th><th class="num">Observations</th></tr></thead><tbody id="byPin"></tbody></table>
+            <div class="pager" id="byPinPager"></div></div>
           <div><h3 class="text-sm font-semibold m-0 mb-2">By brand</h3>
-            <table><thead><tr><th>Brand</th><th class="num">Unique</th><th class="num">Observations</th></tr></thead><tbody id="byBrand"></tbody></table></div>
+            <table><thead><tr><th>Brand</th><th class="num">Unique</th><th class="num">Observations</th></tr></thead><tbody id="byBrand"></tbody></table>
+            <div class="pager" id="byBrandPager"></div></div>
         </div>
         <h3 class="text-sm font-semibold m-0 mb-2">Recent unique garments</h3>
         <div class="overflow-x-auto">
           <table><thead><tr><th>Garment ID</th><th>Brand</th><th>GCS key</th><th class="num">Observations</th><th>Created</th></tr></thead>
             <tbody id="listBody"></tbody></table>
         </div>
+        <div class="pager" id="listPager"></div>
       </details>
     </section>
 
@@ -290,6 +300,7 @@
       <div class="card">
         <h2 class="text-base font-semibold m-0 mb-3">Brand deep dives</h2>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" id="brCards"></div>
+        <div class="pager" id="brPager"></div>
       </div>
     </section>
 
@@ -334,6 +345,7 @@
             <tbody id="campaignBody"></tbody>
           </table>
         </div>
+        <div class="pager" id="cmpPager"></div>
       </div>
     </section>
   </div>
@@ -435,6 +447,16 @@
         + '<button type="button" class="ghost" data-p="' + (page + 1) + '"' + (page >= pages ? ' disabled' : '') + '>Next</button>';
       el.querySelectorAll('button').forEach(b => b.addEventListener('click', () => onPage(Number(b.dataset.p))));
     }
+    const PAGE_SIZE = 10;
+    // Pages an in-memory list; draw(chunk) renders the visible rows.
+    function clientPage(pagerId, items, draw, page) {
+      const p = page || 1;
+      draw(items.slice((p - 1) * PAGE_SIZE, p * PAGE_SIZE));
+      const el = document.getElementById(pagerId);
+      if (!el) return;
+      if (items.length > PAGE_SIZE) pager(pagerId, items.length, p, PAGE_SIZE, (pg) => clientPage(pagerId, items, draw, pg));
+      else el.innerHTML = '';
+    }
 
     const RFM_COLORS = {
       champions: ['#e8f3e6', '#2f6b2a'], loyal: ['#e6eef8', '#2b5a8f'], potential: ['#eef0fb', '#4a4f9a'],
@@ -467,11 +489,12 @@
     // ---------------- Tab 1: customers ----------------
     let custPage = 1;
     function custParams() {
-      return { q: document.getElementById('custQ').value.trim(), rfm: msCsv('custRfm'), pin: msCsv('custPin') };
+      return { q: document.getElementById('custQ').value.trim(), rfm: msCsv('custRfm'), pin: msCsv('custPin'), brand: msCsv('custBrand') };
     }
     async function loadCustomerOverview() {
       const p = custParams();
-      const o = await api('/v1/admin/intel/customers-overview', { rfm: p.rfm, pin: p.pin });
+      const o = await api('/v1/admin/intel/customers-overview', { rfm: p.rfm, pin: p.pin, brand: p.brand });
+      msRender('custBrand', 'brands', o.options.brands || []);
       msRender('custRfm', 'tiers', o.options.rfm_segments);
       msRender('custPin', 'PINs', o.options.pin_codes);
       document.getElementById('kCustTotal').textContent = fmt(o.total_customers);
@@ -495,7 +518,7 @@
     async function loadCustomerPage(page) {
       custPage = page || 1;
       const p = custParams();
-      const data = await api('/v1/admin/intel/customers', { ...p, qualified: document.getElementById('custQualified').checked ? 'true' : '', page: custPage, size: 25 });
+      const data = await api('/v1/admin/intel/customers', { ...p, qualified: document.getElementById('custQualified').checked ? 'true' : '', page: custPage, size: PAGE_SIZE });
       document.getElementById('custCount').textContent = fmt(data.total) + ' customers';
       const body = document.getElementById('custBody');
       body.innerHTML = data.items.length ? data.items.map(c => `<tr data-cid="${esc(c.customer_id)}">
@@ -572,13 +595,17 @@
           ${d.sizes.length ? '<table><thead><tr><th>Size</th><th class="num">Items</th><th class="num">Share</th></tr></thead><tbody>' + d.sizes.map(s => `<tr><td>${esc(s.value)}</td><td class="num">${s.count}</td><td class="num">${s.share}%</td></tr>`).join('') + '</tbody></table>' : NO_DATA}
           <div class="kpi-label mb-1 mt-3">Service split</div><div class="chart sm" id="${uid}svc"></div></div>
         <div class="item-card lg:col-span-2"><div class="kpi-label mb-2">Garment attributes (${fmt(d.garment_count)} items${d.garment_count > d.garments.length ? ', showing ' + d.garments.length : ''})</div>
-          <div class="overflow-x-auto">${d.garments.length ? '<table><thead><tr><th>Garment</th><th>Commodity</th><th>Brand</th><th>Colour</th><th>Pattern</th><th>Size</th><th>Fabric</th></tr></thead><tbody>'
-            + d.garments.map(g => `<tr><td class="mono">${esc((g.garment_id || '').slice(0, 8)) || '—'}</td><td>${nd(g.commodity)}</td><td>${nd(g.brand)}</td><td>${nd(g.color)}</td><td>${nd(g.pattern)}</td><td>${nd(g.size)}</td><td>${nd(g.material)}</td></tr>`).join('')
-            + '</tbody></table>' : NO_DATA}</div></div>
+          <div class="overflow-x-auto">${d.garments.length ? '<table><thead><tr><th>Garment</th><th>Commodity</th><th>Brand</th><th>Colour</th><th>Pattern</th><th>Size</th><th>Fabric</th></tr></thead><tbody id="' + uid + 'gb"></tbody></table>' : NO_DATA}</div>
+          <div class="pager" id="${uid}gp"></div></div>
         <div class="item-card"><div class="kpi-label mb-2">Recent orders</div>
           ${d.recent_orders.length ? '<table><thead><tr><th>Date</th><th>Service</th><th class="num">Items</th><th class="num">Amount</th></tr></thead><tbody>' + d.recent_orders.map(o => `<tr><td>${nd(o.date)}</td><td>${esc(o.service)}</td><td class="num">${fmt(o.clothes)}</td><td class="num">${money(o.amount)}</td></tr>`).join('') + '</tbody></table>' : NO_DATA}</div>
         <div class="item-card lg:col-span-3"><div class="kpi-label mb-1">Spending momentum</div><div class="chart" id="${uid}mom"></div></div>
       </div>`;
+      if (d.garments.length) {
+        clientPage(uid + 'gp', d.garments, (chunk) => {
+          document.getElementById(uid + 'gb').innerHTML = chunk.map(g => `<tr><td class="mono">${esc((g.garment_id || '').slice(0, 8)) || '—'}</td><td>${nd(g.commodity)}</td><td>${nd(g.brand)}</td><td>${nd(g.color)}</td><td>${nd(g.pattern)}</td><td>${nd(g.size)}</td><td>${nd(g.material)}</td></tr>`).join('');
+        });
+      }
       chart(uid + 'svc', d.service_split.length ? {
         tooltip: { trigger: 'item' }, legend: { bottom: 0, type: 'scroll' },
         series: [{ type: 'pie', radius: ['35%', '65%'], data: d.service_split.map(s => ({ name: s.value, value: s.count })) }],
@@ -603,12 +630,13 @@
     // ---------------- Tab 2: garments ----------------
     async function loadGarments(page) {
       const data = await api('/v1/admin/intel/garments', {
-        commodity: msCsv('garCommodity'), brand: msCsv('garBrand'), fabric: msCsv('garFabric'),
-        pattern: msCsv('garPattern'), garment_size: msCsv('garSize'), page: page || 1, size: 24,
+        commodity: msCsv('garCommodity'), brand: msCsv('garBrand'), pin: msCsv('garPin'), fabric: msCsv('garFabric'),
+        pattern: msCsv('garPattern'), garment_size: msCsv('garSize'), page: page || 1, size: PAGE_SIZE,
       });
       const o = data.options;
-      msRender('garCommodity', 'commodities', o.commodity);
       msRender('garBrand', 'brands', o.brand);
+      msRender('garPin', 'PINs', o.pin_codes || []);
+      msRender('garCommodity', 'commodities', o.commodity);
       msRender('garFabric', 'fabrics', o.material);
       msRender('garPattern', 'patterns', o.pattern);
       msRender('garSize', 'sizes', o.size);
@@ -646,6 +674,13 @@
     loaders.garments = () => run('garments', () => loadGarments(1));
     document.getElementById('garFilters').addEventListener('submit', (e) => { e.preventDefault(); run('garments', () => loadGarments(1)); });
 
+    function fillSelect(id, values, allLabel) {
+      const sel = document.getElementById(id);
+      const keep = sel.value;
+      const opts = [...new Set(values.filter(Boolean))].sort((a, b) => String(a).localeCompare(String(b)));
+      sel.innerHTML = '<option value="">' + esc(allLabel) + '</option>'
+        + opts.map(v => '<option value="' + esc(v) + '"' + (v === keep ? ' selected' : '') + '>' + esc(v) + '</option>').join('');
+    }
     function rows(tbody, data, cols) {
       if (!data.length) {
         tbody.innerHTML = '<tr><td colspan="' + cols.length + '" class="muted">No data for these filters</td></tr>';
@@ -663,29 +698,37 @@
       const err = document.getElementById('uniqErr');
       status.textContent = 'Loading…';
       err.classList.add('hidden');
-      const pin = document.getElementById('uniqPin').value.trim();
-      const brand = document.getElementById('uniqBrand').value.trim();
+      const pin = document.getElementById('uniqPin').value;
+      const brand = document.getElementById('uniqBrand').value;
       try {
         const [summary, list] = await Promise.all([
           api('/v1/admin/unique-summary', { pin, brand }),
-          api('/v1/admin/unique-garments', { pin, brand, limit: 50 }).catch(() => null),
+          api('/v1/admin/unique-garments', { pin, brand, limit: 200 }).catch(() => null),
         ]);
         const k = summary.kpis || {};
         document.getElementById('kpiUnique').textContent = fmt(k.unique_garments);
         document.getElementById('kpiObs').textContent = fmt(k.total_observations);
         document.getElementById('kpiUsers').textContent = fmt(k.unique_users);
-        rows(document.getElementById('byPin'), summary.by_pin || [], [[r => r.pin_code], [r => r.unique_garments, 'num'], [r => r.observations, 'num']]);
-        rows(document.getElementById('byBrand'), summary.by_brand || [], [[r => r.brand], [r => r.unique_garments, 'num'], [r => r.observations, 'num']]);
+        if (!pin && !brand) {
+          fillSelect('uniqPin', (summary.by_pin || []).map(r => r.pin_code), 'All PINs');
+          fillSelect('uniqBrand', (summary.by_brand || []).map(r => r.brand), 'All brands');
+        }
+        const pinCols = [[r => r.pin_code], [r => r.unique_garments, 'num'], [r => r.observations, 'num']];
+        const brandCols = [[r => r.brand], [r => r.unique_garments, 'num'], [r => r.observations, 'num']];
+        clientPage('byPinPager', summary.by_pin || [], (chunk) => rows(document.getElementById('byPin'), chunk, pinCols));
+        clientPage('byBrandPager', summary.by_brand || [], (chunk) => rows(document.getElementById('byBrand'), chunk, brandCols));
         if (list) {
-          rows(document.getElementById('listBody'), list.items || [], [
+          const listCols = [
             [r => ({ text: (r.garment_id || '').slice(0, 8) + '…', full: r.garment_id || '' }), 'mono'],
             [r => r.brand_name || '—'],
             [r => ({ text: r.gcs_object_key || '—', full: r.gcs_object_key || '' }), 'mono'],
             [r => r.observation_count_total, 'num'],
             [r => (r.created_at || '—').toString().slice(0, 19).replace('T', ' ')],
-          ]);
+          ];
+          clientPage('listPager', list.items || [], (chunk) => rows(document.getElementById('listBody'), chunk, listCols));
         } else {
           document.getElementById('listBody').innerHTML = '<tr><td colspan="5" class="muted">Recent garments are unavailable right now.</td></tr>';
+          document.getElementById('listPager').innerHTML = '';
         }
         status.textContent = 'Updated ' + new Date().toLocaleTimeString();
       } catch (e) {
@@ -758,7 +801,7 @@
         xAxis: { type: 'category', data: rg.pins, axisLabel: { rotate: 30, interval: 0 } }, yAxis: { type: 'value' },
         series: rgBrands.map(b => ({ name: b, type: 'bar', stack: 'r', data: rg.series[b] })),
       } : null);
-      document.getElementById('brCards').innerHTML = d.brands.length ? d.brands.map(b => `<div class="item-card">
+      clientPage('brPager', d.brands, (chunk) => { document.getElementById('brCards').innerHTML = chunk.length ? chunk.map(b => `<div class="item-card">
           <div class="flex justify-between items-start mb-2"><div class="font-semibold">${esc(b.brand)}</div><span class="badge" style="background:#f6eef0;color:#6b3a55">${b.share}% share</span></div>
           <dl class="kv mb-2">
             <dt>Wardrobe items</dt><dd>${fmt(b.items_in_wardrobes)}</dd>
@@ -767,8 +810,8 @@
             <dt>Top commodities</dt><dd>${b.top_commodities.length ? esc(b.top_commodities.join(', ')) : '<span class="muted">No data</span>'}</dd>
             <dt>Top colours</dt><dd>${b.top_colors.length ? esc(b.top_colors.join(', ')) : '<span class="muted">No data</span>'}</dd>
           </dl>
-          ${b.catalog.length ? '<details><summary class="muted" style="cursor:pointer">Catalogue breakdown</summary><table class="mt-1"><tbody>' + b.catalog.map(c => `<tr><td>${esc(c.commodity)}</td><td class="num">${fmt(c.count)}</td></tr>`).join('') + '</tbody></table></details>' : ''}
-        </div>`).join('') : NO_DATA;
+          ${b.catalog.length ? '<details><summary class="muted" style="cursor:pointer">Catalogue breakdown</summary><table class="mt-1"><tbody>' + b.catalog.slice(0, PAGE_SIZE).map(c => `<tr><td>${esc(c.commodity)}</td><td class="num">${fmt(c.count)}</td></tr>`).join('') + '</tbody></table>' + (b.catalog.length > PAGE_SIZE ? '<div class="muted">+' + (b.catalog.length - PAGE_SIZE) + ' more</div>' : '') + '</details>' : ''}
+        </div>`).join('') : NO_DATA; });
     }
     loaders.brands = () => run('brands', loadBrands);
     document.getElementById('brFilters').addEventListener('submit', (e) => { e.preventDefault(); run('brands', loadBrands); });
@@ -806,7 +849,7 @@
         <td title="Simulated">${esc(money(i.revenue))}</td>
         <td title="Simulated">${esc(fmtImpactPct(i.lift))}</td>
         <td title="Simulated">${esc(fmtImpactRoas(i.roas))}</td>
-        <td class="mono">${c.status === 'launched' ? `<a href="./index.html?tab=style&amp;campaign_id=${encodeURIComponent(c.campaign_id)}" target="_top">${esc(c.campaign_id)}</a>` : esc(c.campaign_id || '')}</td>
+        <td class="mono">${c.status === 'launched' ? `<a href="./index.html?tab=campaigns&amp;campaign_id=${encodeURIComponent(c.campaign_id)}" target="_top">${esc(c.campaign_id)}</a>` : esc(c.campaign_id || '')}</td>
       </tr>`;
     }
     async function loadCampaigns() {
@@ -834,7 +877,8 @@
         xAxis: { type: 'category', data: brands, axisLabel: { rotate: 20, interval: 0 } }, yAxis: { type: 'value', minInterval: 1 },
         series: o.statuses.map(st => ({ name: st, type: 'bar', stack: 's', itemStyle: { color: (STATUS_COLORS[st] || [])[1] }, data: brands.map(b => s.by_brand[b].status[st] || 0) })),
       } : null);
-      document.getElementById('cmpCards').innerHTML = d.items.length ? d.items.map(c => `<div class="item-card">
+      clientPage('cmpPager', d.items, (chunk) => {
+      document.getElementById('cmpCards').innerHTML = chunk.length ? chunk.map(c => `<div class="item-card">
           <div class="flex justify-between items-start gap-2 mb-2"><div><div class="font-semibold">${esc(c.title)}</div><div class="muted">${esc(c.brand)}</div></div>${statusBadge(c.status)}</div>
           <dl class="kv">
             <dt>Campaign</dt><dd class="mono" title="${esc(c.campaign_id)}">${esc((c.campaign_id || '').slice(0, 8))}</dd>
@@ -844,7 +888,8 @@
             <dt>Conversion</dt><dd>${c.conversion_rate == null ? '<span class="muted">No data</span>' : c.conversion_rate.toFixed(2) + '% <span class="sim">Simulated</span>'}</dd>
             <dt>Redemptions</dt><dd>${c.redemptions == null ? '<span class="muted">No data</span>' : fmt(c.redemptions) + ' <span class="sim">Simulated</span>'}</dd>
           </dl></div>`).join('') : NO_DATA;
-      document.getElementById('campaignBody').innerHTML = d.items.length ? d.items.map(c => campaignTableRow(c.raw)).join('') : '<tr><td colspan="22" class="muted">No campaigns for these filters</td></tr>';
+      document.getElementById('campaignBody').innerHTML = chunk.length ? chunk.map(c => campaignTableRow(c.raw)).join('') : '<tr><td colspan="22" class="muted">No campaigns for these filters</td></tr>';
+      });
     }
     loaders.campaigns = () => run('campaigns', loadCampaigns);
     document.getElementById('cmpFilters').addEventListener('submit', (e) => { e.preventDefault(); run('campaigns', loadCampaigns); });

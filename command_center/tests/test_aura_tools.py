@@ -97,7 +97,7 @@ def fake_db(monkeypatch):
 
 
 def _sess(token="tok-zara", role="brand", brand="Zara"):
-    return {"token": token, "role": role, "brand_name": brand, "allowed_tabs": ["geo", "ads", "style"]}
+    return {"token": token, "role": role, "brand_name": brand, "allowed_tabs": ["geo", "ads", "campaigns"]}
 
 
 def _ctx(sess=None):

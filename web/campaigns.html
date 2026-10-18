@@ -288,6 +288,26 @@
     .row-act button { padding: .3rem .6rem; border-radius: 8px; font-size: 11.5px; border: 1px solid var(--line); }
     .row-act button:hover { border-color: var(--plum); color: var(--plum); }
     .empty-row { padding: 26px; text-align: center; color: var(--muted); font-size: 13px; }
+    .hist-filters { display: flex; flex-wrap: wrap; gap: 10px 12px; align-items: flex-end; padding: 12px 20px; border-bottom: 1px solid var(--line); background: #FFFDF9; }
+    .hf { display: flex; flex-direction: column; gap: 4px; font: 600 10px 'IBM Plex Mono', monospace; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+    .hf[hidden] { display: none; }
+    .hf input[type=date] { border: 1.5px solid var(--line); border-radius: 10px; padding: .4rem .6rem; font: 500 12.5px Outfit, system-ui, sans-serif; color: var(--ink); background: #fff; }
+    .hf input[type=date]:focus { border-color: var(--plum); outline: 0; }
+    details.ms { position: relative; }
+    details.ms > summary { list-style: none; cursor: pointer; background: #fff; border: 1.5px solid var(--line); border-radius: 10px; padding: .42rem .7rem;
+      font: 500 12.5px Outfit, system-ui, sans-serif; text-transform: none; letter-spacing: normal; color: var(--ink); min-width: 140px; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    details.ms > summary::-webkit-details-marker { display: none; }
+    details.ms[open] > summary { border-color: var(--plum); }
+    details.ms .ms-pop { position: absolute; z-index: 30; top: calc(100% + 4px); left: 0; min-width: 200px; max-height: 260px; overflow: auto; background: #fff;
+      border: 1px solid var(--line); border-radius: 12px; padding: .35rem; box-shadow: 0 12px 28px rgba(107,58,85,.15); }
+    details.ms label.opt { display: flex; gap: .5rem; align-items: center; padding: .3rem .4rem; border-radius: 6px; font: 400 12.5px Outfit, system-ui, sans-serif;
+      text-transform: none; letter-spacing: normal; color: var(--ink); cursor: pointer; }
+    details.ms label.opt:hover { background: var(--raised); }
+    details.ms label.opt.all { font-weight: 600; border-bottom: 1px solid var(--line); margin-bottom: .2rem; }
+    .hist-pager { display: flex; gap: 8px; align-items: center; justify-content: flex-end; padding: 10px 20px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); }
+    .hist-pager:empty { display: none; }
+    .hist-pager button { padding: .3rem .75rem; border-radius: 8px; font-size: 11.5px; border: 1px solid var(--line); background: #fff; color: var(--plum); font-weight: 600; }
+    .hist-pager button:disabled { opacity: .45; cursor: default; }
 
     .sample-bar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 18px; padding: 12px 14px 12px 12px; border-radius: 14px;
       background: linear-gradient(90deg, #FBF1DC, #FFF8EC); border: 1px solid #E8C27A; color: #6E4C10; font-size: 13px; }
@@ -349,6 +369,15 @@
     .an-ins li { display: flex; gap: 8px; } .an-ins i { color: var(--plum); margin-top: 2px; }
     .details-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; margin-bottom: 16px; }
     .details-bar p { font-size: 12px; color: var(--muted); }
+    .start-bar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 24px; padding: 14px 18px; border: 1.5px solid var(--gold); background: linear-gradient(90deg, #FBF1DC, #FFF8EC); }
+    .start-bar[hidden] { display: none; }
+    .start-bar .sb-txt { flex: 1 1 320px; min-width: 0; }
+    .start-bar .sb-txt b { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 14px; color: var(--ink); }
+    .start-bar .sb-txt p { font-size: 12px; color: #6E4C10; margin-top: 2px; }
+    .start-bar .btn.primary { padding: .75rem 1.2rem; }
+    .insights { margin-top: 24px; padding: 18px 20px; }
+    .insights .an-chart { height: 240px; }
+    .ins-empty { padding: 26px; text-align: center; color: var(--muted); font-size: 13px; border: 1px dashed var(--line); border-radius: 14px; }
     .mini th { padding: 6px 10px; }
     .mini td { padding: 7px 10px; font-family: 'IBM Plex Mono', monospace; }
     .mini td:first-child { font-family: inherit; font-weight: 600; }
@@ -542,22 +571,55 @@
       </div>
     </section>
 
+    <section class="card start-bar" id="startBar" hidden aria-label="Start campaign">
+      <div class="sb-txt">
+        <b><span id="sbName">—</span> <span class="st" id="sbStatus"></span></b>
+        <p id="sbHint">All details filled? Start it now. Running is simulated: nothing is sent to customers.</p>
+      </div>
+      <button type="button" class="btn primary" id="launchBtn2"><i class="fa-solid fa-rocket"></i> Create &amp; start campaign</button>
+    </section>
+
     <section class="card hist">
       <div class="hist-head">
         <h2>Your 1P campaigns <span class="chip" id="histCount">0</span></h2>
-        <div class="filters" id="statusFilter" role="group" aria-label="Filter by status">
-          <button type="button" data-filter="" aria-pressed="true">All</button>
-          <button type="button" data-filter="ready" aria-pressed="false">Draft</button>
-          <button type="button" data-filter="processing" aria-pressed="false">Ranking</button>
-          <button type="button" data-filter="launched" aria-pressed="false">Running</button>
-          <button type="button" data-filter="exported" aria-pressed="false">Exported</button>
+        <div class="filters">
+          <button type="button" id="hfClear">Clear filters</button>
           <button type="button" id="refreshBtn" aria-label="Refresh campaigns"><i class="fa-solid fa-rotate"></i></button>
         </div>
+      </div>
+      <div class="hist-filters" id="histFilters" role="group" aria-label="Filter campaigns">
+        <div class="hf" id="hfBrandWrap" hidden><span>Brand</span><details class="ms" id="hfBrand"></details></div>
+        <div class="hf"><span>Status</span><details class="ms" id="hfStatus"></details></div>
+        <div class="hf"><span>PIN code</span><details class="ms" id="hfPin"></details></div>
+        <div class="hf"><span>Channel</span><details class="ms" id="hfChannel"></details></div>
+        <div class="hf"><span>RFM segment</span><details class="ms" id="hfRfm"></details></div>
+        <label class="hf"><span>Created from</span><input type="date" id="hfFrom" /></label>
+        <label class="hf"><span>Created to</span><input type="date" id="hfTo" /></label>
       </div>
       <div class="tbl-wrap"><table>
         <thead><tr><th>Campaign</th><th>Audience</th><th>Channels</th><th>SKUs</th><th>Budget</th><th>Status</th><th></th></tr></thead>
         <tbody id="histBody"><tr><td colspan="7" class="empty-row">Loading campaigns…</td></tr></tbody>
       </table></div>
+      <div class="hist-pager" id="histPager"></div>
+    </section>
+
+    <section class="card insights" id="insightsSection" aria-labelledby="insTitle">
+      <div class="an-head">
+        <div>
+          <h2 id="insTitle"><i class="fa-solid fa-chart-pie" style="color:var(--plum)"></i> Campaign insights <span class="sim">Simulated</span></h2>
+          <p class="hint" id="insNote">Running campaigns that match the filters above.</p>
+        </div>
+      </div>
+      <div id="insBody">
+        <div class="tiles" id="insTiles"></div>
+        <div class="an-grid">
+          <div class="an-box"><h3>ROAS by campaign · top 10 <span class="sim">Simulated</span></h3><div class="an-chart"><canvas id="insRoas"></canvas></div></div>
+          <div class="an-box"><h3>Revenue vs spend by campaign (₹) <span class="sim">Simulated</span></h3><div class="an-chart"><canvas id="insRevSpend"></canvas></div></div>
+          <div class="an-box"><h3>Revenue by channel (₹) <span class="sim">Simulated</span></h3><div class="an-chart"><canvas id="insChannels"></canvas></div></div>
+          <div class="an-box"><h3>Status mix · filtered campaigns</h3><div class="an-chart"><canvas id="insStatus"></canvas></div></div>
+        </div>
+      </div>
+      <p class="ins-empty" id="insEmpty" hidden>No running campaigns match these filters yet. Start one above to see insights.</p>
     </section>
   </main>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -588,7 +650,7 @@
     const EDITABLE = ['ranked', 'configured', 'exported'];
     const MAX_CREATIVES = 6;
     const state = {
-      campaigns: [], filter: '', current: null, skus: [], thumbs: {}, rec: null, estimate: null,
+      campaigns: [], histPage: 1, current: null, skus: [], thumbs: {}, rec: null, estimate: null,
       sourceContext: null, busy: false, pollTimer: null, showDetails: false,
       picked: [], focus: null, mode: 'best', channels: ['in_app'], preview: 'in_app',
     };
@@ -615,7 +677,11 @@
       if (!res.ok) throw new Error(SuffaiSession.formatApiDetail(data && data.detail, 'Request failed (HTTP ' + res.status + ')'));
       return data;
     }
-    function displayGender(g) { return !g ? 'All genders' : (String(g).toLowerCase().startsWith('m') ? 'Male' : String(g).toLowerCase().startsWith('f') ? 'Female' : g); }
+    const splitList = (v) => String(v ?? '').split(',').map(s => s.trim()).filter(Boolean);
+    function displayGender(g) {
+      const parts = splitList(g);
+      return parts.length ? parts.map(p => p.toLowerCase().startsWith('m') ? 'Male' : p.toLowerCase().startsWith('f') ? 'Female' : p).join(', ') : 'All genders';
+    }
     function audienceParts(c) {
       const pins = c.pin_codes || [];
       return [pins.length ? (pins.length <= 2 ? 'PIN ' + pins.join(', ') : pins.length + ' PINs') : 'No PIN',
@@ -680,9 +746,11 @@
     /* ---------- Campaign list ---------- */
     async function loadCampaigns() {
       try {
-        const data = await api('/v1/ads-lab/campaigns?limit=100');
+        const data = await api('/v1/ads-lab/campaigns?limit=200');
         state.campaigns = (data.campaigns || []).filter(c => c.status !== 'ignored');
+        refreshHistOptions();
         renderHistory();
+        renderInsights();
         if (state.current) {
           const fresh = state.campaigns.find(c => c.campaign_id === state.current.campaign_id);
           if (fresh && fresh.status !== state.current.status) loadCampaign(fresh.campaign_id);
@@ -693,11 +761,158 @@
         $('histBody').innerHTML = `<tr><td colspan="7" class="empty-row" style="color:var(--bad)">${esc(e.message)}</td></tr>`;
       }
     }
+    /* ---------- History filters (multi-select dropdowns + created-date range) ---------- */
+    const HIST_PAGE = 10;
+    const STATUS_GROUPS = { Draft: ['ranked', 'configured'], Ranking: ['processing'], Running: ['launched'], Exported: ['exported'], Error: ['error'] };
+    const statusGroup = (s) => Object.keys(STATUS_GROUPS).find(k => STATUS_GROUPS[k].includes(s)) || s;
+    const chanName = (ch) => CHANNELS[ch]?.name || ch;
+    function msRender(id, label, options) {
+      const el = $(id);
+      const keep = new Set(msValues(id));
+      el.dataset.label = label;
+      el.innerHTML = '<summary></summary><div class="ms-pop">' + (options.length
+        ? (options.length > 1 ? '<label class="opt all"><input type="checkbox" data-all="1" /> Select all</label>' : '')
+          + options.map(o => `<label class="opt"><input type="checkbox" value="${esc(o)}"${keep.has(o) ? ' checked' : ''} /> ${esc(o)}</label>`).join('')
+        : '<div class="empty-row" style="padding:8px">No options</div>') + '</div>';
+      el.querySelectorAll('input:not([data-all])').forEach(i => i.addEventListener('change', () => { msSummary(el); applyHistFilters(); }));
+      const all = el.querySelector('input[data-all]');
+      if (all) all.addEventListener('change', () => {
+        el.querySelectorAll('input:not([data-all])').forEach(i => { i.checked = all.checked; });
+        msSummary(el); applyHistFilters();
+      });
+      msSummary(el);
+    }
+    function msSummary(el) {
+      const vals = msValues(el.id);
+      const total = el.querySelectorAll('input:not([data-all])').length;
+      const all = el.querySelector('input[data-all]');
+      if (all) { all.checked = total > 0 && vals.length === total; all.indeterminate = vals.length > 0 && vals.length < total; }
+      el.querySelector('summary').textContent = !vals.length ? 'All ' + el.dataset.label
+        : (total > 1 && vals.length === total) ? 'All selected (' + total + ')'
+        : (vals.length <= 2 ? vals.join(', ') : vals.length + ' selected');
+    }
+    function msValues(id) { return [...document.querySelectorAll('#' + id + ' input:not([data-all]):checked')].map(i => i.value); }
+    const uniqSorted = (vals) => [...new Set(vals.filter(Boolean))].sort((a, b) => String(a).localeCompare(String(b)));
+    function refreshHistOptions() {
+      const cs = state.campaigns;
+      const brands = uniqSorted(cs.map(c => c.brand_name));
+      $('hfBrandWrap').hidden = brands.length < 2;
+      msRender('hfBrand', 'brands', brands);
+      msRender('hfStatus', 'statuses', Object.keys(STATUS_GROUPS).filter(g => cs.some(c => statusGroup(c.status) === g)));
+      msRender('hfPin', 'PINs', uniqSorted(cs.flatMap(c => c.pin_codes || [])));
+      msRender('hfChannel', 'channels', uniqSorted(cs.flatMap(c => (c.channels || []).map(chanName))));
+      msRender('hfRfm', 'segments', uniqSorted(cs.flatMap(c => splitList(c.rfm_segment).length ? splitList(c.rfm_segment) : ['All RFM'])));
+    }
+    function filteredCampaigns() {
+      const set = (id) => new Set(msValues(id));
+      const brand = set('hfBrand'), status = set('hfStatus'), pin = set('hfPin'), chan = set('hfChannel'), rfm = set('hfRfm');
+      const from = $('hfFrom').value, to = $('hfTo').value;
+      return state.campaigns.filter(c => {
+        const day = (c.created_at || '').slice(0, 10);
+        return (!brand.size || brand.has(c.brand_name))
+          && (!status.size || status.has(statusGroup(c.status)))
+          && (!pin.size || (c.pin_codes || []).some(p => pin.has(p)))
+          && (!chan.size || (c.channels || []).some(ch => chan.has(chanName(ch))))
+          && (!rfm.size || (splitList(c.rfm_segment).length ? splitList(c.rfm_segment) : ['All RFM']).some(r => rfm.has(r)))
+          && (!from || (day && day >= from))
+          && (!to || (day && day <= to));
+      });
+    }
+    function applyHistFilters() { state.histPage = 1; renderHistory(); renderInsights(); }
+
+    /* ---------- Campaign insights (aggregate of filtered running campaigns) ---------- */
+    const insCharts = {};
+    function insChart(key, config) {
+      if (insCharts[key]) { insCharts[key].destroy(); delete insCharts[key]; }
+      if (!window.Chart || !config) return;
+      insCharts[key] = new Chart($(key), config);
+    }
+    const n0 = (v) => Number.isFinite(Number(v)) ? Number(v) : 0;
+    const shortName = (c) => { const t = campaignTitle(c); return t.length > 26 ? t.slice(0, 25) + '…' : t; };
+    function renderInsights() {
+      const matching = filteredCampaigns();
+      const running = matching.filter(c => c.status === 'launched' && c.impact);
+      $('insNote').textContent = `${running.length} running campaign${running.length === 1 ? '' : 's'} of ${matching.length} matching the filters above. Nothing is delivered to customers; all figures are simulated.`;
+      const empty = !running.length;
+      $('insBody').hidden = empty;
+      $('insEmpty').hidden = !empty;
+      if (empty) { Object.keys(insCharts).forEach(k => insChart(k, null)); return; }
+
+      const t = { spend: 0, revenue: 0, reach: 0, impressions: 0, clicks: 0, conversions: 0, liftW: 0 };
+      running.forEach(c => {
+        const i = c.impact;
+        ['spend', 'revenue', 'reach', 'impressions', 'clicks', 'conversions'].forEach(k => { t[k] += n0(i[k]); });
+        t.liftW += n0(i.lift) * n0(i.spend);
+      });
+      const ratio = (a, b) => b > 0 ? a / b : null;
+      const tiles = [
+        ['Spend', inr(t.spend)], ['Revenue', inr(t.revenue)], ['ROAS', roas(ratio(t.revenue, t.spend))],
+        ['Reach', num(t.reach)], ['Impressions', num(t.impressions)], ['Clicks', num(t.clicks)],
+        ['CTR', pct(ratio(t.clicks * 100, t.impressions))], ['Conversions', num(t.conversions)],
+        ['CVR', pct(ratio(t.conversions * 100, t.clicks))], ['Avg lift', pct(ratio(t.liftW, t.spend), 1)],
+      ];
+      $('insTiles').innerHTML = tiles.map(([l, v]) => `<div class="tile"><span>${esc(l)}</span><b>${esc(v)}</b><small>Simulated</small></div>`).join('');
+
+      const base = {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { labels: { boxWidth: 10, font: { size: 10 } } } },
+        scales: { x: { ticks: { font: { size: 9 } }, grid: { display: false } }, y: { ticks: { font: { size: 9 } } } },
+      };
+      const byRoas = running.slice().sort((a, b) => n0(b.impact.roas) - n0(a.impact.roas)).slice(0, 10);
+      insChart('insRoas', {
+        type: 'bar',
+        data: { labels: byRoas.map(shortName), datasets: [{ label: 'ROAS (x)', data: byRoas.map(c => n0(c.impact.roas)), backgroundColor: '#6B3A55', borderRadius: 4 }] },
+        options: { ...base, indexAxis: 'y', plugins: { legend: { display: false } },
+          scales: { x: { ticks: { font: { size: 9 } } }, y: { ticks: { font: { size: 10 } }, grid: { display: false } } } },
+      });
+      const recent = running.slice(0, 10);
+      insChart('insRevSpend', {
+        type: 'bar',
+        data: { labels: recent.map(shortName), datasets: [
+          { label: 'Revenue', data: recent.map(c => n0(c.impact.revenue)), backgroundColor: '#6B3A55' },
+          { label: 'Spend', data: recent.map(c => n0(c.impact.spend)), backgroundColor: '#C9A24A' },
+        ] },
+        options: base,
+      });
+      const chRev = {};
+      running.forEach(c => {
+        const br = c.impact.channel_breakdown || {};
+        const entries = Object.keys(br).length ? Object.entries(br) : [['in_app', c.impact]];
+        entries.forEach(([ch, r]) => { chRev[ch] = (chRev[ch] || 0) + n0(r.revenue); });
+      });
+      const chKeys = Object.keys(chRev);
+      const palette = ['#6B3A55', '#25D366', '#C9A24A', '#7D8FB3', '#B5838D'];
+      insChart('insChannels', chKeys.length ? {
+        type: 'doughnut',
+        data: { labels: chKeys.map(chanName), datasets: [{ data: chKeys.map(k => Math.round(chRev[k])), backgroundColor: chKeys.map((_, k) => palette[k % palette.length]) }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 10, font: { size: 10 } } } } },
+      } : null);
+      const mix = {};
+      matching.forEach(c => { const g = statusGroup(c.status); mix[g] = (mix[g] || 0) + 1; });
+      const mixKeys = Object.keys(mix);
+      const statusColor = { Running: '#1F6B45', Draft: '#C9A24A', Ranking: '#E8C46A', Exported: '#5B4B8A', Error: '#A3301F' };
+      insChart('insStatus', {
+        type: 'doughnut',
+        data: { labels: mixKeys, datasets: [{ data: mixKeys.map(k => mix[k]), backgroundColor: mixKeys.map(k => statusColor[k] || '#7D8FB3') }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 10, font: { size: 10 } } } } },
+      });
+    }
+    function renderHistPager(total) {
+      const pages = Math.max(1, Math.ceil(total / HIST_PAGE));
+      $('histPager').innerHTML = total > HIST_PAGE
+        ? `<span>Page ${state.histPage} of ${pages}</span>
+           <button type="button" data-hp="${state.histPage - 1}"${state.histPage <= 1 ? ' disabled' : ''}>Previous</button>
+           <button type="button" data-hp="${state.histPage + 1}"${state.histPage >= pages ? ' disabled' : ''}>Next</button>`
+        : '';
+    }
+
     function renderHistory() {
-      document.querySelectorAll('#statusFilter [data-filter]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.filter === state.filter)));
-      const rows = state.campaigns.filter(c => !state.filter
-        || (state.filter === 'ready' ? (c.status === 'ranked' || c.status === 'configured') : c.status === state.filter));
-      $('histCount').textContent = state.campaigns.length;
+      const matching = filteredCampaigns();
+      const pages = Math.max(1, Math.ceil(matching.length / HIST_PAGE));
+      state.histPage = Math.min(Math.max(1, state.histPage), pages);
+      const rows = matching.slice((state.histPage - 1) * HIST_PAGE, state.histPage * HIST_PAGE);
+      $('histCount').textContent = matching.length === state.campaigns.length ? matching.length : `${matching.length} of ${state.campaigns.length}`;
+      renderHistPager(matching.length);
       $('histBody').innerHTML = rows.length ? rows.map(c => {
         const active = state.current && state.current.campaign_id === c.campaign_id;
         const chans = (c.channels || []).map(ch => CHANNELS[ch]?.name || ch).join(', ') || '—';
@@ -711,7 +926,7 @@
           <td><span class="st ${esc(c.status)}">${esc(statusLabel(c.status))}</span></td>
           <td><div class="row-act"><button type="button" data-load="${esc(c.campaign_id)}">${c.status === 'launched' ? 'Track' : 'Open'}</button></div></td>
         </tr>`;
-      }).join('') : `<tr><td colspan="7" class="empty-row">${state.campaigns.length ? 'No campaigns with this status.' : 'No campaigns yet. Create one from Ads Lab.'}</td></tr>`;
+      }).join('') : `<tr><td colspan="7" class="empty-row">${state.campaigns.length ? 'No campaigns match these filters.' : 'No campaigns yet. Create one from Ads Lab.'}</td></tr>`;
       renderHero();
     }
     function renderHero() {
@@ -1239,6 +1454,25 @@
       $('s5').classList.toggle('done', Number($('campaignBudget').value) > 0);
       renderSummary();
       renderPreview();
+      syncStartBar();
+    }
+    function syncStartBar() {
+      const c = state.current;
+      const show = !c || editable();
+      $('startBar').hidden = !show;
+      if (!show) return;
+      $('sbName').textContent = c ? ($('fName').value.trim() || campaignTitle(c)) : 'Sample campaign';
+      $('sbStatus').className = 'st ' + (c ? c.status : 'ranked');
+      $('sbStatus').textContent = c ? statusLabel(c.status) : 'Sample';
+      $('sbHint').textContent = c
+        ? 'All details filled? Start it now. Running is simulated: nothing is sent to customers.'
+        : 'This is a sample. Rank your SKUs in Ads Lab and choose Set up 1P campaign to create a real one.';
+      $('launchBtn2').innerHTML = c
+        ? '<i class="fa-solid fa-rocket"></i> Create &amp; start campaign'
+        : '<i class="fa-solid fa-ranking-star"></i> Rank your SKUs in Ads Lab to launch';
+    }
+    function setLaunching(on) {
+      ['launchBtn', 'launchBtn2'].forEach(id => { $(id).disabled = on; });
     }
     function configBody() {
       const tpl = {};
@@ -1322,13 +1556,15 @@
       const obj = (OBJECTIVES.find(o => o[0] === body.objective) || [])[1] || body.objective;
       if (!confirm(`Confirm and start this campaign?\n\nName: ${body.campaign_name}\nObjective: ${obj}\nChannels: ${chans}\nBudget: ${inr(body.budget_inr)}\nSchedule: ${body.start_date || todayIso()} for ${body.duration_days} days\n\nRunning is simulated: no messages or ads are sent. Simulated performance is generated for tracking.`)) return;
       state.busy = true;
+      setLaunching(true);
       try {
         const c = await saveConfig(body);
         await api('/v1/ads-lab/campaigns/' + encodeURIComponent(c.campaign_id) + '/launch', { method: 'POST' });
         toast(`“${body.campaign_name}” is running (simulated)`, 'fa-rocket');
+        state.histPage = 1;
         await loadCampaign(c.campaign_id, null, { focus: 'analysis' }); loadCampaigns();
       } catch (e) { toast(e.message, 'fa-triangle-exclamation'); }
-      finally { state.busy = false; }
+      finally { state.busy = false; setLaunching(false); }
     }
     async function onDiscard() {
       if (state.busy || !editable()) return;
@@ -1372,11 +1608,31 @@
     $('useRecBtn').addEventListener('click', () => { if (state.rec) { $('campaignBudget').value = Math.round(state.rec.recommended); renderAll(); scheduleEstimate(); } });
     $('saveBtn').addEventListener('click', onSave);
     $('launchBtn').addEventListener('click', onLaunch);
+    $('launchBtn2').addEventListener('click', onLaunch);
     $('discardBtn').addEventListener('click', onDiscard);
     $('anRefreshBtn').addEventListener('click', () => { if (state.current) loadCampaign(state.current.campaign_id); });
     $('detailsToggle').addEventListener('click', () => { state.showDetails = $('studio').hidden; $('studio').hidden = !state.showDetails; syncDetailsToggle(); });
     $('refreshBtn').addEventListener('click', loadCampaigns);
-    document.querySelectorAll('#statusFilter [data-filter]').forEach(b => b.addEventListener('click', () => { state.filter = b.dataset.filter; renderHistory(); }));
+    $('histPager').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-hp]');
+      if (!b || b.disabled) return;
+      state.histPage = Number(b.dataset.hp);
+      renderHistory();
+    });
+    ['hfFrom', 'hfTo'].forEach(id => $(id).addEventListener('change', () => {
+      $('hfTo').min = $('hfFrom').value;
+      $('hfFrom').max = $('hfTo').value;
+      applyHistFilters();
+    }));
+    $('hfClear').addEventListener('click', () => {
+      document.querySelectorAll('#histFilters details.ms input').forEach(i => { i.checked = false; i.indeterminate = false; });
+      document.querySelectorAll('#histFilters details.ms').forEach(msSummary);
+      $('hfFrom').value = ''; $('hfTo').value = ''; $('hfFrom').max = ''; $('hfTo').min = '';
+      applyHistFilters();
+    });
+    document.addEventListener('click', (e) => {
+      document.querySelectorAll('details.ms[open]').forEach(d => { if (!d.contains(e.target)) d.removeAttribute('open'); });
+    });
     $('tzNote').textContent = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
 
     showSample();

@@ -202,12 +202,13 @@ def _env_bool(name: str, default: bool = False) -> bool:
 def slim_metrics_json(metrics_path: Path) -> dict[str, Any]:
     """Build a small summary from web/metrics.json for the chat model."""
     if not metrics_path.is_file():
-        return {"error": "metrics.json missing", "path": str(metrics_path)}
+        log.error("metrics summary file missing path=%s", metrics_path)
+        return {"error": "metrics_unavailable"}
     try:
         raw = json.loads(metrics_path.read_text(encoding="utf-8"))
     except Exception as exc:
         log.exception("Failed to read metrics.json")
-        return {"error": f"metrics.json read failed: {exc}"}
+        return {"error": "metrics_unavailable"}
 
     customers = raw.get("customer_cells") or []
     garments = raw.get("garment_cells") or []
@@ -318,6 +319,11 @@ def sanitize_filter_context(raw: Any) -> dict[str, Any]:
     return out
 
 
+def ai_unavailable_detail(request_id: str) -> str:
+    """User-facing message for any model failure; the real cause is only logged."""
+    return f"The AI assistant is temporarily unavailable. Reference: {request_id}"
+
+
 def call_vertex_chat(
     message: str,
     context: dict[str, Any],
@@ -330,14 +336,15 @@ def call_vertex_chat(
     location = os.getenv("VERTEX_LOCATION", "asia-south1")
     model_name = os.getenv("VERTEX_CHAT_MODEL", "gemini-2.5-flash")
     if not project:
-        raise HTTPException(status_code=503, detail="GOOGLE_CLOUD_PROJECT is not set")
+        log.error("request_id=%s Vertex chat: GOOGLE_CLOUD_PROJECT is not set", request_id)
+        raise HTTPException(status_code=503, detail=ai_unavailable_detail(request_id))
 
     try:
         import vertexai  # type: ignore
         from vertexai.generative_models import GenerativeModel  # type: ignore
     except ImportError as exc:
         log.exception("request_id=%s missing google-cloud-aiplatform", request_id)
-        raise HTTPException(status_code=503, detail=f"Missing Vertex libs: {exc}") from exc
+        raise HTTPException(status_code=503, detail=ai_unavailable_detail(request_id)) from exc
 
     cap = max_context_chars if max_context_chars is not None else CHAT_MAX_CONTEXT_CHARS
     context_json = json.dumps(context, ensure_ascii=False, default=str)
@@ -378,7 +385,7 @@ def call_vertex_chat(
             location,
             model_name,
         )
-        raise HTTPException(status_code=503, detail=f"Vertex chat failed: {exc}") from exc
+        raise HTTPException(status_code=503, detail=ai_unavailable_detail(request_id)) from exc
 
 
 def run_chat(
@@ -407,7 +414,7 @@ def run_chat(
         return JSONResponse(
             status_code=503,
             content={
-                "detail": "Chat disabled: set ENABLE_VERTEX=true on command-center",
+                "detail": ai_unavailable_detail(request_id),
                 "request_id": request_id,
             },
         )

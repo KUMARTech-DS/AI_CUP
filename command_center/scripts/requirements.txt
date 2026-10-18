@@ -1,2 +1,2 @@
-# Only needed if you use: python3 aggregate_metrics.py --bq --project YOUR_PROJECT
+# Needed for: python3 aggregate_metrics.py --bq --project YOUR_PROJECT, and load_to_bq.sh (load_csv_bq.py)
 google-cloud-bigquery>=3.11.0

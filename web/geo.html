@@ -833,12 +833,10 @@
 
     /* ---- Logistics & warehouse ---- */
     .logi-top { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
-    .logi-picks { display: flex; flex-wrap: wrap; gap: 0.4rem; }
-    .logi-pick { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.38rem 0.75rem; border-radius: 999px; border: 1px solid var(--line); background: #fff; font: 600 12px Outfit, sans-serif; color: var(--soft); cursor: pointer; }
-    .logi-pick::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--c, #5FA85B); }
-    .logi-pick:hover { border-color: var(--accent); }
-    .logi-pick[aria-checked="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
-    .logi-pick[aria-checked="true"]::before { background: #fff; }
+    .logi-select { min-width: 280px; max-width: 100%; padding: 0.5rem 0.75rem; border: 1.5px solid var(--line); border-radius: 10px; background: #fff; font: 600 13px Outfit, sans-serif; color: var(--soft); cursor: pointer; }
+    .logi-select:hover, .logi-select:focus { border-color: var(--accent); outline: 0; }
+    .logi-select:disabled { opacity: .6; cursor: wait; }
+    .logi-select[hidden] { display: none; }
     .logi-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 0.3rem; }
     .logi-run { border: 0; border-radius: 10px; padding: 0.6rem 1.1rem; background: var(--accent); color: #fff; font: 600 13px Outfit, sans-serif; cursor: pointer; box-shadow: 0 6px 16px rgba(107,58,85,0.25); }
     .logi-run:hover { background: var(--accent2); }
@@ -908,7 +906,7 @@
           <span class="filter-label">PIN / Area</span>
           <div class="drop" id="drop-pin">
             <button type="button" class="drop-btn" data-drop="pin" aria-haspopup="true" aria-expanded="false" aria-controls="opts-pin">
-              <span class="summary empty">All areas</span>
+              <span class="summary">All selected</span>
               <span class="chev" aria-hidden="true"><svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8l4 4 4-4"/></svg></span>
             </button>
             <div class="drop-panel" id="opts-pin"></div>
@@ -918,7 +916,7 @@
           <span class="filter-label">Age group</span>
           <div class="drop" id="drop-age">
             <button type="button" class="drop-btn" data-drop="age" aria-haspopup="true" aria-expanded="false" aria-controls="opts-age">
-              <span class="summary empty">All ages</span>
+              <span class="summary">All selected</span>
               <span class="chev" aria-hidden="true"><svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8l4 4 4-4"/></svg></span>
             </button>
             <div class="drop-panel" id="opts-age"></div>
@@ -928,7 +926,7 @@
           <span class="filter-label">Gender</span>
           <div class="drop" id="drop-gender">
             <button type="button" class="drop-btn" data-drop="gender" aria-haspopup="true" aria-expanded="false" aria-controls="opts-gender">
-              <span class="summary empty">All genders</span>
+              <span class="summary">All selected</span>
               <span class="chev" aria-hidden="true"><svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8l4 4 4-4"/></svg></span>
             </button>
             <div class="drop-panel" id="opts-gender"></div>
@@ -938,7 +936,7 @@
           <span class="filter-label">RFM segment</span>
           <div class="drop" id="drop-rfm">
             <button type="button" class="drop-btn" data-drop="rfm" aria-haspopup="true" aria-expanded="false" aria-controls="opts-rfm">
-              <span class="summary empty">All segments</span>
+              <span class="summary">All selected</span>
               <span class="chev" aria-hidden="true"><svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8l4 4 4-4"/></svg></span>
             </button>
             <div class="drop-panel" id="opts-rfm"></div>
@@ -948,7 +946,7 @@
           <span class="filter-label">Brand</span>
           <div class="drop" id="drop-brand">
             <button type="button" class="drop-btn" data-drop="brand" aria-haspopup="true" aria-expanded="false" aria-controls="opts-brand">
-              <span class="summary empty">All brands</span>
+              <span class="summary">All selected</span>
               <span class="chev" aria-hidden="true"><svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8l4 4 4-4"/></svg></span>
             </button>
             <div class="drop-panel" id="opts-brand"></div>
@@ -1190,8 +1188,9 @@
             <div class="panel-body" id="logiBody">
               <div class="logi-top">
                 <div class="min-w-0">
-                  <div class="card-title" style="margin-bottom:.45rem">Plan a store in</div>
-                  <div class="logi-picks" id="logiPicks" role="radiogroup" aria-label="Recommended area"></div>
+                  <label class="card-title" for="logiSelect" style="display:block;margin-bottom:.45rem">Plan a store in</label>
+                  <select id="logiSelect" class="logi-select" aria-label="Location"></select>
+                  <span class="empty-note" id="logiEmpty" hidden></span>
                 </div>
                 <div class="logi-actions">
                   <button type="button" class="logi-run" id="logiRun">Analyse area</button>
@@ -1380,23 +1379,31 @@
         + `</div>`;
     }
 
+    // An empty selection means "no filter" and is shown as every option ticked.
+    // dropNone[key] marks the user explicitly unticking Select all (still no filter, but boxes stay clear).
+    const dropNone = {};
     function updateDropSummary(key, allLabel) {
       const drop = document.getElementById('drop-' + key);
       const summary = drop.querySelector('.summary');
       const vals = selection[key];
-      const total = drop.querySelectorAll('input[data-key]').length;
+      const boxes = [...drop.querySelectorAll('input[data-key]')];
+      const total = boxes.length;
+      if (vals.length) dropNone[key] = false;
+      const allOn = !vals.length && !dropNone[key];
+      const wanted = new Set(vals.map(String));
+      boxes.forEach(i => { i.checked = allOn || wanted.has(String(i.value)); });
       const allBox = drop.querySelector('input[data-all]');
       if (allBox) {
-        allBox.checked = total > 0 && vals.length >= total;
+        allBox.checked = allOn || (total > 0 && vals.length >= total);
         allBox.indeterminate = vals.length > 0 && vals.length < total;
       }
-      if (total > 1 && vals.length >= total) {
+      if (allOn || (total > 0 && vals.length >= total)) {
         summary.classList.remove('empty');
-        summary.textContent = `All selected (${total})`;
+        summary.textContent = total > 1 ? `All selected (${total})` : allLabel;
         return;
       }
       if (!vals.length) {
-        summary.textContent = allLabel;
+        summary.textContent = 'None selected · showing all';
         summary.classList.add('empty');
         return;
       }
@@ -1422,21 +1429,25 @@
           </label>`;
       }).join('');
 
+      const commit = (next) => {
+        const changed = next.join('\u0001') !== selection[key].join('\u0001');
+        selection[key] = next;
+        updateDropSummary(key, allLabel);
+        if (changed) applyFilters();
+      };
       panel.querySelectorAll('input[data-key]').forEach(input => {
         input.addEventListener('change', () => {
-          selection[key] = [...panel.querySelectorAll('input[data-key]:checked')].map(i => i.value);
-          updateDropSummary(key, allLabel);
-          applyFilters();
+          const boxes = [...panel.querySelectorAll('input[data-key]')];
+          const picked = boxes.filter(i => i.checked).map(i => i.value);
+          dropNone[key] = !picked.length;
+          commit(picked.length === boxes.length ? [] : picked);
         });
       });
       const allBox = panel.querySelector('input[data-all]');
       if (allBox) {
         allBox.addEventListener('change', () => {
-          const boxes = [...panel.querySelectorAll('input[data-key]')];
-          boxes.forEach(i => { i.checked = allBox.checked; });
-          selection[key] = allBox.checked ? boxes.map(i => i.value) : [];
-          updateDropSummary(key, allLabel);
-          applyFilters();
+          dropNone[key] = !allBox.checked;
+          commit([]);
         });
       }
       updateDropSummary(key, allLabel);
@@ -2441,8 +2452,7 @@
     function resetAgentGeoFilters() {
       focusPin = null;
       lastBriefKey = '';
-      Object.keys(selection).forEach((k) => { selection[k] = []; });
-      document.querySelectorAll('.drop-panel input').forEach((i) => { i.checked = false; });
+      Object.keys(selection).forEach((k) => { selection[k] = []; dropNone[k] = false; });
       Object.keys(GEO_DROP_ALL).forEach((k) => updateDropSummary(k, GEO_DROP_ALL[k]));
       applyFilters();
     }
@@ -2880,16 +2890,21 @@ Reply ONLY minified JSON, no markdown:
     }
 
     function renderLogiPicker() {
-      const box = $('logiPicks');
+      const box = $('logiSelect');
       if (!box || !lastStoreState) return;
       // Areas within 4 km of an existing store are served by it, so they never get a new-store plan
       const cands = (lastStoreState.scored || []).filter(r => r.decision !== 'No' && r.proximity_zone !== 'service');
       const focus = lastStoreState.focus;
       if (!cands.some(r => r.pin === logiPin)) logiPin = (focus && cands.includes(focus) ? focus.pin : cands[0] && cands[0].pin) || null;
       const name = (r) => (r.area_label && r.area_label !== r.pin ? r.area_label : 'PIN ' + r.pin);
-      box.innerHTML = cands.length
-        ? cands.map(r => `<button type="button" class="logi-pick" role="radio" aria-checked="${r.pin === logiPin}" data-pin="${esc(r.pin)}" style="--c:${decisionOf(r.decision).color}">${esc(name(r))}</button>`).join('')
-        : `<span class="empty-note">No Yes/Consider whitespace areas (more than ${PROXIMITY_KM} km from an existing store) for this filter set.</span>`;
+      const groups = {};
+      cands.forEach(r => { (groups[r.decision] = groups[r.decision] || []).push(r); });
+      box.innerHTML = Object.entries(groups).map(([d, rs]) => `<optgroup label="${esc(d)}">${rs.map(r =>
+        `<option value="${esc(r.pin)}"${r.pin === logiPin ? ' selected' : ''}>${esc(name(r))}${name(r) === 'PIN ' + r.pin ? '' : ' · ' + esc(r.pin)}</option>`).join('')}</optgroup>`).join('');
+      box.hidden = !cands.length;
+      box.disabled = logiBusy;
+      $('logiEmpty').hidden = !!cands.length;
+      $('logiEmpty').textContent = `No Yes/Consider whitespace areas (more than ${PROXIMITY_KM} km from an existing store) for this filter set.`;
       $('logiRun').disabled = !logiPin || logiBusy;
       const sel = cands.find(r => r.pin === logiPin);
       $('logiSummary').textContent = sel
@@ -2905,7 +2920,7 @@ Reply ONLY minified JSON, no markdown:
       if (!force && logiCache[key]) { renderLogiResult(logiCache[key]); return; }
       const int = logiInternal(logiPin);
       const r = int.row;
-      logiBusy = true; $('logiRun').disabled = true; $('logiStale').hidden = true;
+      logiBusy = true; $('logiRun').disabled = true; $('logiSelect').disabled = true; $('logiStale').hidden = true;
       const steps = ['Estimating population & income profile', 'Locating brand stores in and around the PIN', 'Benchmarking walk-ins, conversion and bill size', 'Validating against our wardrobe data'];
       $('logiOut').innerHTML = `<div class="logi-load"><div class="card-title">Analysing ${esc(r && r.area_label && r.area_label !== r.pin ? r.area_label : 'PIN ' + logiPin)}</div>
         <ul class="logi-steps" id="logiSteps">${steps.map((t, i) => `<li class="${i === 0 ? 'on' : ''}">${t}</li>`).join('')}</ul></div>`;
@@ -3156,8 +3171,7 @@ Reply ONLY minified JSON, no markdown:
     $('btnClear').addEventListener('click', () => {
       focusPin = null;
       lastBriefKey = '';
-      Object.keys(selection).forEach(k => { selection[k] = []; });
-      document.querySelectorAll('.drop-panel input').forEach(i => { i.checked = false; });
+      Object.keys(selection).forEach(k => { selection[k] = []; dropNone[k] = false; });
       updateDropSummary('pin', 'All areas');
       updateDropSummary('age', 'All ages');
       updateDropSummary('gender', 'All genders');
@@ -3254,10 +3268,9 @@ Reply ONLY minified JSON, no markdown:
       $('logiPanel').addEventListener('toggle', () => {
         if ($('logiPanel').open && logiPin && !logiCache[logiKey(logiPin)] && !logiBusy) runLogistics(false);
       });
-      $('logiPicks').addEventListener('click', (e) => {
-        const b = e.target.closest('[data-pin]');
-        if (!b || logiBusy) return;
-        logiPin = b.dataset.pin; renderLogiPicker();
+      $('logiSelect').addEventListener('change', (e) => {
+        if (logiBusy || !e.target.value) return;
+        logiPin = e.target.value; renderLogiPicker();
         if (logiCache[logiKey(logiPin)]) renderLogiResult(logiCache[logiKey(logiPin)]); else runLogistics(false);
       });
       $('logiRun').addEventListener('click', () => runLogistics(!!logiCache[logiKey(logiPin)]));

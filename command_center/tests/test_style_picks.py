@@ -108,6 +108,22 @@ def test_eligible_narrowed_by_age_gender_rfm(pin_users, monkeypatch):
     assert sa.eligible_customers({"pin_codes": ["560008"]}) == ["u1", "u2", "u3"]
 
 
+def test_eligible_accepts_multiple_audience_choices(pin_users, monkeypatch):
+    monkeypatch.setattr(admin_intel, "dataset", lambda **kw: {"customers": CUSTOMERS})
+    camp = {"pin_codes": ["560008"], "age_group": "18-24, 35-44", "gender": "F, M", "rfm_segment": "Champions"}
+    assert sa.eligible_customers(camp) == ["u1", "u2", "u3"]
+    assert sa.eligible_customers({**camp, "gender": "F"}) == ["u1", "u3"]
+
+
+def test_cell_matching_accepts_multiple_audience_choices():
+    cell = {"pin_code": "560008", "age_group": "25-34", "gender": "female", "rfm_segment": "Loyal"}
+    assert bc.audience_values("25-34, 35-44") == {"25-34", "35-44"}
+    assert bc.audience_values("") == set()
+    assert bc._cell_matches(cell, pin_codes=["560008"], age_group="18-24, 25-34", gender="M, F", rfm_segment="Loyal, Champions")
+    assert not bc._cell_matches(cell, pin_codes=["560008"], age_group="35-44, 45-54", gender=None, rfm_segment=None)
+    assert not bc._cell_matches(cell, pin_codes=["560008"], age_group=None, gender="M", rfm_segment=None)
+
+
 def test_eligible_falls_back_to_pin_only(pin_users, monkeypatch):
     camp = {"pin_codes": ["560008"], "age_group": "18-24"}
 
@@ -214,3 +230,21 @@ def test_recommend_route_removed_and_feed_forced_to_own_customer(monkeypatch):
     monkeypatch.setattr(main.style_asst, "customer_style_feed", boom)
     r = client.get("/v1/style-assistant/feed")
     assert r.status_code == 503 and "psycopg2" not in r.text
+
+
+def test_style_assistant_is_customer_only(monkeypatch):
+    from fastapi.testclient import TestClient
+
+    import auth_acl
+    import main
+
+    assert auth_acl.tabs_for_role("customer") == ["style"]
+    assert "style" not in auth_acl.tabs_for_role("brand")
+    assert "style" not in auth_acl.tabs_for_role("admin")
+
+    monkeypatch.setattr(main.style_asst, "customer_style_feed", lambda *a, **k: {"ok": True})
+    client = TestClient(main.app)
+    for sess in ({"role": "brand", "brand_name": "Zara"}, {"role": "admin"}):
+        monkeypatch.setattr(main, "_require_session", lambda *a, _s=sess, **k: _s)
+        assert client.get("/v1/style-assistant/feed", params={"user_uuid": "u1"}).status_code == 403
+    assert client.get("/v1/style-assistant/users").status_code == 404

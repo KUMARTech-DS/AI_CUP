@@ -32,6 +32,13 @@ logging.basicConfig(
 )
 log = logging.getLogger("command_center")
 
+
+def _masked_http(status: int, what: str) -> HTTPException:
+    """Log the cause (with traceback when inside an except block) and return a generic error with a reference."""
+    ref = uuid.uuid4().hex[:12]
+    log.error("%s reference=%s", what, ref, exc_info=sys.exc_info()[0] is not None)
+    return HTTPException(status, f"This service is temporarily unavailable. Reference: {ref}")
+
 REPO = Path(__file__).resolve().parents[1]
 WEB_DIR = REPO / "web"
 DATA_DIR = REPO / "command_center_data"
@@ -114,18 +121,15 @@ def compute_metrics() -> dict[str, Any]:
     project = os.getenv("GOOGLE_CLOUD_PROJECT") or os.getenv("GCP_PROJECT") or ""
     dataset = os.getenv("BQ_DATASET", "suffai_ops")
     if not project:
-        log.error("GOOGLE_CLOUD_PROJECT not set")
-        raise HTTPException(503, "GOOGLE_CLOUD_PROJECT is not set")
+        raise _masked_http(503, "metrics: GOOGLE_CLOUD_PROJECT not set")
 
     if not PIN_POP.is_file():
-        log.error("pin_population.json missing path=%s", PIN_POP)
-        raise HTTPException(500, f"pin_population.json missing at {PIN_POP}")
+        raise _masked_http(500, f"metrics: pin_population.json missing path={PIN_POP}")
 
     try:
         pin_pop = json.loads(PIN_POP.read_text(encoding="utf-8"))
     except Exception as exc:
-        log.exception("Failed to read pin_population.json")
-        raise HTTPException(500, f"pin_population.json read failed: {exc}") from exc
+        raise _masked_http(500, "metrics: pin_population.json read failed") from exc
 
     try:
         log.info("Loading metrics from BigQuery project=%s dataset=%s", project, dataset)
@@ -629,8 +633,7 @@ def auth_login(body: LoginRequest):
     except PermissionError:
         raise HTTPException(401, "Invalid username or password") from None
     except Exception as exc:
-        log.exception("auth login failed")
-        raise HTTPException(503, f"Auth unavailable: {exc}") from exc
+        raise _masked_http(503, "auth login failed") from exc
     log.info("auth login ok user=%s role=%s", sess.get("username"), sess.get("role"))
     return {"ok": True, **sess}
 
@@ -668,8 +671,7 @@ def metrics(
     except HTTPException:
         raise
     except Exception as exc:
-        log.exception("metrics endpoint unexpected error")
-        raise HTTPException(500, f"metrics failed: {exc}") from exc
+        raise _masked_http(500, "metrics endpoint unexpected error") from exc
 
     # Optional session: brand role gets Competitors masking
     try:
@@ -688,11 +690,9 @@ async def ads_lab_extract(files: list[UploadFile] = File(...)):
     extraction_url = (os.getenv("EXTRACTION_URL") or "").rstrip("/")
     bucket = os.getenv("GCS_IMAGE_BUCKET") or ""
     if not extraction_url:
-        log.error("EXTRACTION_URL not set")
-        raise HTTPException(503, "EXTRACTION_URL not set (Cloud Run URL of suffai-extraction)")
+        raise _masked_http(503, "ads-lab extract: EXTRACTION_URL not set")
     if not bucket:
-        log.error("GCS_IMAGE_BUCKET not set")
-        raise HTTPException(503, "GCS_IMAGE_BUCKET not set")
+        raise _masked_http(503, "ads-lab extract: GCS_IMAGE_BUCKET not set")
 
     try:
         from google.cloud import storage  # type: ignore
@@ -700,15 +700,13 @@ async def ads_lab_extract(files: list[UploadFile] = File(...)):
         import google.oauth2.id_token  # type: ignore
         import urllib.request
     except ImportError as exc:
-        log.exception("Missing GCP client libraries")
-        raise HTTPException(503, f"Missing GCP libs: {exc}") from exc
+        raise _masked_http(503, "ads-lab extract: missing GCP client libraries") from exc
 
     try:
         client = storage.Client()
         bkt = client.bucket(bucket)
     except Exception as exc:
-        log.exception("GCS client init failed bucket=%s", bucket)
-        raise HTTPException(503, f"GCS unavailable: {exc}") from exc
+        raise _masked_http(503, f"ads-lab extract: GCS client init failed bucket={bucket}") from exc
 
     results: list[dict[str, Any]] = []
 
@@ -735,14 +733,14 @@ async def ads_lab_extract(files: list[UploadFile] = File(...)):
             blob = bkt.blob(object_key)
             blob.upload_from_string(data, content_type=f.content_type)
             log.info("Uploaded to GCS gs://%s/%s filename=%s", bucket, object_key, f.filename)
-        except Exception as exc:
+        except Exception:
             log.exception("GCS upload failed key=%s", object_key)
             results.append(
                 {
                     "filename": f.filename,
                     "object_key": object_key,
                     "ok": False,
-                    "error": f"GCS upload failed: {exc}",
+                    "error": "Upload failed. Please try again.",
                 }
             )
             continue
@@ -775,14 +773,14 @@ async def ads_lab_extract(files: list[UploadFile] = File(...)):
                 payload.get("status"),
                 payload.get("image_id"),
             )
-        except Exception as exc:
+        except Exception:
             log.exception("Extract call failed filename=%s key=%s", f.filename, object_key)
             results.append(
                 {
                     "filename": f.filename,
                     "object_key": object_key,
                     "ok": False,
-                    "error": str(exc),
+                    "error": "Attribute extraction failed. Please try again.",
                 }
             )
             continue
@@ -1023,10 +1021,10 @@ def ads_lab_campaign_start(
     except Exception as exc:
         log.exception("campaign start failed id=%s", campaign_id)
         try:
-            brand_camp.set_campaign_status(campaign_id, "error", str(exc)[:500])
+            brand_camp.set_campaign_status(campaign_id, "error", "Campaign start failed")
         except Exception:
             pass
-        raise HTTPException(503, f"campaign start failed: {exc}") from exc
+        raise _masked_http(503, f"campaign start failed id={campaign_id}") from exc
     refreshed = brand_camp.get_campaign(campaign_id) or campaign
     return {"ok": True, "campaign": refreshed, "materialize": result}
 
@@ -1241,9 +1239,11 @@ def admin_intel_customers_overview(
     x_session_token: Optional[str] = Header(None, alias="X-Session-Token"),
     rfm: Optional[str] = Query(None),
     pin: Optional[str] = Query(None),
+    brand: Optional[str] = Query(None),
 ):
     _require_admin(request, authorization, x_session_token)
-    return _intel_call(admin_intel.customers_overview, rfm=_csv_param(rfm), pins=_csv_param(pin))
+    return _intel_call(admin_intel.customers_overview, rfm=_csv_param(rfm), pins=_csv_param(pin),
+                       brands=_csv_param(brand))
 
 
 @app.get("/v1/admin/intel/customers")
@@ -1254,14 +1254,15 @@ def admin_intel_customers(
     q: str = Query("", max_length=80),
     rfm: Optional[str] = Query(None),
     pin: Optional[str] = Query(None),
+    brand: Optional[str] = Query(None),
     qualified: bool = Query(False),
     page: int = Query(1, ge=1),
-    size: int = Query(25, ge=1, le=100),
+    size: int = Query(10, ge=1, le=100),
 ):
     _require_admin(request, authorization, x_session_token)
     return _intel_call(
         admin_intel.customers_page, q=q, rfm=_csv_param(rfm), pins=_csv_param(pin),
-        qualified_only=qualified, page=page, size=size,
+        brands=_csv_param(brand), qualified_only=qualified, page=page, size=size,
     )
 
 
@@ -1313,15 +1314,16 @@ def admin_intel_garments(
     fabric: Optional[str] = Query(None),
     pattern: Optional[str] = Query(None),
     size_filter: Optional[str] = Query(None, alias="garment_size"),
+    pin: Optional[str] = Query(None),
     page: int = Query(1, ge=1),
-    size: int = Query(24, ge=1, le=100),
+    size: int = Query(10, ge=1, le=100),
 ):
     _require_admin(request, authorization, x_session_token)
     filters = {
         "commodity": _csv_param(commodity), "brand": _csv_param(brand), "material": _csv_param(fabric),
         "pattern": _csv_param(pattern), "size": _csv_param(size_filter),
     }
-    return _intel_call(admin_intel.garments, filters=filters, page=page, size=size)
+    return _intel_call(admin_intel.garments, filters=filters, pins=_csv_param(pin), page=page, size=size)
 
 
 @app.get("/v1/admin/intel/brands")
@@ -1372,7 +1374,7 @@ def admin_list_campaigns(
     try:
         rows = brand_camp.list_campaigns(brand_name=None, limit=limit)
     except Exception as exc:
-        raise HTTPException(503, f"admin campaigns failed: {exc}") from exc
+        raise _masked_http(503, "admin campaigns failed") from exc
     return {"ok": True, "campaigns": rows, "count": len(rows)}
 
 
@@ -1386,17 +1388,11 @@ def style_assistant_feed(
 ):
     """Saved Style Assistant picks from every campaign the customer was ranked for (read only)."""
     sess = _require_session(request, authorization, x_session_token)
-    role = sess.get("role")
-    if role == "brand":
-        raise HTTPException(403, "Brand accounts cannot use Style feed")
-    user_uuid = ""
-    if role == "customer":
-        user_uuid = (sess.get("customer_id") or "").strip()
-    elif role == "admin":
-        # Admin can preview via ?user_uuid=
-        user_uuid = (request.query_params.get("user_uuid") or "").strip()
+    if sess.get("role") != "customer":
+        raise HTTPException(403, "Style Assistant is available to customer accounts only")
+    user_uuid = (sess.get("customer_id") or "").strip()
     if not user_uuid:
-        raise HTTPException(400, "customer_id / user_uuid required")
+        raise HTTPException(400, "This customer account has no customer_id")
     try:
         payload = style_asst.customer_style_feed(user_uuid, brand=brand, limit=limit)
     except Exception as exc:
@@ -1448,33 +1444,13 @@ def _proxy_similarity_get(path: str, params: dict[str, Any]) -> Any:
             detail = parsed.get("detail") or body
         except Exception:
             pass
-        log.error("similarity proxy HTTP %s path=%s detail=%s", exc.code, path, detail)
-        raise HTTPException(exc.code, f"similarity: {detail}") from exc
+        what = f"similarity proxy HTTP {exc.code} path={path} detail={detail}"
+        if exc.code >= 500:
+            raise _masked_http(503, what) from exc
+        log.error(what)
+        raise HTTPException(exc.code, "The similarity request was rejected. Check the filters and try again.") from exc
     except Exception as exc:
-        log.exception("similarity proxy failed path=%s", path)
-        raise HTTPException(503, f"similarity unreachable: {exc}") from exc
-
-
-@app.get("/v1/style-assistant/users")
-def style_assistant_users(
-    request: Request,
-    authorization: Optional[str] = Header(None),
-    x_session_token: Optional[str] = Header(None, alias="X-Session-Token"),
-    limit: int = Query(200, ge=1, le=500),
-):
-    """Distinct customer ids from user_wardrobe for Style Assistant dropdown."""
-    token = _token_from_request(request, authorization, x_session_token)
-    sess = auth_acl.get_session(token) if token else None
-    if sess and sess.get("role") == "brand":
-        raise HTTPException(403, "Brand accounts only get the campaign preview in Style Assistant")
-    if not os.getenv("DATABASE_URL", "").strip():
-        raise HTTPException(503, "DATABASE_URL not set")
-    try:
-        users = style_asst.list_style_users(limit=limit)
-        return {"users": users, "count": len(users)}
-    except Exception as exc:
-        log.exception("style-assistant users failed")
-        raise HTTPException(503, f"style-assistant users failed: {exc}") from exc
+        raise _masked_http(503, f"similarity proxy failed path={path}") from exc
 
 
 @app.get("/v1/admin/unique-summary")
@@ -1546,7 +1522,7 @@ def geo_brief_core(body: GeoBriefRequest, sess: Optional[dict[str, Any]]) -> dic
         payload = _sanitize_geo_brief_payload(body)
     except Exception as exc:
         log.exception("request_id=%s geo_brief sanitize failed", request_id)
-        raise HTTPException(400, f"Invalid geo brief payload: {exc}") from exc
+        raise HTTPException(400, f"Invalid geo brief payload. Reference: {request_id}") from exc
 
     focus = payload.get("focus_pin") or {}
     if focus and not focus.get("heuristic_decision"):
@@ -1577,15 +1553,14 @@ def geo_brief_core(body: GeoBriefRequest, sess: Optional[dict[str, Any]]) -> dic
         heuristic,
     )
 
-    def _fallback_payload(detail: str) -> dict[str, Any]:
-        """Always return usable decision+brief (HTTP 200) when Vertex fails."""
+    def _fallback_payload(reason: str, cause: str = "") -> dict[str, Any]:
+        """Always return usable decision+brief (HTTP 200) when Vertex fails. `cause` is logged only."""
         explanation = (
             f"Heuristic decision ({heuristic}) for PIN {focus.get('pin') or 'n/a'}: "
             f"brand_share={focus.get('brand_share')}, "
             f"brand_garments={focus.get('brand_garments')}, "
             f"competitor_garments={focus.get('competitor_garments')}, "
-            f"est_footfall={focus.get('est_footfall')}, demand={focus.get('demand')}. "
-            f"Gemini unavailable ({detail})."
+            f"est_footfall={focus.get('est_footfall')}, demand={focus.get('demand')}."
         )
         commodities = focus.get("commodities") or []
         top_c = ", ".join(
@@ -1606,15 +1581,17 @@ def geo_brief_core(body: GeoBriefRequest, sess: Optional[dict[str, Any]]) -> dic
                 f"answer is No ({geo_prox.SERVICE_LABEL}). " + explanation
             )
         log.warning(
-            "request_id=%s geo_brief fallback decision=%s detail=%s",
+            "request_id=%s geo_brief fallback decision=%s reason=%s cause=%s",
             request_id,
             heuristic,
-            detail,
+            reason,
+            cause,
         )
         return {
             "ok": True,
             "fallback": True,
-            "detail": detail,
+            "reason": reason,
+            "detail": chatbot.ai_unavailable_detail(request_id),
             "request_id": request_id,
             "decision": heuristic,
             "confidence": "low",
@@ -1630,7 +1607,7 @@ def geo_brief_core(body: GeoBriefRequest, sess: Optional[dict[str, Any]]) -> dic
         }
 
     if not _env_bool("ENABLE_VERTEX", True):
-        return _fallback_payload("ENABLE_VERTEX=false")
+        return _fallback_payload("ai_disabled", "ENABLE_VERTEX=false")
 
     try:
         raw = chatbot.call_vertex_chat(
@@ -1644,10 +1621,10 @@ def geo_brief_core(body: GeoBriefRequest, sess: Optional[dict[str, Any]]) -> dic
     except HTTPException as exc:
         detail = exc.detail if isinstance(exc.detail, str) else str(exc.detail)
         log.error("request_id=%s geo_brief vertex HTTP status=%s detail=%s", request_id, exc.status_code, detail)
-        return _fallback_payload(detail)
+        return _fallback_payload("ai_unavailable", detail)
     except Exception as exc:
         log.exception("request_id=%s geo_brief model parse/call failed", request_id)
-        return _fallback_payload(str(exc))
+        return _fallback_payload("ai_unavailable", f"{type(exc).__name__}: {exc}")
 
     model_decision = parsed["decision"]
     binding = focus.get("binding_decision")
@@ -1902,7 +1879,6 @@ def root():
             "GET /v1/admin/unique-summary",
             "GET /v1/admin/unique-garments",
             "GET /v1/admin/campaigns",
-            "GET /v1/style-assistant/users",
             "GET /v1/style-assistant/feed",
             "POST /v1/auth/login",
             "GET /v1/auth/me",

@@ -329,12 +329,8 @@ curl -sS "$CC_URL/v1/metrics" | head -c 400; echo
 curl -sS "$CC_URL/v1/admin/unique-summary" | head -c 400; echo
 
 # Style Assistant (Feature 2)
-curl -sS "$CC_URL/v1/style-assistant/users" | head -c 400; echo
-curl -sS "$CC_URL/v1/style-assistant/brands" | head -c 400; echo
-# Replace USER_UUID / BRAND from the lists above:
-# curl -sS -X POST "$CC_URL/v1/style-assistant/recommend" \
-#   -H 'Content-Type: application/json' \
-#   -d '{"user_uuid":"USER_UUID","brand_name":"BRAND","limit":6}'
+# Customer login only; brand / admin tokens get 403
+# curl -sS -H "Authorization: Bearer CUSTOMER_TOKEN" "$CC_URL/v1/style-assistant/feed" | head -c 400; echo
 
 # Chat
 curl -sS -X POST "$CC_URL/v1/chat" \

@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SuffAI Command Center — Step-by-step GCP Redeploy Guide</title>
+<style>
+  @page { size: A4; margin: 16mm 14mm; }
+  body { font-family: -apple-system, "Helvetica Neue", Arial, sans-serif; color: #1f2937; font-size: 10.5pt; line-height: 1.45; }
+  h1 { font-size: 20pt; margin: 0 0 4px; color: #111827; }
+  .sub { color: #6b7280; margin-bottom: 14px; }
+  h2 { font-size: 13.5pt; margin: 22px 0 6px; padding-bottom: 4px; border-bottom: 2px solid #e5e7eb; color: #111827; page-break-after: avoid; }
+  h3 { font-size: 11pt; margin: 14px 0 4px; page-break-after: avoid; }
+  pre { background: #0f172a; color: #e2e8f0; padding: 10px 12px; border-radius: 6px; font-size: 8.4pt; line-height: 1.4; white-space: pre-wrap; word-break: break-word; page-break-inside: avoid; }
+  code { font-family: Menlo, Consolas, monospace; }
+  p code, li code, td code { background: #f3f4f6; padding: 1px 4px; border-radius: 3px; font-size: 9pt; }
+  table { border-collapse: collapse; width: 100%; margin: 8px 0; font-size: 9.5pt; page-break-inside: avoid; }
+  th, td { border: 1px solid #e5e7eb; padding: 6px 8px; text-align: left; vertical-align: top; }
+  th { background: #f9fafb; }
+  .warn { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 8px 12px; border-radius: 4px; margin: 8px 0; }
+  .note { background: #eff6ff; border-left: 4px solid #3b82f6; padding: 8px 12px; border-radius: 4px; margin: 8px 0; }
+  ol li, ul li { margin: 3px 0; }
+</style>
+</head>
+<body>
+
+<h1>SuffAI Command Center — GCP Redeploy Guide</h1>
+<div class="sub">Covers: AURA forms, 1P Confirm flow, Style Assistant picks computed at Extract &amp; Rank, “Select all” filters, Geo and Admin updates. Run all commands from the repo root with <code>gcloud</code> authenticated.</div>
+
+<h2>What needs redeploying</h2>
+<table>
+  <tr><th>Piece</th><th>Redeploy?</th><th>Why</th></tr>
+  <tr><td><code>suffai-command-center</code></td><td><b>Yes</b></td><td>All app and UI changes, plus the new <code>numpy</code> dependency</td></tr>
+  <tr><td>Cloud SQL migrations 005–010</td><td><b>Yes, if not already applied</b></td><td>Campaigns, ranking jobs, recommendations and Geo caches need them</td></tr>
+  <tr><td><code>suffai-similarity</code></td><td><b>Yes, if <code>compare-pins</code> isn't live</b></td><td><code>similarity/compare.py</code> and <code>main.py</code> changed</td></tr>
+  <tr><td>Cloud Tasks queue</td><td><b>Strongly recommended</b></td><td>Ranking plus personalisation is too long to run safely in a Cloud Run background thread</td></tr>
+  <tr><td><code>suffai-extraction</code></td><td>No</td><td>Unchanged</td></tr>
+</table>
+
+<h2>Step 0 — Set variables and snapshot current settings</h2>
+<pre><code>cd ~/Downloads/AI_CUP/AI_CUP_latest
+export GOOGLE_CLOUD_PROJECT=YOUR_PROJECT_ID
+export GCP_REGION=asia-south1
+gcloud config set project "$GOOGLE_CLOUD_PROJECT"
+gcloud config set run/region "$GCP_REGION"
+
+# Save current env so nothing gets lost
+for s in suffai-command-center suffai-similarity suffai-extraction; do
+  gcloud run services describe $s --format=export &gt; /tmp/$s.yaml 2&gt;/dev/null || true
+done
+
+export EXTRACTION_URL=$(gcloud run services describe suffai-extraction --format='value(status.url)')
+export SIMILARITY_URL=$(gcloud run services describe suffai-similarity --format='value(status.url)')
+export CLOUD_SQL_INSTANCE="$GOOGLE_CLOUD_PROJECT:$GCP_REGION:suffai-ops"   # adjust instance name
+export DATABASE_URL='postgresql://USER:PASS@/DBNAME?host=/cloudsql/'"$CLOUD_SQL_INSTANCE"</code></pre>
+<div class="note">Copy your real <code>DATABASE_URL</code> from <code>/tmp/suffai-command-center.yaml</code> or from Secret Manager. Don't guess it.</div>
+
+<h2>Step 1 — Keep plaintext passwords out of the image (before building)</h2>
+<p><code>Dockerfile.command_center</code> copies the whole <code>command_center_data/</code> folder into the image, and two files in it hold plaintext passwords. Move them outside the repo:</p>
+<pre><code>mkdir -p ~/suffai-secrets
+mv command_center_data/auth/login_creds_plaintext.csv ~/suffai-secrets/
+mv command_center_data/auth/brand_logins_summary.csv ~/suffai-secrets/</code></pre>
+<p>Create a <code>.dockerignore</code> at the repo root:</p>
+<pre><code>command_center_data/auth/login_creds_plaintext.csv
+command_center_data/auth/brand_logins_summary.csv
+.git
+**/__pycache__
+**/.DS_Store</code></pre>
+<p>Logins should come from BigQuery. Load the hashed credentials file (the script always writes to the <code>suffai_ops</code> dataset):</p>
+<pre><code>./command_center/scripts/load_login_creds_bq.sh "$GOOGLE_CLOUD_PROJECT"</code></pre>
+
+<h2>Step 2 — Apply Cloud SQL migrations 005–010</h2>
+<p>Every migration is safe to re-run. Apply them in order (also 001–004 if they're not already in place).</p>
+<pre><code>cloud-sql-proxy "$CLOUD_SQL_INSTANCE" --port=5432 &amp;
+export PGPASSWORD='YOUR_DB_PASSWORD'
+for f in 005_brand_sku_campaigns 006_campaign_1p_lifecycle 007_campaign_impact_metrics \
+         008_campaign_journey 009_campaign_jobs_channels 010_geo_store_intel; do
+  psql "host=127.0.0.1 port=5432 user=YOUR_DB_USER dbname=YOUR_DB_NAME" \
+       -v ON_ERROR_STOP=1 -f db/migrations/$f.sql
+done
+kill %1</code></pre>
+<p>Check that the tables exist:</p>
+<pre><code>SELECT table_name FROM information_schema.tables
+WHERE table_name IN ('brand_campaigns','brand_skus','campaign_jobs',
+  'campaign_user_recommendations','campaign_impact_daily','geo_store_lookups');</code></pre>
+<div class="note">Ignore <code>deploy/01_prepare_similarity_db.sh</code> for this step — it only applies 003 and 004.</div>
+
+<h2>Step 3 — Redeploy <code>suffai-similarity</code> (only if <code>compare-pins</code> isn't live)</h2>
+<div class="warn">This script replaces <b>every</b> setting on the service (<code>--set-env-vars</code>). Export <code>DATABASE_URL</code> and <code>CLOUD_SQL_INSTANCE</code> from Step 0 first.</div>
+<pre><code>./deploy/deploy_similarity.sh</code></pre>
+<p>Check it:</p>
+<pre><code>curl -s -X POST "$SIMILARITY_URL/v1/similarity/compare-pins" \
+  -H "Authorization: Bearer $(gcloud auth print-identity-token)" \
+  -H 'Content-Type: application/json' \
+  -d '{"gcs_object_key":"demo/x.jpg","pin_codes":["560008"]}' | head -c 300</code></pre>
+<p>A 404 means the old version is still running. Any error about the image itself means the route exists.</p>
+
+<h2>Step 4 — Rebuild and redeploy <code>suffai-command-center</code></h2>
+<h3>Option A — local Docker (keeps existing settings via <code>--update-env-vars</code>)</h3>
+<pre><code>./deploy/deploy_command_center.sh</code></pre>
+<h3>Option B — Cloud Build (no local Docker)</h3>
+<pre><code>gcloud builds submit --config=deploy/cloudbuild-command-center.yaml .
+gcloud run deploy suffai-command-center \
+  --image="$GCP_REGION-docker.pkg.dev/$GOOGLE_CLOUD_PROJECT/suffai/suffai-command-center:latest" \
+  --allow-unauthenticated --memory=1Gi --cpu=1 \
+  --add-cloudsql-instances="$CLOUD_SQL_INSTANCE" \
+  --update-env-vars="USE_BQ=true,BQ_DATASET=suffai_ops,GOOGLE_CLOUD_PROJECT=$GOOGLE_CLOUD_PROJECT,GCS_IMAGE_BUCKET=$GOOGLE_CLOUD_PROJECT-suffai-garment-images,ENABLE_VERTEX=true,VERTEX_LOCATION=$GCP_REGION,VERTEX_CHAT_MODEL=gemini-2.5-flash,EXTRACTION_URL=$EXTRACTION_URL,SIMILARITY_URL=$SIMILARITY_URL,DATABASE_URL=$DATABASE_URL"</code></pre>
+<p>Then switch logins to BigQuery only and set the Geo defaults:</p>
+<pre><code>gcloud run services update suffai-command-center \
+  --update-env-vars="AUTH_SOURCE=bq,GEO_GROUNDING_LOCATION=global,GEO_CITY=Bengaluru"</code></pre>
+
+<h2>Step 5 — Cloud Tasks for ranking jobs (one-time setup)</h2>
+<p>Without this, the job that ranks products and saves Style picks runs in a background thread that Cloud Run can freeze between requests.</p>
+<pre><code>PROJECT_NUMBER=$(gcloud projects describe "$GOOGLE_CLOUD_PROJECT" --format='value(projectNumber)')
+RUNTIME_SA=$(gcloud run services describe suffai-command-center --format='value(spec.template.spec.serviceAccountName)')
+RUNTIME_SA=${RUNTIME_SA:-${PROJECT_NUMBER}-compute@developer.gserviceaccount.com}
+TASKS_SA="suffai-tasks-invoker@${GOOGLE_CLOUD_PROJECT}.iam.gserviceaccount.com"
+
+gcloud services enable cloudtasks.googleapis.com
+gcloud tasks queues create campaign-rank --location="$GCP_REGION" \
+  --max-concurrent-dispatches=10 --max-dispatches-per-second=5 \
+  --max-attempts=20 --min-backoff=10s --max-backoff=300s || true
+gcloud iam service-accounts create suffai-tasks-invoker \
+  --display-name="Cloud Tasks invoker for Command Center" || true
+
+gcloud projects add-iam-policy-binding "$GOOGLE_CLOUD_PROJECT" \
+  --member="serviceAccount:$RUNTIME_SA" --role="roles/cloudtasks.enqueuer"
+gcloud iam service-accounts add-iam-policy-binding "$TASKS_SA" \
+  --member="serviceAccount:$RUNTIME_SA" --role="roles/iam.serviceAccountUser"
+gcloud run services add-iam-policy-binding suffai-command-center \
+  --member="serviceAccount:$TASKS_SA" --role="roles/run.invoker"
+
+CC_URL=$(gcloud run services describe suffai-command-center --format='value(status.url)')
+gcloud run services update suffai-command-center --timeout=900 \
+  --update-env-vars="CLOUD_TASKS_QUEUE=projects/$GOOGLE_CLOUD_PROJECT/locations/$GCP_REGION/queues/campaign-rank,TASKS_SERVICE_ACCOUNT=$TASKS_SA,COMMAND_CENTER_URL=$CC_URL"</code></pre>
+<div class="note"><code>COMMAND_CENTER_URL</code> must be the exact service address with no path after it — it is what the job's login token is checked against.</div>
+
+<h2>Step 6 — Service account permissions (one-time; harmless to repeat)</h2>
+<pre><code>for role in roles/aiplatform.user roles/bigquery.jobUser roles/bigquery.dataViewer \
+            roles/storage.objectViewer roles/cloudsql.client; do
+  gcloud projects add-iam-policy-binding "$GOOGLE_CLOUD_PROJECT" \
+    --member="serviceAccount:$RUNTIME_SA" --role="$role"
+done
+# Signed image URLs (Style Assistant, campaign monitor)
+gcloud iam service-accounts add-iam-policy-binding "$RUNTIME_SA" \
+  --member="serviceAccount:$RUNTIME_SA" --role="roles/iam.serviceAccountTokenCreator"
+# Command Center may call the private extraction + similarity services
+for s in suffai-extraction suffai-similarity; do
+  gcloud run services add-iam-policy-binding $s \
+    --member="serviceAccount:$RUNTIME_SA" --role="roles/run.invoker"
+done</code></pre>
+<p>Ranking uploads SKU images to <code>GCS_IMAGE_BUCKET</code>, so the runtime account also needs <code>roles/storage.objectCreator</code> on that bucket.</p>
+
+<h2>Step 7 (optional) — Refresh the chat's metrics snapshot</h2>
+<p>The dashboard chat reads <code>web/metrics.json</code>, which is baked into the image. To refresh it from BigQuery:</p>
+<pre><code>python3 command_center/scripts/aggregate_metrics.py --bq --project "$GOOGLE_CLOUD_PROJECT"
+# then repeat Step 4 so the new file is in the image</code></pre>
+
+<h2>Step 8 — Smoke test</h2>
+<pre><code>CC_URL=$(gcloud run services describe suffai-command-center --format='value(status.url)')
+curl -s "$CC_URL/health" | jq
+curl -s -o /dev/null -w '%{http_code}\n' -X POST "$CC_URL/v1/style-assistant/recommend"   # expect 404/405 (removed)</code></pre>
+<p>Then click through the main flows:</p>
+<ol>
+  <li><b>Brand login → Ads Lab.</b> Select PINs (try “Select all”), upload 2–3 SKU images, click <b>Extract &amp; rank</b>. The job card runs; near the end it shows “All images ranked · saving Style Assistant picks for N customer(s)”.</li>
+  <li><b>AURA chat on Ads Lab.</b> After ranking, a “Run on” dropdown (1P / 3P) appears. Choose 1P → one setup form with every field → <b>Save draft &amp; review</b> → <b>Confirm</b>. The impact and analysis view opens on the Campaigns tab.</li>
+  <li><b>Customer login → Style tab</b> (the only tab a customer sees). Three tabs (Complete your outfit, Recommended, Your wardrobe) and a Brand filter; no Generate button. Picks appear only for customers whose wardrobe PIN is in the ranked campaign.</li>
+  <li><b>Admin login.</b> Admin multi-selects and Geo dropdowns have “Select all”. There is no Style Assistant tab.</li>
+  <li><b>Access check.</b> Style Assistant is customer-only: brand and admin logins don't see the tab, and <code>GET /v1/style-assistant/feed</code> returns 403 for them.</li>
+</ol>
+
+<h3>If something fails</h3>
+<pre><code>gcloud run services logs read suffai-command-center --limit=100</code></pre>
+<table>
+  <tr><th>Symptom</th><th>Likely cause</th></tr>
+  <tr><td>Job stuck in “queued”</td><td>Step 5 settings or permissions missing</td></tr>
+  <tr><td>Database errors (“column does not exist”, status-check violation)</td><td>A migration was skipped (Step 2)</td></tr>
+  <tr><td>Empty Style tab</td><td>Campaign ranked before this release (re-rank it), or no wardrobe owners in those PINs</td></tr>
+  <tr><td>Images missing</td><td>Token-creator permission (Step 6)</td></tr>
+  <tr><td>Login fails</td><td>Credentials not loaded into BigQuery (Step 1)</td></tr>
+</table>
+
+<h2>Rollback</h2>
+<p>Cloud Run keeps earlier revisions:</p>
+<pre><code>gcloud run revisions list --service=suffai-command-center
+gcloud run services update-traffic suffai-command-center --to-revisions=REVISION_NAME=100</code></pre>
+
+<h2>Notes</h2>
+<ul>
+  <li>Campaigns ranked before this release have no saved Style picks. Re-run Extract &amp; Rank on any you want customers to see.</li>
+  <li><code>docs/GCP_REDEPLOY_E2E.md</code> is out of date (says the prepare script applies migration 005 and lists the removed Style endpoints). Follow this guide instead.</li>
+</ul>
+
+</body>
+</html>

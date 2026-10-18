@@ -28,6 +28,18 @@
     
     .field { width: 100%; background: #FFFFFF; border: 1px solid #EAD9E0; color: #3B2733; border-radius: .5rem; padding: .55rem .65rem; font-size: .75rem; }
     .field:focus { outline: none; border-color: #6B3A55; box-shadow: 0 0 0 3px rgba(197,159,176,.35); }
+    details.ms { position: relative; text-transform: none; letter-spacing: normal; font-weight: 400; }
+    details.ms > summary { list-style: none; cursor: pointer; background: #FFFFFF; border: 1px solid #EAD9E0; color: #3B2733; border-radius: .5rem; padding: .55rem 2.2rem .55rem .65rem; font-size: .75rem;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%238A7480' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right .7rem center; background-size: 16px; }
+    details.ms > summary::-webkit-details-marker { display: none; }
+    details.ms[open] > summary, details.ms > summary:focus-visible { border-color: #6B3A55; outline: none; box-shadow: 0 0 0 3px rgba(197,159,176,.35); }
+    details.ms .ms-pop { position: absolute; z-index: 40; top: calc(100% + 4px); left: 0; right: 0; max-height: 240px; overflow: auto; background: #FFFFFF; border: 1px solid #EAD9E0; border-radius: .6rem; padding: .3rem; box-shadow: 0 12px 28px rgba(107,58,85,.15); }
+    details.ms label.opt { display: flex; gap: .5rem; align-items: center; padding: .3rem .4rem; border-radius: .35rem; font-size: .75rem; color: #3B2733; cursor: pointer; }
+    details.ms label.opt:hover { background: #F6EEF0; }
+    details.ms label.opt.all { font-weight: 600; border-bottom: 1px solid #EAD9E0; margin-bottom: .2rem; }
+    details.ms label.opt input { accent-color: #6B3A55; }
+    details.ms .ms-empty { padding: .4rem; font-size: .75rem; color: #8A7480; }
     select.field[multiple] option { padding: .3rem .4rem; border-radius: .35rem; cursor: pointer; }
     select.field[multiple] option:checked { background: #F6EEF0 linear-gradient(0deg,#F6EEF0,#F6EEF0); color: #6B3A55; font-weight: 600; }
     select.field:not([multiple]) { appearance: none; -webkit-appearance: none; padding-right: 2.2rem; cursor: pointer; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%238A7480' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 8l4 4 4-4'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 0.7rem center; background-size: 16px; }
@@ -313,11 +325,18 @@
       <section class="space-y-3">
         <h2 class="text-xs font-bold uppercase tracking-wider text-[#3B2733] flex items-center gap-2"><span class="w-5 h-5 rounded bg-[#EAD9E0] text-[#3B2733] flex items-center justify-center text-[10px] border border-[#DCC3CE]">1</span> Brand &amp; audience</h2>
         <label class="block text-[10px] text-[#8A7480] uppercase tracking-wider font-semibold">Brand name<input id="filterBrand" type="text" class="field mt-1" placeholder="e.g. Nike" autocomplete="organization" /></label>
-        <label class="block text-[10px] text-[#8A7480] uppercase tracking-wider font-semibold">PIN codes <span id="pinCount" class="normal-case tracking-normal font-normal text-[#6B3A55]"></span><select id="filterArea" class="field mt-1" multiple size="5"><option value="">Loading areas…</option></select></label>
-        <p class="text-[10px] text-[#8A7480] flex items-center justify-between gap-2"><span>Click to select or deselect PINs. Pick one or more.</span><button id="pinSelectAll" type="button" class="flex-none text-[10px] font-semibold text-[#6B3A55] underline underline-offset-2 hover:text-[#552C43]">Select all</button></p>
-        <label class="block text-[10px] text-[#8A7480] uppercase tracking-wider font-semibold">Age bucket<select id="filterAge" class="field mt-1"><option value="">All age groups</option></select></label>
-        <label class="block text-[10px] text-[#8A7480] uppercase tracking-wider font-semibold">Gender<select id="filterGender" class="field mt-1"><option value="">All genders</option></select></label>
-        <label class="block text-[10px] text-[#8A7480] uppercase tracking-wider font-semibold">RFM segment<select id="filterRfm" class="field mt-1"><option value="">All RFM segments</option></select></label>
+        <div class="block text-[10px] text-[#8A7480] uppercase tracking-wider font-semibold">PIN codes <span id="pinCount" class="normal-case tracking-normal font-normal text-[#6B3A55]"></span>
+          <details class="ms mt-1" id="msArea"><summary>Loading areas…</summary></details>
+          <select id="filterArea" multiple hidden aria-hidden="true" tabindex="-1"></select></div>
+        <div class="block text-[10px] text-[#8A7480] uppercase tracking-wider font-semibold">Age bucket
+          <details class="ms mt-1" id="msAge"><summary>All age groups</summary></details>
+          <select id="filterAge" multiple hidden aria-hidden="true" tabindex="-1"></select></div>
+        <div class="block text-[10px] text-[#8A7480] uppercase tracking-wider font-semibold">Gender
+          <details class="ms mt-1" id="msGender"><summary>All genders</summary></details>
+          <select id="filterGender" multiple hidden aria-hidden="true" tabindex="-1"></select></div>
+        <div class="block text-[10px] text-[#8A7480] uppercase tracking-wider font-semibold">RFM segment
+          <details class="ms mt-1" id="msRfm"><summary>All RFM segments</summary></details>
+          <select id="filterRfm" multiple hidden aria-hidden="true" tabindex="-1"></select></div>
         <p class="text-[10px] text-[#8A7480] leading-relaxed">These filters define the audience your creatives are ranked against.</p>
       </section>
 
@@ -543,8 +562,8 @@
     };
     const apiBase = () => (window.DASHBOARD_API || '').replace(/\/$/, '');
     const endpoint = (path) => (apiBase() ? apiBase() : '') + path;
-    const session = SuffaiSession.getSession() || {};
-    const lockedBrand = (session.role === 'brand' && session.brand_name) ? String(session.brand_name) : '';
+    let session = SuffaiSession.getSession() || {};
+    let lockedBrand = (session.role === 'brand' && session.brand_name) ? String(session.brand_name) : '';
 
     function applyBrandLock() {
       const el = $('filterBrand');
@@ -589,22 +608,77 @@
       const el = $('filterArea');
       return Array.from(el.selectedOptions || []).map(o => o.value).filter(Boolean);
     }
+    /* Selected audience values as "a, b"; none or all selected means any. */
+    function audienceChoice(id) {
+      const opts = Array.from($(id).options).filter(o => o.value);
+      const chosen = opts.filter(o => o.selected).map(o => o.value);
+      return chosen.length && chosen.length < opts.length ? chosen.join(', ') : '';
+    }
+    const splitChoice = (v) => (Array.isArray(v) ? v : String(v ?? '').split(',')).map(s => String(s).trim()).filter(Boolean);
+    function setAudienceChoice(id, key, value) {
+      const wanted = new Set(splitChoice(value).map(v => normalizedValue(key, v)));
+      Array.from($(id).options).forEach(o => { o.selected = Boolean(o.value) && wanted.has(normalizedValue(key, o.value)); });
+    }
     function currentFilters() {
       const pins = selectedPinCodes();
       return {
         pin_codes: pins,
-        pin_code: pins[0] || '',
-        age_group: $('filterAge').value,
-        gender: $('filterGender').value,
-        rfm_segment: $('filterRfm').value,
+        pin_code: pins.join(','),
+        age_group: audienceChoice('filterAge'),
+        gender: audienceChoice('filterGender'),
+        rfm_segment: audienceChoice('filterRfm'),
         brand_name: ($('filterBrand').value || '').trim()
       };
     }
     function displayGender(value) {
-      const g = normalizedGender(value);
-      if (g === 'f') return 'Female'; if (g === 'm') return 'Male'; if (g === 'u') return 'Unisex';
-      return value || 'All genders';
+      const parts = splitChoice(value);
+      if (!parts.length) return 'All genders';
+      return parts.map(v => {
+        const g = normalizedGender(v);
+        return g === 'f' ? 'Female' : g === 'm' ? 'Male' : g === 'u' ? 'Unisex' : v;
+      }).join(', ');
     }
+
+    /* Audience dropdowns: checkbox lists with "Select all", backed by hidden multi-selects (the source of truth). */
+    const FILTER_DROPDOWNS = [
+      ['filterArea', 'msArea', 'Select PIN codes', 'PINs'],
+      ['filterAge', 'msAge', 'All age groups', 'age groups'],
+      ['filterGender', 'msGender', 'All genders', 'genders'],
+      ['filterRfm', 'msRfm', 'All RFM segments', 'RFM segments'],
+    ];
+    function syncFilterDropdown(selId, msId, emptyText) {
+      const opts = Array.from($(selId).options).filter(o => o.value);
+      const el = $(msId);
+      const sig = opts.map(o => o.value).join('\u0001');
+      if (el.dataset.sig !== sig || !el.querySelector('.ms-pop')) {
+        el.dataset.sig = sig;
+        el.innerHTML = '<summary></summary><div class="ms-pop">' + (opts.length
+          ? (opts.length > 1 ? '<label class="opt all"><input type="checkbox" data-all="1" /> Select all</label>' : '')
+            + opts.map((o, i) => `<label class="opt"><input type="checkbox" data-i="${i}" /> ${esc(o.textContent)}</label>`).join('')
+          : '<div class="ms-empty">No options</div>') + '</div>';
+      }
+      el.querySelectorAll('input[data-i]').forEach(b => { b.checked = opts[Number(b.dataset.i)].selected; });
+      const picked = opts.filter(o => o.selected);
+      const all = el.querySelector('input[data-all]');
+      if (all) { all.checked = picked.length > 0 && picked.length === opts.length; all.indeterminate = picked.length > 0 && picked.length < opts.length; }
+      el.querySelector('summary').textContent = !picked.length ? emptyText
+        : (opts.length > 1 && picked.length === opts.length) ? `All selected (${picked.length})`
+        : picked.length <= 2 ? picked.map(o => o.textContent).join(', ') : `${picked.length} selected`;
+    }
+    function syncFilterDropdowns() { FILTER_DROPDOWNS.forEach(([sel, ms, empty]) => syncFilterDropdown(sel, ms, empty)); }
+    FILTER_DROPDOWNS.forEach(([selId, msId, emptyText]) => {
+      $(msId).addEventListener('change', (e) => {
+        const opts = Array.from($(selId).options).filter(o => o.value);
+        if (e.target.dataset.all) opts.forEach(o => { o.selected = e.target.checked; });
+        else if (e.target.dataset.i != null) opts[Number(e.target.dataset.i)].selected = e.target.checked;
+        else return;
+        syncFilterDropdown(selId, msId, emptyText);
+        $(selId).dispatchEvent(new Event('change'));
+      });
+    });
+    document.addEventListener('click', (e) => {
+      document.querySelectorAll('details.ms[open]').forEach(d => { if (!d.contains(e.target)) d.removeAttribute('open'); });
+    });
     function labelForPin(pin) {
       const obj = state.metrics?.pin_geo?.[String(pin)];
       return obj?.area_label ? `${obj.area_label} (${pin})` : (pin ? String(pin) : 'All areas');
@@ -640,8 +714,7 @@
       const n = selectedPinCodes().length;
       const total = Array.from($('filterArea').options).filter(o => o.value).length;
       $('pinCount').textContent = n ? (total > 1 && n === total ? `· all ${n} selected` : `· ${n} selected`) : '';
-      $('pinSelectAll').textContent = total > 0 && n === total ? 'Clear all' : 'Select all';
-      $('pinSelectAll').disabled = total === 0;
+      syncFilterDropdowns();
     }
     function setApiStatus(ok, msg) {
       $('apiStatus').innerHTML = `<span class="w-1.5 h-1.5 rounded-full ${ok ? 'bg-emerald-600' : 'bg-red-600'}"></span>${esc(msg)}`;
@@ -745,10 +818,10 @@
     }
     function matches(row, filters, keepKeys) {
       for (const key of keepKeys) {
-        const wanted = filters[key];
-        if (!wanted) continue;
+        const wanted = splitChoice(filters[key]).map(v => normalizedValue(key, v));
+        if (!wanted.length) continue;
         const actual = rowValue(row, key);
-        if (actual === undefined || normalizedValue(key, actual) !== normalizedValue(key, wanted)) return false;
+        if (actual === undefined || !wanted.includes(normalizedValue(key, actual))) return false;
       }
       return true;
     }
@@ -925,7 +998,7 @@
         }
         return { customers:sum('customers'), orders:sum('orders'), revenue:sum('revenue'), source: 'customer_cells rolled up over unselected dimensions', coverage, coverageTitle, coverageDetail };
       }
-      const pin = filters.pin_code;
+      const pin = (filters.pin_codes || [])[0] || splitChoice(filters.pin_code)[0];
       const area = pin ? state.metrics?.pin_geo?.[String(pin)] : null;
       return {
         customers: null, orders: null, revenue: null,
@@ -1047,15 +1120,9 @@
           opt.selected = wanted.has(String(opt.value));
         });
       }
-      if ('age_group' in filters && $('filterAge')) {
-        $('filterAge').value = filters.age_group == null ? '' : String(filters.age_group);
-      }
-      if ('gender' in filters && $('filterGender')) {
-        $('filterGender').value = filters.gender == null ? '' : String(filters.gender);
-      }
-      if ('rfm_segment' in filters && $('filterRfm')) {
-        $('filterRfm').value = filters.rfm_segment == null ? '' : String(filters.rfm_segment);
-      }
+      if ('age_group' in filters) setAudienceChoice('filterAge', 'age_group', filters.age_group);
+      if ('gender' in filters) setAudienceChoice('filterGender', 'gender', filters.gender);
+      if ('rfm_segment' in filters) setAudienceChoice('filterRfm', 'rfm_segment', filters.rfm_segment);
       updatePinCount();
       applyBrandLock();
       if (state.metrics) refreshForFilters();
@@ -1065,9 +1132,9 @@
     function resetAgentAdsFilters() {
       const area = $('filterArea');
       if (area) Array.from(area.options || []).forEach((opt) => { opt.selected = false; });
-      if ($('filterAge')) $('filterAge').value = '';
-      if ($('filterGender')) $('filterGender').value = '';
-      if ($('filterRfm')) $('filterRfm').value = '';
+      setAudienceChoice('filterAge', 'age_group', '');
+      setAudienceChoice('filterGender', 'gender', '');
+      setAudienceChoice('filterRfm', 'rfm_segment', '');
       updatePinCount();
       applyBrandLock();
       if (state.metrics) refreshForFilters();
@@ -1612,25 +1679,18 @@
     fileInput.addEventListener('change', e => { processFiles(e.target.files); fileInput.value = ''; });
     ['filterArea','filterAge','filterGender','filterRfm','filterBrand'].forEach(id => $(id).addEventListener('change', refreshForFilters));
     $('filterBrand').addEventListener('input', refreshForFilters);
-    // Toggle PINs with a plain click (no Cmd/Ctrl needed)
-    $('filterArea').addEventListener('mousedown', (e) => {
-      if (e.target.tagName !== 'OPTION') return;
-      e.preventDefault();
-      const scroll = $('filterArea').scrollTop;
-      e.target.selected = !e.target.selected;
-      $('filterArea').focus();
-      $('filterArea').scrollTop = scroll;
-      $('filterArea').dispatchEvent(new Event('change'));
-    });
     $('filterArea').addEventListener('change', updatePinCount);
-    $('pinSelectAll').addEventListener('click', () => {
-      const opts = Array.from($('filterArea').options).filter(o => o.value);
-      const selectAll = opts.some(o => !o.selected);
-      opts.forEach(o => { o.selected = selectAll; });
-      $('filterArea').dispatchEvent(new Event('change'));
-    });
     $('runButton').addEventListener('click', runAnalysis);
     applyBrandLock();
+    if (session.role === 'brand' && !lockedBrand) {
+      SuffaiSession.fetchMe().then((fresh) => {
+        if (!fresh || !fresh.brand_name) return;
+        session = fresh;
+        lockedBrand = String(fresh.brand_name);
+        applyBrandLock();
+        refreshForFilters();
+      }).catch(() => {});
+    }
     $('btnToggle').addEventListener('click', () => setSidebar($('sidebar').classList.contains('collapsed')));
     try { if (localStorage.getItem('suffai_ads_sidebar') === 'closed') setSidebar(false, false); } catch (_) {}
 
@@ -1663,7 +1723,7 @@
       const f = currentFilters();
       if (lockedBrand) f.brand_name = lockedBrand;
       if (!f.brand_name) { showRunError('Enter a brand name to run the campaign.'); $('filterBrand').focus(); return; }
-      if (!f.pin_codes.length) { showRunError('Select at least one PIN code.'); $('filterArea').focus(); return; }
+      if (!f.pin_codes.length) { showRunError('Select at least one PIN code.'); $('msArea').open = true; return; }
       showRunError('');
       setLoading(true, 'Uploading SKU images · scheduling ranking job…');
       try {
