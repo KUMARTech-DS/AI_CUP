@@ -69,6 +69,17 @@ def bump_count(store: dict, key: str, n: int = 1):
     store[key] = store.get(key, 0) + n
 
 
+def confidence_score(row: dict):
+    """Extraction confidence as a float, or None when the row was never scored."""
+    raw = row.get("confidence_score")
+    if raw is None or (isinstance(raw, str) and not raw.strip()):
+        return None
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
+        return None
+
+
 def build(customers, orders, commodities, pin_pop: dict) -> dict:
     cust_by_id = {str(c["_id"]): c for c in customers}
     orders_by_cust: dict[str, list] = defaultdict(list)
@@ -162,14 +173,12 @@ def build(customers, orders, commodities, pin_pop: dict) -> dict:
         bump_count(cell["sleeve_types"], str(g.get("sleeve_type") or "unknown"))
         bump_count(cell["collar_types"], str(g.get("collar_type") or "unknown"))
         bump_count(cell["names"], str(g.get("name") or "unknown"))
-        try:
-            score = float(g.get("confidence_score") or 0)
+        score = confidence_score(g)
+        if score is not None:
             cell["confidence_sum"] += score
             cell["confidence_n"] += 1
             if score < 0.8:
                 cell["low_confidence_n"] += 1
-        except (TypeError, ValueError):
-            pass
 
         # Pool the same garment observation into the four-dimension segment row.
         seg_key = cell_key(c.get("pin_code"), age_group(c.get("age")), c.get("gender"), c.get("rfm_segment"))
@@ -191,14 +200,12 @@ def build(customers, orders, commodities, pin_pop: dict) -> dict:
         bump_count(seg["sleeve_types"], str(g.get("sleeve_type") or "unknown"))
         bump_count(seg["collar_types"], str(g.get("collar_type") or "unknown"))
         bump_count(seg["names"], str(g.get("name") or "unknown"))
-        try:
-            score = float(g.get("confidence_score") or 0)
+        score = confidence_score(g)
+        if score is not None:
             seg["confidence_sum"] += score
             seg["confidence_n"] += 1
             if score < 0.8:
                 seg["low_confidence_n"] += 1
-        except (TypeError, ValueError):
-            pass
 
     def finalize_customer(cell: dict) -> dict:
         n = cell.pop("coord_n")

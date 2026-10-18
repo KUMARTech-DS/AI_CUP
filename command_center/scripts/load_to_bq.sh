@@ -32,11 +32,12 @@ gcloud storage cp \
 
 bq --location="$REGION" mk --dataset --force "${PROJECT}:${DATASET}" || true
 
-bq load --autodetect --replace --source_format=CSV \
-  "${DATASET}.customers" "gs://${BUCKET}/tables/customers.csv"
-bq load --autodetect --replace --source_format=CSV \
-  "${DATASET}.orders" "gs://${BUCKET}/tables/orders.csv"
-bq load --autodetect --replace --source_format=CSV \
-  "${DATASET}.commodities" "gs://${BUCKET}/tables/commodities.csv"
+# Column types come from create_bq_tables.sql (no autodetect).
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+for TABLE in customers orders commodities; do
+  python3 "$SCRIPT_DIR/load_csv_bq.py" \
+    --project "$PROJECT" --dataset "$DATASET" --location "$REGION" --table "$TABLE" \
+    --header "$DATA_DIR/${TABLE}.csv" --uri "gs://${BUCKET}/tables/${TABLE}.csv"
+done
 
 echo "Done. Tables: ${PROJECT}.${DATASET}.customers / orders / commodities"

@@ -1,0 +1,5 @@
+command_center_data/auth/login_creds_plaintext.csv
+command_center_data/auth/brand_logins_summary.csv
+.git
+**/__pycache__
+**/.DS_Store

@@ -107,6 +107,31 @@ CREATE TABLE IF NOT EXISTS suffai_marts.mart_geo_trends (
 )
 PARTITION BY period_start;
 
+-- Written by jobs/bq_sync.py. Quantities are service observations, not garment purchases.
+CREATE TABLE IF NOT EXISTS suffai_marts.mart_commodity_popularity (
+  commodity_name STRING NOT NULL,
+  quantity INT64,
+  line_count INT64,
+  distinct_customers INT64,
+  suppressed BOOL,
+  metric_key STRING,
+  metric_version STRING,
+  period_start DATE,
+  source_watermark TIMESTAMP
+)
+PARTITION BY period_start;
+
+-- Written by jobs/bq_sync.py; read by suffai/warehouse/bq_reader.py.
+CREATE TABLE IF NOT EXISTS suffai_marts.mart_rfm_distribution (
+  rfm_segment STRING NOT NULL,
+  customers INT64,
+  share_pct FLOAT64,
+  rule_version STRING,
+  period_start DATE,
+  source_watermark TIMESTAMP
+)
+PARTITION BY period_start;
+
 CREATE TABLE IF NOT EXISTS suffai_marts.mart_brand_benchmarks (
   aggregate_key STRING NOT NULL,
   brand_key STRING,
@@ -119,3 +144,11 @@ CREATE TABLE IF NOT EXISTS suffai_marts.mart_brand_benchmarks (
   source_watermark TIMESTAMP
 )
 PARTITION BY period_start;
+
+-- One row appended per jobs/bq_sync.py run.
+CREATE TABLE IF NOT EXISTS suffai_raw.ingest_runs (
+  run_at TIMESTAMP NOT NULL,
+  orders INT64,
+  lines INT64,
+  rfm INT64
+);

@@ -119,6 +119,22 @@ def test_garments_filters_and_aggregates():
     assert "Cotton" in g["commodity_fabric"]["series"]
 
 
+def test_brand_and_pin_filters_on_customers_and_garments():
+    zara_owners = ai.customers_page(brands=["zara"])
+    assert {c["name"] for c in zara_owners["items"]} == {"Priya Sharma", "Rahul Verma"}
+    assert ai.customers_overview(brands=["allen solly"])["cohort_size"] == 1
+    assert ai.customers_overview()["options"]["brands"] == ["Allen Solly", "FabIndia", "Zara"]
+    assert ai.customers_page(brands=["fabindia"], pins=["560038"])["total"] == 2
+    by_pin = ai.garments(pins=["560001"])
+    assert by_pin["total"] == 2 and {i["brand"] for i in by_pin["items"]} == {"Zara", "Allen Solly"}
+    assert ai.garments(filters={"brand": ["zara"]}, pins=["560038"])["total"] == 1
+    assert ai.garments()["options"]["pin_codes"] == ["560001", "560038"]
+
+
+def test_default_page_size_is_ten():
+    assert ai.customers_page()["size"] == 10 and ai.garments()["size"] == 10
+
+
 def test_brands_aggregates_and_filters():
     b = ai.brands()
     assert b["ranking"][0] == {"brand": "FabIndia", "items": 3, "share": 50.0, "unique_customers": 2}

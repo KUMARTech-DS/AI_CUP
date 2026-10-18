@@ -1519,10 +1519,7 @@
       const want = params.get('tab') || hashTab || loadProfile().default_tab || allowed[0];
       const start = allowed.indexOf(want) >= 0 ? want : allowed[0];
       document.getElementById('shellTop').style.visibility = 'visible';
-      if (start === 'style' && params.get('campaign_id')) {
-        tabs.style.src = './style_assistant.html?mode=campaign_preview&campaign_id=' + encodeURIComponent(params.get('campaign_id'));
-        activateTab('style');
-      } else if (start === 'campaigns' && params.get('campaign_id')) {
+      if (start === 'campaigns' && params.get('campaign_id')) {
         openCampaignsTab(params.get('campaign_id'), null, false, params.get('focus'));
       } else {
         activateTab(start);

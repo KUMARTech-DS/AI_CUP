@@ -1374,6 +1374,11 @@ def _norm(v: Any) -> str:
     return str(v or "").strip().lower()
 
 
+def audience_values(v: Any) -> set[str]:
+    """Audience filters may hold several comma-separated choices ("25-34, 35-44"); empty set = any."""
+    return {p for p in (_norm(x) for x in str(v or "").split(",")) if p}
+
+
 def _cell_matches(
     cell: dict[str, Any],
     *,
@@ -1386,18 +1391,20 @@ def _cell_matches(
     cell_pin = str(cell.get("pin_code") or cell.get("pin") or "").strip()
     if pins and cell_pin and cell_pin not in pins:
         return False
-    if age_group:
+    ages = audience_values(age_group)
+    if ages:
         ca = _norm(cell.get("age_group") or cell.get("age"))
-        if ca and ca != _norm(age_group):
+        if ca and ca not in ages:
             return False
-    if gender:
+    genders = {g[0] for g in audience_values(gender)}
+    if genders:
         cg = _norm(cell.get("gender"))
-        tg = _norm(gender)
-        if cg and tg and cg[0] != tg[0]:
+        if cg and cg[0] not in genders:
             return False
-    if rfm_segment:
+    rfms = audience_values(rfm_segment)
+    if rfms:
         cr = _norm(cell.get("rfm_segment") or cell.get("rfm"))
-        if cr and cr != _norm(rfm_segment):
+        if cr and cr not in rfms:
             return False
     return True
 

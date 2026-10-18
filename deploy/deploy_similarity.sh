@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Build & deploy suffai-similarity + Pub/Sub push (aligned with suffai-extraction).
+# Uses --update-env-vars so keys set outside this script (e.g. DATABASE_URL) survive redeploys.
 set -euo pipefail
 
 PROJECT="${GOOGLE_CLOUD_PROJECT:?Set GOOGLE_CLOUD_PROJECT}"
@@ -39,7 +40,7 @@ DEPLOY_ARGS=(
   --no-allow-unauthenticated
   --memory=1Gi
   --cpu=1
-  --set-env-vars="$ENV_VARS"
+  --update-env-vars="$ENV_VARS"
   --project="$PROJECT"
 )
 if [[ -n "${CLOUD_SQL_INSTANCE:-}" ]]; then

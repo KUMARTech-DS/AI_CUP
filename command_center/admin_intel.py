@@ -53,7 +53,8 @@ def _bq_loader() -> tuple[list[dict], list[dict], list[dict]]:
 
     project = os.getenv("GOOGLE_CLOUD_PROJECT") or os.getenv("GCP_PROJECT") or ""
     if not project:
-        raise IntelUnavailable("GOOGLE_CLOUD_PROJECT not set")
+        log.error("admin intel: GOOGLE_CLOUD_PROJECT not set")
+        raise IntelUnavailable("admin data is unavailable")
     return agg.load_from_bq(project, os.getenv("BQ_DATASET", "suffai_ops"))
 
 
@@ -268,8 +269,9 @@ def short_id(cid: str) -> str:
 
 
 def _customer_filter(data: dict, *, q: str = "", rfm: Optional[list[str]] = None,
-                     pins: Optional[list[str]] = None) -> list[dict]:
-    rf, pf = _lc(rfm), {_s(p) for p in (pins or []) if _s(p)}
+                     pins: Optional[list[str]] = None, brands: Optional[list[str]] = None) -> list[dict]:
+    rf, pf, bf = _lc(rfm), {_s(p) for p in (pins or []) if _s(p)}, _lc(brands)
+    garments_by = data["garments_by"]
     q = _s(q)
     qd = digits(q) if len(digits(q)) >= 3 and digits(q) == re.sub(r"[\s+\-()]", "", q) else ""
     if qd and (q.lstrip().startswith("+91") or len(qd) > 10) and qd.startswith("91"):
@@ -280,6 +282,8 @@ def _customer_filter(data: dict, *, q: str = "", rfm: Optional[list[str]] = None
         if rf and c["rfm_segment"].lower() not in rf:
             continue
         if pf and c["pin_code"] not in pf:
+            continue
+        if bf and not any(g["brand"].lower() in bf for g in garments_by.get(c["customer_id"], ())):
             continue
         if q:
             if qd:
@@ -294,13 +298,15 @@ def _customer_filter(data: dict, *, q: str = "", rfm: Optional[list[str]] = None
 def customer_options(data: dict) -> dict[str, list[str]]:
     cs = data["customers"].values()
     return {"rfm_segments": _options(c["rfm_segment"] for c in cs),
-            "pin_codes": _options(c["pin_code"] for c in cs)}
+            "pin_codes": _options(c["pin_code"] for c in cs),
+            "brands": _options(g["brand"] for g in data["garments"])}
 
 
-def customers_overview(*, rfm: Optional[list[str]] = None, pins: Optional[list[str]] = None) -> dict[str, Any]:
+def customers_overview(*, rfm: Optional[list[str]] = None, pins: Optional[list[str]] = None,
+                       brands: Optional[list[str]] = None) -> dict[str, Any]:
     data = dataset()
     allc = list(data["customers"].values())
-    cohort = _customer_filter(data, rfm=rfm, pins=pins)
+    cohort = _customer_filter(data, rfm=rfm, pins=pins, brands=brands)
     rfm_c = Counter(c["rfm_segment"] for c in cohort)
     ages = sorted({c["age_group"] for c in cohort}, key=lambda a: (a == "unknown", a))
     genders = sorted({c["gender"] for c in cohort})
@@ -339,9 +345,10 @@ def _customer_row(c: dict) -> dict[str, Any]:
 
 
 def customers_page(*, q: str = "", rfm: Optional[list[str]] = None, pins: Optional[list[str]] = None,
-                   qualified_only: bool = False, page: int = 1, size: int = 25) -> dict[str, Any]:
+                   brands: Optional[list[str]] = None, qualified_only: bool = False,
+                   page: int = 1, size: int = 10) -> dict[str, Any]:
     data = dataset()
-    rows = _customer_filter(data, q=q, rfm=rfm, pins=pins)
+    rows = _customer_filter(data, q=q, rfm=rfm, pins=pins, brands=brands)
     if qualified_only:
         rows = [c for c in rows if c["qualified"]]
     rows.sort(key=lambda c: (-c["spend"], -c["orders"], c["name"].lower()))
@@ -397,7 +404,7 @@ def customer_detail(customer_id: str) -> Optional[dict[str, Any]]:
         "sizes": sorted(_shares(sizes, 6), key=lambda s: _size_key(s["value"])),
         "service_split": _shares(Counter(o["service"] for o in ords), 8),
         "garments": [{k: g[k] for k in ("garment_id", "commodity", "brand", "color", "pattern", "size", "material")}
-                     for g in garms[:20]],
+                     for g in garms[:50]],
         "garment_count": len(garms),
         "momentum": series,
         "recent_orders": [{"order_id": o["order_id"], "date": o["date"].isoformat() if o["date"] else None,
@@ -421,10 +428,19 @@ def reveal_phone(customer_id: str) -> Optional[str]:
 GARMENT_FILTERS = ("commodity", "brand", "material", "pattern", "size")
 
 
-def garments(*, filters: Optional[dict[str, list[str]]] = None, page: int = 1, size: int = 24) -> dict[str, Any]:
+def garments(*, filters: Optional[dict[str, list[str]]] = None, pins: Optional[list[str]] = None,
+             page: int = 1, size: int = 10) -> dict[str, Any]:
     data = dataset()
+    customers = data["customers"]
     f = {k: _lc((filters or {}).get(k)) for k in GARMENT_FILTERS}
-    rows = [g for g in data["garments"] if all(not f[k] or g[k].lower() in f[k] for k in GARMENT_FILTERS)]
+    pf = {_s(p) for p in (pins or []) if _s(p)}
+
+    def pin_ok(g: dict) -> bool:
+        owner = customers.get(g["customer_id"])
+        return bool(owner) and owner["pin_code"] in pf
+
+    rows = [g for g in data["garments"]
+            if all(not f[k] or g[k].lower() in f[k] for k in GARMENT_FILTERS) and (not pf or pin_ok(g))]
     mats = Counter(g["material"] for g in rows if _known(g["material"]))
     pats = Counter(g["pattern"] for g in rows if _known(g["pattern"]))
     sizes = Counter(g["size"] for g in rows if _known(g["size"]))
@@ -433,7 +449,6 @@ def garments(*, filters: Optional[dict[str, list[str]]] = None, page: int = 1, s
     top_m = [k for k, _ in mats.most_common(6)]
     matrix = {m: [sum(1 for g in rows if g["commodity"] == cc and g["material"] == m) for cc in top_c] for m in top_m}
     chunk, page, size = _page(rows, page, size)
-    customers = data["customers"]
     items = []
     for g in chunk:
         owner = customers.get(g["customer_id"])
@@ -452,7 +467,8 @@ def garments(*, filters: Optional[dict[str, list[str]]] = None, page: int = 1, s
         "size_curve": [{"value": k, "count": sizes[k], "share": round(sizes[k] * 100 / total_sizes, 1)}
                        for k in sorted(sizes, key=_size_key)] if total_sizes else [],
         "commodity_fabric": {"commodities": top_c, "series": matrix},
-        "options": {k: _options(g[k] for g in data["garments"]) for k in GARMENT_FILTERS},
+        "options": {**{k: _options(g[k] for g in data["garments"]) for k in GARMENT_FILTERS},
+                    "pin_codes": _options(c["pin_code"] for c in customers.values())},
     }
 
 
@@ -642,12 +658,15 @@ def campaigns(*, brand: Optional[list[str]] = None, status: Optional[list[str]] 
             "simulated": bool(impact),
             "raw": c,
         })
+    def rfm_parts(card: dict) -> list[str]:
+        return [p.strip() for p in card["target_rfm"].split(",") if p.strip()]
+
     cards = [
         x for x in all_cards
         if (not bf or x["brand"].lower() in bf)
         and (not sf or x["status"].lower() in sf)
         and (not pf or pf & set(x["target_pins"]))
-        and (not rf or x["target_rfm"].lower() in rf)
+        and (not rf or any(p.lower() in rf for p in rfm_parts(x)))
     ]
     rates = [x["conversion_rate"] for x in cards if x["conversion_rate"] is not None]
     by_brand: dict[str, dict[str, Any]] = {}
@@ -669,7 +688,7 @@ def campaigns(*, brand: Optional[list[str]] = None, status: Optional[list[str]] 
             "brands": _options(x["brand"] for x in all_cards),
             "statuses": list(STATUSES),
             "pin_codes": _options(p for x in all_cards for p in x["target_pins"]),
-            "rfm_segments": _options(x["target_rfm"] for x in all_cards),
+            "rfm_segments": _options(p for x in all_cards for p in rfm_parts(x)),
         },
         "note": "Conversion rate and redemptions are simulated; launches deliver nothing to customers.",
     }

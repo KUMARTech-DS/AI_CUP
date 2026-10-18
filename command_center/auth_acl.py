@@ -17,9 +17,9 @@ REPO = Path(__file__).resolve().parents[1]
 DEFAULT_CSV = REPO / "command_center_data" / "auth" / "login_cred_db.csv"
 
 ROLE_TABS: dict[str, list[str]] = {
-    "brand": ["geo", "ads", "campaigns", "style"],
+    "brand": ["geo", "ads", "campaigns"],
     "customer": ["style"],
-    "admin": ["geo", "ads", "campaigns", "style", "admin"],
+    "admin": ["geo", "ads", "campaigns", "admin"],
 }
 
 SESSION_TTL_SEC = int(os.getenv("AUTH_SESSION_TTL_SEC", str(12 * 3600)))

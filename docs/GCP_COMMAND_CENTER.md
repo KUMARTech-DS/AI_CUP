@@ -58,9 +58,7 @@ AI_CUP_latest/
 | `GET` | `/v1/admin/intel/garments` | Admin only. Garment cards + fabric / pattern / size / category × fabric aggregates (`commodity`, `brand`, `fabric`, `pattern`, `garment_size`) |
 | `GET` | `/v1/admin/intel/brands` | Admin only. Share ranking, treemap, co-ownership heatmap, sunburst, size matrix, regional skew, deep dives (`brands`, `pin`, `rfm`, `commodity`, `menu`) |
 | `GET` | `/v1/admin/intel/campaigns` | Admin only. Campaign cards with mapped status + **simulated** conversion / redemptions (`brand`, `status`, `pin`, `rfm`) |
-| `GET` | `/v1/style-assistant/users` | Style Assistant: distinct `user_uuid` from `user_wardrobe` |
-| `GET` | `/v1/style-assistant/brands` | Style Assistant: distinct brands from `brand_skus` |
-| `POST` | `/v1/style-assistant/recommend` | Feature 2: wardrobe × brand SKU outfits (Feature 1 blend + Vertex copy); customer role forces `user_uuid` |
+| `GET` | `/v1/style-assistant/feed` | Customer only (403 for brand / admin). Saved picks from Extract &amp; Rank for the logged-in customer (`brand`, `limit`) |
 | static | `/login.html`, `/index.html`, `/geo.html`, `/ads_lab.html`, `/style_assistant.html`, `/admin.html`, `/session.js`, `/metrics.json` | UI |
 
 **Unchanged:** `suffai-extraction` → `POST /v1/extract` (Vertex-enabled in your env).
