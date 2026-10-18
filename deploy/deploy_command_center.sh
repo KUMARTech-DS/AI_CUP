@@ -55,7 +55,7 @@ gcloud run deploy suffai-command-center "${DEPLOY_ARGS[@]}"
 
 URL="$(gcloud run services describe suffai-command-center --region="$REGION" --project="$PROJECT" --format='value(status.url)')"
 echo ""
-echo "Command Center: $URL/login.html"
+echo "Command Center: $URL/login   (tabs: /geo /ads-lab /campaigns /style-assistant /admin)"
 echo "Health:         $URL/health"
 echo "Metrics:        $URL/v1/metrics"
 echo "Extract:        POST $URL/v1/ads-lab/extract"

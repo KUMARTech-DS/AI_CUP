@@ -850,6 +850,33 @@ def _sign_feed(complete: list[dict[str, Any]], recommended: list[dict[str, Any]]
     attach_image_urls(items)
 
 
+def _feed_ad(rows: list[dict[str, Any]]) -> Optional[dict[str, Any]]:
+    """In-app hero ad: the best-fit launched In-app campaign with a headline (rows come fit-desc). No campaign_id."""
+    for r in rows:
+        creative = r.get("creative") or {}
+        if r.get("status") != "launched" or "in_app" not in (r.get("channels") or []) or not creative.get("headline"):
+            continue
+        payload = r.get("payload") or {}
+        buys = [p["buy"] for p in (payload.get("complete_outfit") or []) + (payload.get("recommended") or []) if isinstance(p.get("buy"), dict)]
+        hero = next((b for b in buys if str(b.get("sku_uuid")) == str(creative.get("hero_sku_id"))), buys[0] if buys else None)
+        image = None
+        if hero:
+            hero = dict(hero)
+            attach_image_urls([hero])
+            image = hero.get("image_url")
+        url = str(creative.get("landing_url") or "")
+        return {
+            "brand_name": r.get("brand_name"),
+            "headline": creative.get("headline"),
+            "cta": creative.get("cta") or "Shop now",
+            "offer_code": creative.get("offer_code") or None,
+            "landing_url": url if url.startswith(("https://", "http://")) else None,
+            "image_url": image,
+            "label": (hero or {}).get("label"),
+        }
+    return None
+
+
 def customer_style_feed(user_uuid: str, *, brand: Optional[str] = None, limit: int = 24) -> dict[str, Any]:
     """
     Style feed for a customer from every campaign they were ranked for.
@@ -889,6 +916,7 @@ def customer_style_feed(user_uuid: str, *, brand: Optional[str] = None, limit: i
         "recommended": recommended,
         "wardrobe": wardrobe,
         "wardrobe_count": len(wardrobe),
+        "ad": _feed_ad(chosen),
     }
 
 

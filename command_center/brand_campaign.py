@@ -1325,7 +1325,7 @@ def list_recs_for_user(user_uuid: str, *, limit: int = 50) -> list[dict[str, Any
             cur.execute(
                 """
                 SELECT r.campaign_id::text, r.user_uuid, r.brand_name, r.fit_score,
-                       r.payload, r.computed_at, c.status
+                       r.payload, r.computed_at, c.status, c.creative, c.channels
                 FROM campaign_user_recommendations r
                 JOIN brand_campaigns c ON c.campaign_id = r.campaign_id
                 WHERE r.user_uuid = %s AND c.status = ANY(%s)
@@ -1352,6 +1352,9 @@ def list_recs_for_user(user_uuid: str, *, limit: int = 50) -> list[dict[str, Any
                         "fit_score": float(row[3]) if row[3] is not None else None,
                         "payload": payload,
                         "computed_at": row[5].isoformat() if row[5] else None,
+                        "status": row[6],
+                        "creative": _json_field(row[7]) or {},
+                        "channels": list(row[8] or []),
                     }
                 )
             return out

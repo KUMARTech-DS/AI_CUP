@@ -41,11 +41,11 @@ AI_CUP_latest/
 | `POST` | `/v1/auth/login` | Role login against BQ `login_cred_db` (CSV fallback) → session token + `allowed_tabs` |
 | `GET` | `/v1/auth/me` | Validate Bearer / `X-Session-Token` → session payload |
 | `POST` | `/v1/auth/logout` | Invalidate in-memory session token |
-| `GET` | `/v1/metrics` | Geo aggregates from **BigQuery only** (+ optional `extraction_jobs_count`); brand sessions get Competitors masking |
+| `GET` | `/v1/metrics` | Brand / admin session required. Geo aggregates from **BigQuery only** (+ optional `extraction_jobs_count`); brand sessions get Competitors masking |
 | `POST` | `/v1/ads-lab/extract` | Upload → GCS `demo/` → existing `suffai-extraction` `/v1/extract` (baseline extract; still available) |
 | `POST` | `/v1/ads-lab/campaign` | **Primary Ads Lab path:** brand SKU campaign — GCS `brands/{brand}/…` → extract (brand overwrite) → similarity compare-pins → rank with PIN+age+gender+RFM; brand role forces `brand_name` |
-| `POST` | `/v1/chat` | Corner bot on Command Center (not legacy `api/`): Vertex Gemini + slim `web/metrics.json` + Geo/Ads UI + optional `filter_context` |
-| `POST` | `/v1/geo/brief` | Geo Market brief (Vertex Gemini) from **PII-free** store-score aggregates; template fallback in UI if Vertex off. Server enforces the 4 km store rule and returns `decision_label`, `mode`, `proximity`, `decision_logic`, `stock_mix` |
+| `POST` | `/v1/chat` | Brand / admin session required (brand sessions get competitor masking). Corner bot on Command Center (not legacy `api/`): Vertex Gemini + slim `web/metrics.json` + Geo/Ads UI + optional `filter_context` |
+| `POST` | `/v1/geo/brief` | Brand / admin session required. Geo Market brief (Vertex Gemini) from **PII-free** store-score aggregates; template fallback in UI if Vertex off. Server enforces the 4 km store rule and returns `decision_label`, `mode`, `proximity`, `decision_logic`, `stock_mix` |
 | `GET` | `/v1/geo/stores` | Existing stores of the analysed brand (Gemini + Google Search, cached) with 4 km catchment PINs; `?refresh=true` admin only |
 | `POST` | `/v1/geo/routing-guide` | Regional stock & assortment routing guide for a PIN within 4 km of an existing store (aggregated personas, min group size) |
 | `POST` | `/v1/geo/market-enrichment` | Grounded footfall / rent / competition for a whitespace PIN (> 4 km); 409 within 4 km; competitor names masked for brands |

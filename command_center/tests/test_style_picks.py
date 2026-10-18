@@ -200,6 +200,20 @@ def test_feed_brand_filter(feed_env):
     assert feed_env == [CID2]
 
 
+def test_feed_ad_from_best_launched_in_app_campaign(feed_env, monkeypatch):
+    rows = _rows()
+    hero = rows[1]["payload"]["complete_outfit"][0]["buy"]["sku_uuid"]
+    rows[0].update(status="configured", channels=["in_app"], creative={"headline": "Draft"})
+    rows[1].update(status="launched", channels=["whatsapp", "in_app"],
+                   creative={"headline": "Denim days", "cta": "Shop", "offer_code": "NEW15", "landing_url": "javascript:x", "hero_sku_id": hero})
+    monkeypatch.setattr(bc, "list_recs_for_user", lambda u, limit=50: rows)
+    ad = sa.customer_style_feed("u1")["ad"]
+    assert ad["brand_name"] == "H&M" and ad["headline"] == "Denim days" and ad["offer_code"] == "NEW15"
+    assert ad["landing_url"] is None and ad["image_url"].startswith("https://signed/s/")
+    assert CID not in json.dumps(ad) and CID2 not in json.dumps(ad)
+    assert sa.customer_style_feed("u1", brand="zara")["ad"] is None
+
+
 def test_feed_status_set_excludes_discarded():
     assert set(bc.STYLE_FEED_STATUSES) == {"ranked", "configured", "launched", "exported", "started"}
     assert "ignored" not in bc.STYLE_FEED_STATUSES and "draft" not in bc.STYLE_FEED_STATUSES

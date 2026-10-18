@@ -65,7 +65,7 @@ gcloud run services update suffai-api \
   --project="$PROJECT" \
   --update-env-vars="WEB_ORIGIN=$CC_URL,API_PUBLIC_URL=$API_URL" || true
 
-echo "Command Center: $CC_URL/login.html"
+echo "Command Center: $CC_URL/login"
 echo "API:            $API_URL"
 echo "Extraction:     $WORKER_URL"
 echo "Done."

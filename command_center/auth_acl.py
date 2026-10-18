@@ -58,6 +58,11 @@ def create_session(user: dict[str, Any]) -> dict[str, Any]:
         "display_name": user.get("display_name") or user["username"],
         "expires_at": time.time() + SESSION_TTL_SEC,
     }
+    # Drop expired sessions so abandoned logins don't accumulate forever (list() snapshots for thread safety).
+    now = time.time()
+    for k, v in list(_SESSIONS.items()):
+        if now > float(v.get("expires_at") or 0):
+            _SESSIONS.pop(k, None)
     _SESSIONS[token] = sess
     return _session_public(sess)
 

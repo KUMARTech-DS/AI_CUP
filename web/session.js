@@ -17,16 +17,22 @@
   }
 
   function setSession(sess) {
-    localStorage.setItem(KEY, JSON.stringify(sess || {}));
-    // Back-compat flags used by older checks
-    localStorage.setItem('suffai_demo_session', '1');
-    localStorage.setItem('suffai_demo_user', (sess && sess.username) || '');
+    try {
+      localStorage.setItem(KEY, JSON.stringify(sess || {}));
+      // Back-compat flags used by older checks
+      localStorage.setItem('suffai_demo_session', '1');
+      localStorage.setItem('suffai_demo_user', (sess && sess.username) || '');
+    } catch (_) {
+      throw new Error('This browser is blocking site storage, so you can’t stay signed in. Allow storage (or leave private mode) and try again.');
+    }
   }
 
   function clearSession() {
-    localStorage.removeItem(KEY);
-    localStorage.removeItem('suffai_demo_session');
-    localStorage.removeItem('suffai_demo_user');
+    try {
+      localStorage.removeItem(KEY);
+      localStorage.removeItem('suffai_demo_session');
+      localStorage.removeItem('suffai_demo_user');
+    } catch (_) { /* storage unavailable: nothing to clear */ }
   }
 
   function authHeaders() {
@@ -70,10 +76,12 @@
     const res = await fetch(apiBase() + '/v1/auth/me', {
       headers: { Accept: 'application/json', ...authHeaders() },
     });
-    if (!res.ok) {
+    // Only a rejected session signs the user out; a server outage (5xx) must not.
+    if (res.status === 401 || res.status === 403) {
       clearSession();
       return null;
     }
+    if (!res.ok) throw new Error('Session check failed (HTTP ' + res.status + ')');
     const data = await res.json();
     const next = {
       token: data.token || s.token,
@@ -103,6 +111,14 @@
   function formatApiDetail(detail, fallback) {
     if (detail == null || detail === '') return fallback || '';
     if (typeof detail === 'string') return detail;
+    // FastAPI 422: [{loc: [..., 'field'], msg: '...'}] → "field: msg"
+    if (Array.isArray(detail) && detail.length && detail.every(d => d && typeof d.msg === 'string')) {
+      return detail.map(d => {
+        const field = Array.isArray(d.loc) ? d.loc.filter(p => p !== 'body' && p !== 'query').join('.') : '';
+        return (field ? field + ': ' : '') + d.msg;
+      }).join('; ');
+    }
+    if (detail && typeof detail === 'object' && typeof detail.message === 'string') return detail.message;
     try {
       return JSON.stringify(detail);
     } catch (_) {
