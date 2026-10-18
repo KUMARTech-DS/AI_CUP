@@ -367,8 +367,6 @@
     .pace-track i { display: block; height: 100%; background: var(--plum); border-radius: 8px; }
     .an-ins { list-style: none; padding: 0; margin: 0; font-size: 12px; color: #552C43; display: grid; gap: 8px; }
     .an-ins li { display: flex; gap: 8px; } .an-ins i { color: var(--plum); margin-top: 2px; }
-    .details-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; margin-bottom: 16px; }
-    .details-bar p { font-size: 12px; color: var(--muted); }
     .start-bar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 24px; padding: 14px 18px; border: 1.5px solid var(--gold); background: linear-gradient(90deg, #FBF1DC, #FFF8EC); }
     .start-bar[hidden] { display: none; }
     .start-bar .sb-txt { flex: 1 1 320px; min-width: 0; }
@@ -416,42 +414,6 @@
       <span class="sb-ic"><i class="fa-solid fa-wand-magic-sparkles"></i></span>
       <p><b>You're looking at a sample campaign.</b> Pick one of your campaigns below, or rank SKUs in Ads Lab and choose <b>Set up 1P campaign</b>.</p>
       <button type="button" class="btn" id="goAds">Open Ads Lab <i class="fa-solid fa-arrow-right"></i></button>
-    </section>
-
-    <section class="card an" id="analysisSection" hidden aria-labelledby="anTitle">
-      <div class="an-head">
-        <div>
-          <h2 id="anTitle"><i class="fa-solid fa-chart-line" style="color:var(--plum)"></i> Impact &amp; campaign analysis <span class="sim">Simulated</span></h2>
-          <p class="hint" id="trackingNote"></p>
-        </div>
-        <button type="button" class="btn" id="anRefreshBtn"><i class="fa-solid fa-rotate"></i> Refresh</button>
-      </div>
-      <div class="tiles" id="impactGrid"></div>
-      <p class="an-err" id="anErr" hidden></p>
-      <div class="an-grid">
-        <div class="an-box"><h3>Daily delivery · impressions &amp; clicks <span class="sim">Simulated</span></h3><div class="an-chart"><canvas id="anDelivery"></canvas></div></div>
-        <div class="an-box"><h3>Revenue vs spend (₹) <span class="sim">Simulated</span></h3><div class="an-chart"><canvas id="anRevenue"></canvas></div></div>
-        <div class="an-box"><h3>Conversions by channel <span class="sim">Simulated</span></h3><div class="an-chart"><canvas id="anChannels"></canvas></div></div>
-        <div class="an-box"><h3>Budget pacing <span class="sim">Simulated</span></h3>
-          <div class="pace-row"><span>Spend</span><span class="mono" id="anSpendLabel">—</span></div>
-          <div class="pace-track"><i id="anSpendBar" style="width:0%"></i></div>
-          <div class="pace-row"><span>Schedule</span><span class="mono" id="anScheduleLabel">—</span></div>
-          <div class="pace-track"><i id="anTimeBar" style="width:0%;background:var(--gold)"></i></div>
-          <div class="pace-row" style="color:var(--muted)"><span id="anStart"></span><span id="anEnd"></span></div>
-          <h3 style="margin-top:14px">Insights</h3>
-          <ul class="an-ins" id="anInsights"></ul>
-        </div>
-        <div class="an-box" style="grid-column:1/-1"><h3>Product fit for this audience</h3><div class="an-chart" style="height:200px"><canvas id="anSkus"></canvas></div></div>
-      </div>
-      <div class="tbl-wrap"><table class="mini">
-        <thead><tr><th>Channel</th><th>Spend</th><th>Sent</th><th>Delivered</th><th>Reach</th><th>Clicks</th><th>CTR</th><th>Conv.</th><th>Revenue</th><th>ROAS</th></tr></thead>
-        <tbody id="channelTrackBody"></tbody>
-      </table></div>
-    </section>
-
-    <section class="card details-bar" id="detailsBar" hidden>
-      <p>This campaign is running. Its setup is locked.</p>
-      <button type="button" class="btn" id="detailsToggle" aria-expanded="false" aria-controls="studio"><i class="fa-solid fa-sliders"></i> Show campaign details</button>
     </section>
 
     <div class="grid" id="studio">
@@ -621,6 +583,37 @@
       </div>
       <p class="ins-empty" id="insEmpty" hidden>No running campaigns match these filters yet. Start one above to see insights.</p>
     </section>
+
+    <section class="card an" id="analysisSection" hidden aria-labelledby="anTitle">
+      <div class="an-head">
+        <div>
+          <h2 id="anTitle"><i class="fa-solid fa-chart-line" style="color:var(--plum)"></i> Impact &amp; campaign analysis <span class="sim">Simulated</span></h2>
+          <p class="hint" id="trackingNote"></p>
+        </div>
+        <button type="button" class="btn" id="anRefreshBtn"><i class="fa-solid fa-rotate"></i> Refresh</button>
+      </div>
+      <div class="tiles" id="impactGrid"></div>
+      <p class="an-err" id="anErr" hidden></p>
+      <div class="an-grid">
+        <div class="an-box"><h3>Daily delivery · impressions &amp; clicks <span class="sim">Simulated</span></h3><div class="an-chart"><canvas id="anDelivery"></canvas></div></div>
+        <div class="an-box"><h3>Revenue vs spend (₹) <span class="sim">Simulated</span></h3><div class="an-chart"><canvas id="anRevenue"></canvas></div></div>
+        <div class="an-box"><h3>Conversions by channel <span class="sim">Simulated</span></h3><div class="an-chart"><canvas id="anChannels"></canvas></div></div>
+        <div class="an-box"><h3>Budget pacing <span class="sim">Simulated</span></h3>
+          <div class="pace-row"><span>Spend</span><span class="mono" id="anSpendLabel">—</span></div>
+          <div class="pace-track"><i id="anSpendBar" style="width:0%"></i></div>
+          <div class="pace-row"><span>Schedule</span><span class="mono" id="anScheduleLabel">—</span></div>
+          <div class="pace-track"><i id="anTimeBar" style="width:0%;background:var(--gold)"></i></div>
+          <div class="pace-row" style="color:var(--muted)"><span id="anStart"></span><span id="anEnd"></span></div>
+          <h3 style="margin-top:14px">Insights</h3>
+          <ul class="an-ins" id="anInsights"></ul>
+        </div>
+        <div class="an-box" style="grid-column:1/-1"><h3>Product fit for this audience</h3><div class="an-chart" style="height:200px"><canvas id="anSkus"></canvas></div></div>
+      </div>
+      <div class="tbl-wrap"><table class="mini">
+        <thead><tr><th>Channel</th><th>Spend</th><th>Sent</th><th>Delivered</th><th>Reach</th><th>Clicks</th><th>CTR</th><th>Conv.</th><th>Revenue</th><th>ROAS</th></tr></thead>
+        <tbody id="channelTrackBody"></tbody>
+      </table></div>
+    </section>
   </main>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
@@ -651,7 +644,7 @@
     const MAX_CREATIVES = 6;
     const state = {
       campaigns: [], histPage: 1, current: null, skus: [], thumbs: {}, rec: null, estimate: null,
-      sourceContext: null, busy: false, pollTimer: null, showDetails: false,
+      sourceContext: null, busy: false, pollTimer: null,
       picked: [], focus: null, mode: 'best', channels: ['in_app'], preview: 'in_app',
     };
 
@@ -983,7 +976,6 @@
 
     function showSample() {
       state.current = null;
-      state.showDetails = false;
       state.skus = SAMPLE_SKUS;
       state.thumbs = {};
       state.rec = null; state.estimate = null; state.sourceContext = null;
@@ -1047,11 +1039,6 @@
       const canEdit = editable();
       $('configFields').disabled = !canEdit;
       $('actionBar').hidden = !canEdit;
-      const running = c.status === 'launched';
-      $('detailsBar').hidden = !running;
-      if (!running) state.showDetails = false;
-      $('studio').hidden = running && !state.showDetails;
-      syncDetailsToggle();
       renderAnalysis(c);
       renderCreatives(); renderChannels(); renderAll();
       if (canEdit) fetchRecommendation(c.budget_inr == null);
@@ -1324,7 +1311,7 @@
       const show = c.status === 'launched';
       $('analysisSection').hidden = !show;
       if (!show) { Object.keys(anCharts).forEach(k => anChart(k, null)); return; }
-      $('trackingNote').textContent = `Started ${String(c.launched_at || '').slice(0, 10)} · ${c.duration_days || '—'} days from ${c.start_date || '—'} · ${inr(c.budget_inr)} budget`
+      $('trackingNote').textContent = `${campaignTitle(c)} · Started ${String(c.launched_at || '').slice(0, 10)} · ${c.duration_days || '—'} days from ${c.start_date || '—'} · ${inr(c.budget_inr)} budget`
         + (c.budget_recommended ? ` (recommended ${inr(c.budget_recommended)})` : '') + '. Nothing is delivered to customers; all figures are simulated.';
       renderImpactTiles(c);
       loadAnalysis(c.campaign_id);
@@ -1418,12 +1405,6 @@
       if (el.hidden) return;
       el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
-    function syncDetailsToggle() {
-      const open = !$('studio').hidden;
-      $('detailsToggle').setAttribute('aria-expanded', String(open));
-      $('detailsToggle').innerHTML = open ? '<i class="fa-solid fa-chevron-up"></i> Hide campaign details' : '<i class="fa-solid fa-sliders"></i> Show campaign details';
-    }
-
     /* ---------- Summary + validation ---------- */
     function renderSummary() {
       const c = state.current || {};
@@ -1611,7 +1592,6 @@
     $('launchBtn2').addEventListener('click', onLaunch);
     $('discardBtn').addEventListener('click', onDiscard);
     $('anRefreshBtn').addEventListener('click', () => { if (state.current) loadCampaign(state.current.campaign_id); });
-    $('detailsToggle').addEventListener('click', () => { state.showDetails = $('studio').hidden; $('studio').hidden = !state.showDetails; syncDetailsToggle(); });
     $('refreshBtn').addEventListener('click', loadCampaigns);
     $('histPager').addEventListener('click', (e) => {
       const b = e.target.closest('[data-hp]');
