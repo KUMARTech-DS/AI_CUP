@@ -61,7 +61,7 @@
     sel.classList.add('csel-native');
     sel.after(btn);
     // a <label> wrapping the select names the button too
-    const label = sel.closest('label') || (sel.id && document.querySelector(`label[for="${sel.id}"]`));
+    const label = sel.closest('label') || (sel.id && document.querySelector(`label[for="${CSS.escape(sel.id)}"]`));
     if (label) { if (!label.id) label.id = btn.id + '__lbl'; btn.setAttribute('aria-labelledby', label.id); }
     if (label && label.htmlFor === sel.id) label.htmlFor = btn.id;
 
@@ -106,9 +106,9 @@
       document.body.appendChild(pop);
       const r = btn.getBoundingClientRect();
       pop.style.minWidth = r.width + 'px';
-      pop.style.left = Math.min(r.left, window.innerWidth - pop.offsetWidth - 8) + 'px';
+      pop.style.left = Math.max(8, Math.min(r.left, window.innerWidth - pop.offsetWidth - 8)) + 'px';
       const below = window.innerHeight - r.bottom - 8;
-      if (below < Math.min(pop.offsetHeight, 200) && r.top > below) pop.style.bottom = (window.innerHeight - r.top + 6) + 'px';
+      if (below < Math.min(pop.offsetHeight, 200) && r.top > below) { pop.style.bottom = (window.innerHeight - r.top + 6) + 'px'; pop.style.maxHeight = Math.min(280, r.top - 14) + 'px'; }
       else { pop.style.top = (r.bottom + 6) + 'px'; pop.style.maxHeight = Math.max(140, Math.min(280, below)) + 'px'; }
       btn.setAttribute('aria-expanded', 'true');
       open = { sel, btn, pop };

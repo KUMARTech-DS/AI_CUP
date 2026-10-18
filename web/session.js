@@ -46,9 +46,7 @@
 
   function allowedTabs() {
     const s = getSession();
-    return (s && Array.isArray(s.allowed_tabs) && s.allowed_tabs.length)
-      ? s.allowed_tabs
-      : [];
+    return (s && Array.isArray(s.allowed_tabs)) ? s.allowed_tabs : [];
   }
 
   function canAccessTab(tab) {
@@ -101,8 +99,10 @@
       await fetch(apiBase() + '/v1/auth/logout', {
         method: 'POST',
         headers: { ...authHeaders() },
+        // a hung server must not trap the user on a page they asked to leave
+        signal: AbortSignal.timeout ? AbortSignal.timeout(5000) : undefined,
       });
-    } catch (_) {}
+    } catch (_) { /* best effort: the local session is cleared regardless */ }
     clearSession();
     location.href = './login.html';
   }

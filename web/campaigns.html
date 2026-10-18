@@ -10,7 +10,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="./select.js" defer></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Outfit:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     :root {
       color-scheme: light;
@@ -24,7 +24,6 @@
     button { cursor: pointer; background: none; border: 0; }
     :focus-visible { outline: 3px solid rgba(201,162,74,.6); outline-offset: 2px; }
     .mono { font-family: 'IBM Plex Mono', monospace; }
-    .display { font-family: 'Cormorant Garamond', Georgia, serif; }
     [hidden] { display: none !important; }
 
     /* Hero */
@@ -35,7 +34,7 @@
     .back:hover { background: rgba(255,255,255,.16); }
     .hero-title { flex: 1 1 420px; min-width: 0; }
     .eyebrow { font-size: 10px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; color: var(--gold-lt); margin: 14px 0 4px; }
-    .hero h1 { font-family: 'Cormorant Garamond', Georgia, serif; font-size: clamp(1.9rem, 3vw, 2.6rem); line-height: 1.05; color: #fff; }
+    .hero h1 { font-family: Outfit, system-ui, sans-serif; font-size: clamp(1.7rem, 2.6vw, 2.25rem); font-weight: 700; letter-spacing: -0.01em; line-height: 1.1; color: #fff; }
     .hero-sub { font-size: 13px; color: #D9BFCB; margin-top: 6px; }
     .hero-stats { display: flex; gap: 10px; flex-wrap: wrap; }
     .hstat { min-width: 120px; padding: 10px 14px; border-radius: 14px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.14); }
@@ -43,7 +42,7 @@
     .hstat b { display: block; font: 600 20px 'IBM Plex Mono', monospace; color: #fff; margin-top: 2px; }
 
     .why { margin-top: 24px; }
-    .why-h { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 1.6rem; color: var(--ink); margin: 0 0 10px 4px; }
+    .why-h { font-family: Outfit, system-ui, sans-serif; font-size: 1.35rem; font-weight: 700; color: var(--ink); margin: 0 0 10px 4px; }
     .matrix { border-radius: 16px; overflow: hidden; color: #F7EAF0; border: 1px solid #3E1729;
       background: radial-gradient(60% 120% at 90% 0%, rgba(224,178,84,.22), transparent 60%), linear-gradient(110deg, var(--wine) 0%, var(--wine-2) 55%, var(--plum) 100%); box-shadow: 0 16px 34px rgba(43,15,31,.18); }
     .matrix table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
@@ -131,8 +130,7 @@
     .switch input:checked::after { transform: translateX(16px); }
 
     /* Side: preview + summary */
-    .side { position: sticky; top: 16px; display: flex; flex-direction: column; gap: 16px; }
-    .side { max-height: calc(100vh - 32px); overflow-y: auto; scrollbar-width: none; padding-bottom: 4px; }
+    .side { position: sticky; top: 16px; display: flex; flex-direction: column; gap: 16px; max-height: calc(100vh - 32px); overflow-y: auto; scrollbar-width: none; padding-bottom: 4px; }
     .side::-webkit-scrollbar { display: none; }
     /* Stacked layout: no nested scroll box with a hidden scrollbar */
     @media (max-width: 1080px) { .side { max-height: none; overflow: visible; } }
@@ -195,7 +193,6 @@
     .sms-head b { font-size: 11.5px; font-weight: 500; }
     .sms-chat { flex: 1; padding: 12px 12px 70px; background: #fff; }
     .sms-chat .bubble { background: #E9E9EB; border-radius: 18px 18px 18px 6px; }
-    .sms-chat .lnk { color: #0A66D8; text-decoration: underline; }
     /* Lock screen */
     .lock { flex: 1; color: #fff; background: radial-gradient(120% 70% at 50% 0%, #8A3A60 0%, #4A1A33 45%, #1C0812 100%); padding-bottom: 60px; }
     .lock .lk { text-align: center; font-size: 13px; opacity: .85; }
@@ -225,7 +222,7 @@
     .chips2 .fa-chevron-right { margin-left: auto; color: #aaa; font-size: 9px; }
     .sec-t { font-size: 13px; font-weight: 600; margin: 2px 2px -4px; }
     .hscroll { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: 0 -12px; padding: 2px 12px; }
-    .pcard { flex: 0 0 118px; border-radius: 12px; background: #fff; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+    .pcard { position: relative; flex: 0 0 118px; border-radius: 12px; background: #fff; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
     .pcard .pv-img { aspect-ratio: 1; border-radius: 0; }
     .pcard div { padding: 6px 8px 8px; }
     .pcard b { display: block; font-size: 10.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -240,7 +237,7 @@
     .em-av { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--plum); color: #fff; font-weight: 700; font-size: 12px; flex: none; }
     .em-subj { font-weight: 700; font-size: 13px; margin-bottom: 8px; }
     .em-card { background: #fff; border-radius: 12px; padding: 10px; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
-    .em-card h4 { font-family: 'Cormorant Garamond', serif; font-size: 18px; margin: 10px 0 4px; color: var(--ink); }
+    .em-card h4 { font-family: Outfit, system-ui, sans-serif; font-size: 16px; font-weight: 700; margin: 10px 0 4px; color: var(--ink); }
     .em-card p { color: #555; line-height: 1.45; white-space: pre-wrap; }
     .em-foot { font-size: 9px; color: #999; margin-top: 10px; text-align: center; }
     .bubble { max-width: 88%; padding: 8px 10px; border-radius: 14px 14px 14px 4px; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.08); line-height: 1.45; white-space: pre-wrap; word-break: break-word; }
@@ -279,14 +276,12 @@
     td { padding: 11px 16px; border-top: 1px solid var(--line); vertical-align: middle; }
     .st { display: inline-flex; align-items: center; gap: .35rem; padding: .2rem .6rem; border-radius: 999px; font-size: 11px; font-weight: 600; white-space: nowrap; }
     .st.draft { background: var(--raised); color: var(--muted); }
-    .st.ready { background: #FBF1DC; color: #8C6A22; }
     .row-act { display: flex; gap: 6px; justify-content: flex-end; }
     .row-act button { padding: .3rem .6rem; border-radius: 8px; font-size: 11.5px; border: 1px solid var(--line); }
     .row-act button:hover { border-color: var(--plum); color: var(--plum); }
     .empty-row { padding: 26px; text-align: center; color: var(--muted); font-size: 13px; }
     .hist-filters { display: flex; flex-wrap: wrap; gap: 10px 12px; align-items: flex-end; padding: 12px 20px; border-bottom: 1px solid var(--line); background: #FFFDF9; }
     .hf { display: flex; flex-direction: column; gap: 4px; font: 600 10px 'IBM Plex Mono', monospace; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
-    .hf[hidden] { display: none; }
     .hf input[type=date] { border: 1.5px solid var(--line); border-radius: 10px; padding: .4rem .6rem; font: 500 12.5px Outfit, system-ui, sans-serif; color: var(--ink); background: #fff; }
     .hf input[type=date]:focus { border-color: var(--plum); outline: 0; }
     details.ms { position: relative; }
@@ -317,7 +312,7 @@
     .toast.on { opacity: 1; translate: -50% 0; }
     .toast i { color: var(--gold-lt); }
 
-    /* Merged: backend-driven campaign states, budget + tracking tiles */
+    /* Campaign status pills, budget + tracking tiles */
     .st.processing { background: #FFF7E0; color: #8A5A00; }
     .st.ranked, .st.configured { background: #FBF1DC; color: #8C6A22; }
     .st.launched { background: #EAF7F0; color: #1F6B45; }
@@ -364,7 +359,6 @@
     .an-ins { list-style: none; padding: 0; margin: 0; font-size: 12px; color: #552C43; display: grid; gap: 8px; }
     .an-ins li { display: flex; gap: 8px; } .an-ins i { color: var(--plum); margin-top: 2px; }
     .start-bar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 24px; padding: 14px 18px; border: 1.5px solid var(--gold); background: linear-gradient(90deg, #FBF1DC, #FFF8EC); }
-    .start-bar[hidden] { display: none; }
     .start-bar .sb-txt { flex: 1 1 320px; min-width: 0; }
     .start-bar .sb-txt b { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 14px; color: var(--ink); }
     .start-bar .sb-txt p { font-size: 12px; color: #6E4C10; margin-top: 2px; }
@@ -375,12 +369,10 @@
     .mini th { padding: 6px 10px; }
     .mini td { padding: 7px 10px; font-family: 'IBM Plex Mono', monospace; }
     .mini td:first-child { font-family: inherit; font-weight: 600; }
-    .track-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
     .filters { display: flex; gap: 6px; flex-wrap: wrap; }
     .filters button { padding: .3rem .7rem; border-radius: 999px; font-size: 11.5px; border: 1px solid var(--line); background: #fff; color: var(--muted); }
     .filters button[aria-pressed="true"] { background: var(--plum); border-color: var(--plum); color: #fff; }
     tr.active td { background: #FBF5F7; }
-    .pcard { position: relative; }
     .pc-rank { position: absolute; top: 5px; left: 5px; z-index: 1; font: 600 9px 'IBM Plex Mono', monospace; padding: .1rem .35rem; border-radius: 999px; background: rgba(20,6,13,.6); color: #fff; }
     fieldset { border: 0; min-width: 0; }
     fieldset:disabled .step { opacity: .72; }
@@ -395,14 +387,14 @@
     <div class="hero-in">
       <div class="hero-title">
         <button type="button" class="back" id="backBtn"><i class="fa-solid fa-chevron-left"></i> Back to Ads Lab</button>
-        <p class="eyebrow">1P Campaign Studio · <span class="sim" style="background:rgba(255,255,255,.1);color:#F3D58A;border-color:rgba(243,213,138,.5)"><i class="fa-solid fa-flask"></i> Simulated delivery &amp; outcomes</span></p>
+        <p class="eyebrow">1P Campaign Studio · <span class="sim" style="background:rgba(255,255,255,.1);color:#F3D58A;border-color:rgba(243,213,138,.5)"><i class="fa-solid fa-flask"></i> Simulated Delivery &amp; Outcomes</span></p>
         <h1 id="heroTitle">You don't have any active campaigns yet</h1>
         <p class="hero-sub" id="heroSub">Rank SKUs in Ads Lab, then reach that audience on In-app, WhatsApp and SMS.</p>
       </div>
       <div class="hero-stats" aria-live="polite">
-        <div class="hstat"><span>Reachable customers</span><b id="hsCustomers">—</b></div>
+        <div class="hstat"><span>Reachable Customers</span><b id="hsCustomers">—</b></div>
         <div class="hstat"><span>Ranked SKUs</span><b id="hsCreatives">0</b></div>
-        <div class="hstat"><span>Best fit</span><b id="hsBest">—</b></div>
+        <div class="hstat"><span>Best Fit</span><b id="hsBest">—</b></div>
       </div>
     </div>
   </header>
@@ -410,7 +402,7 @@
   <main class="wrap">
     <section id="noDraft" class="sample-bar" role="note">
       <span class="sb-ic"><i class="fa-solid fa-wand-magic-sparkles"></i></span>
-      <p><b>You're looking at a sample campaign.</b> Pick one of your campaigns below, or rank SKUs in Ads Lab and choose <b>Set up 1P campaign</b>.</p>
+      <p><b>You're looking at a sample campaign.</b> Pick one of your campaigns below, or rank SKUs in Ads Lab and choose <b>Set Up 1P Campaign</b>.</p>
       <button type="button" class="btn" id="goAds">Open Ads Lab <i class="fa-solid fa-arrow-right"></i></button>
     </section>
 
@@ -420,7 +412,7 @@
         <form id="form" novalidate>
           <fieldset id="configFields">
             <section class="card step" id="s1">
-              <div class="step-head"><span class="num">1</span><h2>Audience</h2><span class="st st-head" id="statusPill">ready</span><p>From Ads Lab</p></div>
+              <div class="step-head"><span class="num">1</span><h2>Audience</h2><span class="st st-head" id="statusPill">Sample</span><p>From Ads Lab</p></div>
               <div class="aud-row">
                 <div class="chips" id="audChips"></div>
                 <button type="button" class="link" id="editAud">Change in Ads Lab</button>
@@ -434,14 +426,14 @@
               <div class="step-head"><span class="num">2</span><h2>Creatives</h2><p id="crCount">Pick one creative</p></div>
               <div class="cgrid" id="crGrid" role="group" aria-label="Choose creatives"></div>
               <div class="seg" role="group" aria-label="Delivery mode">
-                <button type="button" data-mode="best" aria-pressed="true">Best creative only</button>
-                <button type="button" data-mode="ab" aria-pressed="false">A/B test selected</button>
+                <button type="button" data-mode="best" aria-pressed="true">Best Creative Only</button>
+                <button type="button" data-mode="ab" aria-pressed="false">A/B Test Selected</button>
               </div>
               <p class="hint" id="modeHint"></p>
             </section>
 
             <section class="card step" id="s3">
-              <div class="step-head"><span class="num">3</span><h2>Objective &amp; channels</h2><p>Your first-party channels</p></div>
+              <div class="step-head"><span class="num">3</span><h2>Objective &amp; Channels</h2><p>Your first-party channels</p></div>
               <div class="radios" role="radiogroup" aria-label="Campaign objective" id="objGroup" style="margin-bottom:14px"></div>
               <div class="chgrid" id="chGrid" role="group" aria-label="Choose channels"></div>
               <p class="ferr" id="eChannels"></p>
@@ -450,41 +442,41 @@
             <section class="card step" id="s4">
               <div class="step-head"><span class="num">4</span><h2>Message</h2><p>Placeholders: {first_name}, {brand}, {link}</p></div>
               <div class="fields">
-                <label class="f full">Campaign name<input class="in" id="fName" maxlength="120" autocomplete="off"><span class="ferr" id="eName"></span></label>
+                <label class="f full">Campaign Name<input class="in" id="fName" maxlength="120" autocomplete="off"><span class="ferr" id="eName"></span></label>
                 <label class="f full">Headline <span class="count" id="cHead">0/90</span><input class="in" id="fHead" maxlength="90" autocomplete="off"><span class="ferr" id="eHead"></span></label>
-                <label class="f full" id="waWrap" hidden>WhatsApp message <span class="count" id="cWa">0/1000</span><textarea class="in" id="fWa" maxlength="1000"></textarea><span class="ferr" id="eWa"></span></label>
-                <label class="f full" id="smsWrap" hidden>SMS message <span class="count" id="cSms">0/160</span><textarea class="in" id="fSms" maxlength="160"></textarea><span class="ferr" id="eSms"></span></label>
-                <label class="f">Button text<input class="in" id="fCta" maxlength="24" value="Shop now" autocomplete="off"></label>
-                <label class="f">Offer code <span class="count">optional</span><input class="in mono" id="fCode" maxlength="15" autocomplete="off" placeholder="e.g. NEW15"><span class="ferr" id="eCode"></span></label>
-                <label class="f full">Landing page URL <span class="count">optional</span><input class="in" id="fUrl" type="url" inputmode="url" placeholder="https://yourstore.com/collection" autocomplete="off"><span class="ferr" id="eUrl"></span>
+                <label class="f full" id="waWrap" hidden>WhatsApp Message <span class="count" id="cWa">0/1000</span><textarea class="in" id="fWa" maxlength="1000"></textarea><span class="ferr" id="eWa"></span></label>
+                <label class="f full" id="smsWrap" hidden>SMS Message <span class="count" id="cSms">0/160</span><textarea class="in" id="fSms" maxlength="160"></textarea><span class="ferr" id="eSms"></span></label>
+                <label class="f">Button Text<input class="in" id="fCta" maxlength="24" value="Shop now" autocomplete="off"></label>
+                <label class="f">Offer Code <span class="count">optional</span><input class="in mono" id="fCode" maxlength="15" autocomplete="off" placeholder="e.g. NEW15"><span class="ferr" id="eCode"></span></label>
+                <label class="f full">Landing Page URL <span class="count">optional</span><input class="in" id="fUrl" type="url" inputmode="url" placeholder="https://yourstore.com/collection" autocomplete="off"><span class="ferr" id="eUrl"></span>
                   <span class="url-out" id="urlOut"></span></label>
                 <label class="switch full"><input type="checkbox" id="fUtm" checked> Add SuffAI UTM tags to the link</label>
               </div>
             </section>
 
             <section class="card step" id="s5">
-              <div class="step-head"><span class="num">5</span><h2>Budget &amp; schedule</h2><p id="tzNote"></p></div>
+              <div class="step-head"><span class="num">5</span><h2>Budget &amp; Schedule</h2><p id="tzNote"></p></div>
               <div class="rec" id="budgetCard">
                 <div class="rec-top">
                   <div>
-                    <label class="f">Recommended budget <span class="sim">Simulated</span></label>
+                    <label class="f">Recommended Budget <span class="sim">Simulated</span></label>
                     <p class="big"><span id="recBudget">—</span> <small id="recDaily"></small></p>
                     <p class="range" id="recRange"></p>
                   </div>
-                  <button type="button" class="btn" id="useRecBtn"><i class="fa-solid fa-wand-magic-sparkles"></i> Use recommended</button>
+                  <button type="button" class="btn" id="useRecBtn"><i class="fa-solid fa-wand-magic-sparkles"></i> Use Recommended</button>
                 </div>
                 <div id="recBreakdown"></div>
                 <ul id="recReasons"></ul>
               </div>
               <div class="fields">
                 <label class="f">Budget (₹)<input class="in" id="campaignBudget" type="number" min="500" step="500"><span class="ferr" id="eBudget"></span></label>
-                <label class="f">Duration (days)<input class="in" id="campaignDays" type="number" min="1" max="365" step="1" value="14"><span class="ferr" id="eDays"></span></label>
-                <label class="f">Start date<input class="in" id="campaignStart" type="date"><span class="ferr" id="eStart"></span></label>
-                <label class="f">Daily budget<span class="in mono" id="dailyBudget" style="display:block;background:var(--raised)">—</span></label>
-                <label class="f">Frequency cap<select class="in" id="fCap"><option value="1d">1 message per day</option><option value="3d" selected>1 message per 3 days</option><option value="7d">1 message per week</option></select></label>
+                <label class="f">Duration (Days)<input class="in" id="campaignDays" type="number" min="1" max="365" step="1" value="14"><span class="ferr" id="eDays"></span></label>
+                <label class="f">Start Date<input class="in" id="campaignStart" type="date"><span class="ferr" id="eStart"></span></label>
+                <label class="f">Daily Budget<span class="in mono" id="dailyBudget" style="display:block;background:var(--raised)">—</span></label>
+                <label class="f">Frequency Cap<select class="in" id="fCap"><option value="1d">1 message per day</option><option value="3d" selected>1 message per 3 days</option><option value="7d">1 message per week</option></select></label>
                 <label class="switch" style="align-self:end;padding-bottom:10px"><input type="checkbox" id="fQuiet" checked> Respect quiet hours (9 PM – 9 AM)</label>
               </div>
-              <p class="sub-h">Estimated outcomes <span class="sim">Simulated</span><em id="estimateStatus"></em></p>
+              <p class="sub-h">Estimated Outcomes <span class="sim">Simulated</span><em id="estimateStatus"></em></p>
               <div class="tiles" id="estimateGrid"></div>
               <div class="tbl-wrap" id="estimateChannels"></div>
             </section>
@@ -494,8 +486,8 @@
 
       <aside class="side">
         <section class="card pv" aria-label="Preview">
-          <div class="pv-head"><h3>Live preview</h3><div class="pv-tabs" id="pvTabs" role="tablist"></div></div>
-          <div class="iphone"><div class="screen"><span class="island" aria-hidden="true"></span><div id="screen" class="feed" tabindex="0" aria-label="Preview of every channel — scroll"></div><span class="home-ind" aria-hidden="true"></span></div></div>
+          <div class="pv-head"><h3>Live Preview</h3><div class="pv-tabs" id="pvTabs" role="tablist"></div></div>
+          <div class="iphone"><div class="screen"><span class="island" aria-hidden="true"></span><div id="screen" class="feed" tabindex="0" aria-label="Preview of every channel. Scroll to see each one."></div><span class="home-ind" aria-hidden="true"></span></div></div>
           <div class="pv-vars" id="pvVars" role="group" aria-label="Preview variant"></div>
           <p class="pv-note" id="pvNote"></p>
         </section>
@@ -504,8 +496,8 @@
           <dl id="sumList"></dl>
           <ul class="errs" id="errs" hidden aria-live="polite"></ul>
           <div class="actions" id="actionBar">
-            <button type="button" class="btn primary" id="launchBtn"><i class="fa-solid fa-rocket"></i> Confirm &amp; start campaign</button>
-            <button type="button" class="btn" id="saveBtn"><i class="fa-regular fa-floppy-disk"></i> Save draft</button>
+            <button type="button" class="btn primary" id="launchBtn"><i class="fa-solid fa-rocket"></i> Confirm &amp; Start Campaign</button>
+            <button type="button" class="btn" id="saveBtn"><i class="fa-regular fa-floppy-disk"></i> Save Draft</button>
             <button type="button" class="btn" id="discardBtn"><i class="fa-regular fa-trash-can"></i> Discard</button>
           </div>
           <p class="note">The campaign stays a draft until you confirm. Running is simulated: no messages or ads are sent to customers. Delivery, cost and outcome metrics are generated for tracking.</p>
@@ -514,16 +506,16 @@
     </div>
 
     <section class="why" id="heroMatrixWrap">
-      <h2 class="why-h">Why run it as a 1P campaign</h2>
+      <h2 class="why-h">Why Run It as a 1P Campaign</h2>
       <div class="matrix" id="heroMatrix">
         <table>
-          <thead><tr><th scope="col"></th><th scope="col" class="us">1P campaign on SuffAI</th><th scope="col">Paid social ads</th></tr></thead>
+          <thead><tr><th scope="col"></th><th scope="col" class="us">1P Campaign on SuffAI</th><th scope="col">Paid Social Ads</th></tr></thead>
           <tbody>
-            <tr><td>Media cost</td><td class="us"><i class="fa-solid fa-check"></i>Your own channels — pay per message, not per auction</td><td class="them"><i class="fa-solid fa-xmark"></i>Pay per impression or click</td></tr>
-            <tr><td>Who sees it</td><td class="us"><i class="fa-solid fa-check"></i>The exact segment you ranked in Ads Lab</td><td class="them"><i class="fa-solid fa-xmark"></i>Platform lookalike audiences</td></tr>
+            <tr><td>Media Cost</td><td class="us"><i class="fa-solid fa-check"></i>Your own channels — pay per message, not per auction</td><td class="them"><i class="fa-solid fa-xmark"></i>Pay per impression or click</td></tr>
+            <tr><td>Who Sees It</td><td class="us"><i class="fa-solid fa-check"></i>The exact segment you ranked in Ads Lab</td><td class="them"><i class="fa-solid fa-xmark"></i>Platform lookalike audiences</td></tr>
             <tr><td>Creative</td><td class="us"><i class="fa-solid fa-check"></i>The best-fit SKU for that segment</td><td class="them"><i class="fa-solid fa-xmark"></i>One ad for a broad audience</td></tr>
             <tr><td>Personalisation</td><td class="us"><i class="fa-solid fa-check"></i>First name, offer code and send time</td><td class="them"><i class="fa-solid fa-xmark"></i>Limited to platform options</td></tr>
-            <tr><td>Customer data</td><td class="us"><i class="fa-solid fa-check"></i>Stays first-party, with you</td><td class="them"><i class="fa-solid fa-xmark"></i>Shared with the ad platform</td></tr>
+            <tr><td>Customer Data</td><td class="us"><i class="fa-solid fa-check"></i>Stays first-party, with you</td><td class="them"><i class="fa-solid fa-xmark"></i>Shared with the ad platform</td></tr>
             <tr><td>Frequency</td><td class="us"><i class="fa-solid fa-check"></i>Caps and quiet hours you control</td><td class="them"><i class="fa-solid fa-xmark"></i>Decided by the platform</td></tr>
           </tbody>
         </table>
@@ -536,28 +528,28 @@
         <b><span id="sbName">—</span> <span class="st" id="sbStatus"></span></b>
         <p id="sbHint">All details filled? Start it now. Running is simulated: nothing is sent to customers.</p>
       </div>
-      <button type="button" class="btn primary" id="launchBtn2"><i class="fa-solid fa-rocket"></i> Create &amp; start campaign</button>
+      <button type="button" class="btn primary" id="launchBtn2"><i class="fa-solid fa-rocket"></i> Create &amp; Start Campaign</button>
     </section>
 
     <section class="card hist">
       <div class="hist-head">
-        <h2>Your 1P campaigns <span class="chip" id="histCount">0</span></h2>
+        <h2>Your 1P Campaigns <span class="chip" id="histCount">0</span></h2>
         <div class="filters">
-          <button type="button" id="hfClear">Clear filters</button>
+          <button type="button" id="hfClear">Clear Filters</button>
           <button type="button" id="refreshBtn" aria-label="Refresh campaigns"><i class="fa-solid fa-rotate"></i></button>
         </div>
       </div>
       <div class="hist-filters" id="histFilters" role="group" aria-label="Filter campaigns">
         <div class="hf" id="hfBrandWrap" hidden><span>Brand</span><details class="ms" id="hfBrand"></details></div>
         <div class="hf"><span>Status</span><details class="ms" id="hfStatus"></details></div>
-        <div class="hf"><span>PIN code</span><details class="ms" id="hfPin"></details></div>
+        <div class="hf"><span>PIN Code</span><details class="ms" id="hfPin"></details></div>
         <div class="hf"><span>Channel</span><details class="ms" id="hfChannel"></details></div>
-        <div class="hf"><span>RFM segment</span><details class="ms" id="hfRfm"></details></div>
-        <label class="hf"><span>Created from</span><input type="date" id="hfFrom" /></label>
-        <label class="hf"><span>Created to</span><input type="date" id="hfTo" /></label>
+        <div class="hf"><span>RFM Segment</span><details class="ms" id="hfRfm"></details></div>
+        <label class="hf"><span>Created From</span><input type="date" id="hfFrom" /></label>
+        <label class="hf"><span>Created To</span><input type="date" id="hfTo" /></label>
       </div>
       <div class="tbl-wrap"><table>
-        <thead><tr><th>Campaign</th><th>Audience</th><th>Channels</th><th>SKUs</th><th>Budget</th><th>Status</th><th></th></tr></thead>
+        <thead><tr><th>Campaign</th><th>Audience</th><th>Channels</th><th>SKUs</th><th>Budget</th><th>Status</th><th aria-label="Actions"></th></tr></thead>
         <tbody id="histBody"><tr><td colspan="7" class="empty-row">Loading campaigns…</td></tr></tbody>
       </table></div>
       <div class="hist-pager" id="histPager"></div>
@@ -566,17 +558,17 @@
     <section class="card insights" id="insightsSection" aria-labelledby="insTitle">
       <div class="an-head">
         <div>
-          <h2 id="insTitle"><i class="fa-solid fa-chart-pie" style="color:var(--plum)"></i> Campaign insights <span class="sim">Simulated</span></h2>
+          <h2 id="insTitle"><i class="fa-solid fa-chart-pie" style="color:var(--plum)"></i> Campaign Insights <span class="sim">Simulated</span></h2>
           <p class="hint" id="insNote">Running campaigns that match the filters above.</p>
         </div>
       </div>
       <div id="insBody">
         <div class="tiles" id="insTiles"></div>
         <div class="an-grid">
-          <div class="an-box"><h3>ROAS by campaign · top 10 <span class="sim">Simulated</span></h3><div class="an-chart"><canvas id="insRoas"></canvas></div></div>
-          <div class="an-box"><h3>Revenue vs spend by campaign (₹) <span class="sim">Simulated</span></h3><div class="an-chart"><canvas id="insRevSpend"></canvas></div></div>
-          <div class="an-box"><h3>Revenue by channel (₹) <span class="sim">Simulated</span></h3><div class="an-chart"><canvas id="insChannels"></canvas></div></div>
-          <div class="an-box"><h3>Status mix · filtered campaigns</h3><div class="an-chart"><canvas id="insStatus"></canvas></div></div>
+          <div class="an-box"><h3>ROAS by Campaign · Top 10 <span class="sim">Simulated</span></h3><div class="an-chart"><canvas id="insRoas"></canvas></div></div>
+          <div class="an-box"><h3>Revenue vs Spend by Campaign (₹) <span class="sim">Simulated</span></h3><div class="an-chart"><canvas id="insRevSpend"></canvas></div></div>
+          <div class="an-box"><h3>Revenue by Channel (₹) <span class="sim">Simulated</span></h3><div class="an-chart"><canvas id="insChannels"></canvas></div></div>
+          <div class="an-box"><h3>Status Mix · Filtered Campaigns</h3><div class="an-chart"><canvas id="insStatus"></canvas></div></div>
         </div>
       </div>
       <p class="ins-empty" id="insEmpty" hidden>No running campaigns match these filters yet. Start one above to see insights.</p>
@@ -585,7 +577,7 @@
     <section class="card an" id="analysisSection" hidden aria-labelledby="anTitle">
       <div class="an-head">
         <div>
-          <h2 id="anTitle"><i class="fa-solid fa-chart-line" style="color:var(--plum)"></i> Impact &amp; campaign analysis <span class="sim">Simulated</span></h2>
+          <h2 id="anTitle"><i class="fa-solid fa-chart-line" style="color:var(--plum)"></i> Impact &amp; Campaign Analysis <span class="sim">Simulated</span></h2>
           <p class="hint" id="trackingNote"></p>
         </div>
         <button type="button" class="btn" id="anRefreshBtn"><i class="fa-solid fa-rotate"></i> Refresh</button>
@@ -593,10 +585,10 @@
       <div class="tiles" id="impactGrid"></div>
       <p class="an-err" id="anErr" hidden></p>
       <div class="an-grid">
-        <div class="an-box"><h3>Daily delivery · impressions &amp; clicks <span class="sim">Simulated</span></h3><div class="an-chart"><canvas id="anDelivery"></canvas></div></div>
-        <div class="an-box"><h3>Revenue vs spend (₹) <span class="sim">Simulated</span></h3><div class="an-chart"><canvas id="anRevenue"></canvas></div></div>
-        <div class="an-box"><h3>Conversions by channel <span class="sim">Simulated</span></h3><div class="an-chart"><canvas id="anChannels"></canvas></div></div>
-        <div class="an-box"><h3>Budget pacing <span class="sim">Simulated</span></h3>
+        <div class="an-box"><h3>Daily Delivery · Impressions &amp; Clicks <span class="sim">Simulated</span></h3><div class="an-chart"><canvas id="anDelivery"></canvas></div></div>
+        <div class="an-box"><h3>Revenue vs Spend (₹) <span class="sim">Simulated</span></h3><div class="an-chart"><canvas id="anRevenue"></canvas></div></div>
+        <div class="an-box"><h3>Conversions by Channel <span class="sim">Simulated</span></h3><div class="an-chart"><canvas id="anChannels"></canvas></div></div>
+        <div class="an-box"><h3>Budget Pacing <span class="sim">Simulated</span></h3>
           <div class="pace-row"><span>Spend</span><span class="mono" id="anSpendLabel">—</span></div>
           <div class="pace-track"><i id="anSpendBar" style="width:0%"></i></div>
           <div class="pace-row"><span>Schedule</span><span class="mono" id="anScheduleLabel">—</span></div>
@@ -605,7 +597,7 @@
           <h3 style="margin-top:14px">Insights</h3>
           <ul class="an-ins" id="anInsights"></ul>
         </div>
-        <div class="an-box" style="grid-column:1/-1"><h3>Product fit for this audience</h3><div class="an-chart" style="height:200px"><canvas id="anSkus"></canvas></div></div>
+        <div class="an-box" style="grid-column:1/-1"><h3>Product Fit for This Audience</h3><div class="an-chart" style="height:200px"><canvas id="anSkus"></canvas></div></div>
       </div>
       <div class="tbl-wrap"><table class="mini">
         <thead><tr><th>Channel</th><th>Spend</th><th>Sent</th><th>Delivered</th><th>Reach</th><th>Clicks</th><th>CTR</th><th>Conv.</th><th>Revenue</th><th>ROAS</th></tr></thead>
@@ -623,16 +615,13 @@
     const endpoint = (path) => apiBase() + path;
     const session = SuffaiSession.getSession() || {};
     const CHANNELS = {
-      in_app: { name: 'In-app', ic: 'fa-solid fa-mobile-screen', sub: 'Style Assistant feed · CPM based' },
+      in_app: { name: 'In-app', ic: 'fa-solid fa-mobile-screen', sub: 'Style Assistant feed · CPM-based' },
       whatsapp: { name: 'WhatsApp', ic: 'fa-brands fa-whatsapp', sub: '₹0.80 / message · simulated' },
       sms: { name: 'SMS', ic: 'fa-solid fa-comment-sms', sub: '₹0.20 / message · simulated' },
     };
-    // Preview-only screens (Harsha's phone): not deliverable by the campaign API yet
-    const PREVIEW_ONLY = {
-      email: { name: 'Email', ic: 'fa-solid fa-envelope' },
-      push: { name: 'Push', ic: 'fa-solid fa-bell' },
-    };
-    const PV_NAMES = { ...Object.fromEntries(Object.entries(CHANNELS).map(([k, c]) => [k, c.name])), email: 'Email', push: 'Push' };
+    // Preview-only phone screens: not deliverable by the campaign API yet
+    const PREVIEW_ONLY = { email: 'Email', push: 'Push' };
+    const PV_NAMES = { ...Object.fromEntries(Object.entries(CHANNELS).map(([k, c]) => [k, c.name])), ...PREVIEW_ONLY };
     const OBJECTIVES = [
       ['awareness', 'Awareness', 'Reach most of the audience'],
       ['consideration', 'Consideration', 'Drive product views and clicks'],
@@ -704,10 +693,10 @@
     }
     function defaultName(c) {
       const pins = c.pin_codes || [];
-      return `${c.brand_name || 'Brand'} · ${pins.length <= 2 ? pins.join(', ') : pins.length + ' PINs'}${c.rfm_segment ? ' · ' + c.rfm_segment : ''}`;
+      return `${c.brand_name || 'Brand'} · ${!pins.length ? 'All PINs' : pins.length <= 2 ? pins.join(', ') : pins.length + ' PINs'}${c.rfm_segment ? ' · ' + c.rfm_segment : ''}`;
     }
     const campaignTitle = (c) => c.campaign_name || defaultName(c);
-    const statusLabel = (s) => ({ processing: 'Ranking…', ranked: 'Draft · needs setup', configured: 'Draft · needs setup', launched: 'Running', exported: 'Exported · draft for 1P', ignored: 'Discarded', error: 'Error' }[s] || s);
+    const statusLabel = (s) => ({ draft: 'Draft', processing: 'Ranking…', ranked: 'Draft · Needs Setup', configured: 'Draft · Needs Setup', launched: 'Running', exported: 'Exported · Draft for 1P', ignored: 'Discarded', error: 'Error' }[s] || s);
     function todayIso() {
       const d = new Date();
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -788,7 +777,7 @@
     }
     /* ---------- History filters (multi-select dropdowns + created-date range) ---------- */
     const HIST_PAGE = 10;
-    const STATUS_GROUPS = { Draft: ['ranked', 'configured'], Ranking: ['processing'], Running: ['launched'], Exported: ['exported'], Error: ['error'] };
+    const STATUS_GROUPS = { Draft: ['draft', 'ranked', 'configured'], Ranking: ['processing'], Running: ['launched'], Exported: ['exported'], Error: ['error'] };
     const statusGroup = (s) => Object.keys(STATUS_GROUPS).find(k => STATUS_GROUPS[k].includes(s)) || s;
     const chanName = (ch) => CHANNELS[ch]?.name || ch;
     function msRender(id, label, options) {
@@ -796,7 +785,7 @@
       const keep = new Set(msValues(id)), wasOpen = el.open; // the 10s poll re-renders: keep the dropdown open
       el.dataset.label = label;
       el.innerHTML = '<summary></summary><div class="ms-pop">' + (options.length
-        ? (options.length > 1 ? '<label class="opt all"><input type="checkbox" data-all="1" /> Select all</label>' : '')
+        ? (options.length > 1 ? '<label class="opt all"><input type="checkbox" data-all="1" /> Select All</label>' : '')
           + options.map(o => `<label class="opt"><input type="checkbox" value="${esc(o)}"${keep.has(o) ? ' checked' : ''} /> ${esc(o)}</label>`).join('')
         : '<div class="empty-row" style="padding:8px">No options</div>') + '</div>';
       el.querySelectorAll('input:not([data-all])').forEach(i => i.addEventListener('change', () => { msSummary(el); applyHistFilters(); }));
@@ -809,6 +798,7 @@
       el.open = wasOpen && options.length > 0;
     }
     function msSummary(el) {
+      if (!el.querySelector('summary')) return; // not rendered yet (campaign list failed to load)
       const vals = msValues(el.id);
       const total = el.querySelectorAll('input:not([data-all])').length;
       const all = el.querySelector('input[data-all]');
@@ -875,7 +865,7 @@
         ['Spend', inr(t.spend)], ['Revenue', inr(t.revenue)], ['ROAS', roas(ratio(t.revenue, t.spend))],
         ['Reach', num(t.reach)], ['Impressions', num(t.impressions)], ['Clicks', num(t.clicks)],
         ['CTR', pct(ratio(t.clicks * 100, t.impressions))], ['Conversions', num(t.conversions)],
-        ['CVR', pct(ratio(t.conversions * 100, t.clicks))], ['Avg lift', pct(ratio(t.liftW, t.spend), 1)],
+        ['CVR', pct(ratio(t.conversions * 100, t.clicks))], ['Avg Lift', pct(ratio(t.liftW, t.spend), 1)],
       ];
       $('insTiles').innerHTML = tiles.map(([l, v]) => `<div class="tile"><span>${esc(l)}</span><b>${esc(v)}</b><small>Simulated</small></div>`).join('');
 
@@ -1026,7 +1016,7 @@
       $('fHead').value = 'New beige shirts picked for you';
       $('campaignBudget').value = 25000;
       $('actionBar').hidden = false;
-      $('launchBtn').innerHTML = '<i class="fa-solid fa-ranking-star"></i> Rank your SKUs in Ads Lab to launch';
+      $('launchBtn').innerHTML = '<i class="fa-solid fa-ranking-star"></i> Rank Your SKUs in Ads Lab to Launch';
       ['saveBtn', 'discardBtn'].forEach(id => { $(id).disabled = true; $(id).title = 'Available for a real campaign'; });
       renderRecommendation(null, 'Sample — the recommended budget appears for a real campaign.');
       renderAll();
@@ -1036,7 +1026,7 @@
       // drop any in-flight recommendation / estimate for the previous campaign
       recSeq++; estSeq++; clearTimeout(recTimer); clearTimeout(estTimer);
       $('noDraft').hidden = c.status !== 'sample';
-      $('launchBtn').innerHTML = '<i class="fa-solid fa-rocket"></i> Confirm &amp; start campaign';
+      $('launchBtn').innerHTML = '<i class="fa-solid fa-rocket"></i> Confirm &amp; Start Campaign';
       ['saveBtn', 'discardBtn'].forEach(id => { $(id).disabled = false; $(id).title = ''; });
       const brand = c.brand_name || brandName();
       const icons = ['fa-location-dot', 'fa-cake-candles', 'fa-venus-mars', 'fa-gem'];
@@ -1072,6 +1062,7 @@
       $('fUrl').value = stripUtm(creative.landing_url);
       $('fUtm').checked = creative.utm !== false;
       $('fCap').value = creative.frequency_cap || '3d';
+      if (!$('fCap').value) $('fCap').value = '3d'; // unknown saved cap: no option selected would break the summary
       $('fQuiet').checked = creative.quiet_hours !== false;
       $('campaignDays').value = c.duration_days || 14;
       // a draft saved days ago may carry a start date that is now in the past: move it to today
@@ -1097,7 +1088,7 @@
         const ok = usable(s), on = state.picked.includes(s.sku_uuid), focus = on && s.sku_uuid === state.focus;
         const score = skuScore(s), a = s.attributes || {}, thumb = thumbOf(s);
         const sub = ok ? (score == null ? 'not scored' : `fit ${score}/100`) : (s.process_status === 'pending' ? 'pending' : 'failed');
-        return `<button type="button" class="ctile ${focus ? 'focus' : ''}" data-id="${esc(s.sku_uuid)}" aria-pressed="${on}" ${ok ? '' : 'disabled'} title="${esc([a.color, a.pattern, a.name || a.commodity].filter(Boolean).join(' · '))}">${focus ? '<span class="eye"><i class="fa-regular fa-eye"></i> In preview</span>' : ''}
+        return `<button type="button" class="ctile ${focus ? 'focus' : ''}" data-id="${esc(s.sku_uuid)}" aria-pressed="${on}" ${ok ? '' : 'disabled'} title="${esc([a.color, a.pattern, a.name || a.commodity].filter(Boolean).join(' · '))}">${focus ? '<span class="eye"><i class="fa-regular fa-eye"></i> In Preview</span>' : ''}
           <div class="img">${thumb ? `<img src="${esc(thumb)}" alt="">` : '<i class="fa-solid fa-shirt"></i>'}</div>
           <span class="badge">#${esc(s.rank ?? '—')}</span><span class="tick"><i class="fa-solid fa-check"></i></span>
           <div class="meta"><b>${esc(s.original_filename || 'SKU')}</b><span>${esc(sub)}</span></div>
@@ -1110,7 +1101,7 @@
       document.querySelectorAll('.seg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === state.mode)));
       const first = skuById(state.picked[0]);
       $('modeHint').textContent = state.mode === 'ab'
-        ? (state.picked.length > 1 ? `The audience is split evenly across ${state.picked.length} creatives. Tap a selected creative to preview it, tap it again to remove it.` : 'Pick at least two creatives to A/B test.')
+        ? (state.picked.length > 1 ? `The audience is split evenly across ${state.picked.length} creatives. Tap a selected creative to preview it; tap it again to remove it.` : 'Pick at least two creatives to A/B test.')
         : (first ? `Everyone gets “${first.original_filename}”. Tap another creative to switch.` : 'Tap a creative to send it.');
     }
     const rankOrder = (a, b) => (skuById(a)?.rank || 999) - (skuById(b)?.rank || 999);
@@ -1120,7 +1111,7 @@
       if (state.mode === 'best') { state.picked = [id]; state.focus = id; }
       else if (i >= 0 && state.focus !== id) state.focus = id;
       else if (i >= 0) { state.picked.splice(i, 1); state.focus = state.picked[0] || null; }
-      else if (state.picked.length >= MAX_CREATIVES) { toast(`Up to ${MAX_CREATIVES} creatives per campaign`, 'fa-circle-info'); return; }
+      else if (state.picked.length >= MAX_CREATIVES) { toast(`You can pick up to ${MAX_CREATIVES} creatives per campaign.`, 'fa-circle-info'); return; }
       else { state.picked.push(id); state.focus = id; }
       state.picked.sort(rankOrder);
       renderCreatives(); renderAll();
@@ -1221,8 +1212,8 @@
           <span class="ah-ico"><span><i class="fa-regular fa-heart"></i></span><span><i class="fa-solid fa-bag-shopping"></i></span><span><i class="fa-regular fa-bell"></i></span></span></div></div>
         <div class="ah-body">
           <div class="banner"><div><h4>${head}</h4><p>Styles picked for you by ${brand}.</p>${codeV ? `<span class="code">${codeV}</span><br>` : ''}<span class="pv-cta">${cta}</span></div>${img}</div>
-          <div class="chips2"><span><i class="b">%</i>View coupons<i class="fa-solid fa-chevron-right"></i></span><span><i class="b">%</i>Refer &amp; earn<i class="fa-solid fa-chevron-right"></i></span></div>
-          <p class="sec-t">Picked for you</p>
+          <div class="chips2"><span><i class="b">%</i>View Coupons<i class="fa-solid fa-chevron-right"></i></span><span><i class="b">%</i>Refer &amp; Earn<i class="fa-solid fa-chevron-right"></i></span></div>
+          <p class="sec-t">Picked for You</p>
           <div class="hscroll">${(picks.length ? picks : [s || {}]).map(x => `<div class="pcard"><span class="pc-rank">#${esc(x.rank ?? '—')}</span>${imgOf(x)}<div><b>${esc(x.original_filename || 'Your SKU')}</b><small>${skuScore(x) == null ? cta : 'Fit ' + skuScore(x) + '/100'} ›</small></div></div>`).join('')}</div>
         </div>
         <div class="tabbar"><i class="fa-solid fa-house on"></i><i class="fa-solid fa-magnifying-glass"></i><i class="fa-solid fa-bag-shopping"></i><i class="fa-regular fa-user"></i></div></div>`;
@@ -1322,7 +1313,7 @@
       renderSummary();
     }
     function renderEstimate(est) {
-      const tiles = [['Reach', 'reach', num], ['Impressions / reads', 'impressions', num], ['CTR', 'ctr', v => pct(v)],
+      const tiles = [['Reach', 'reach', num], ['Impressions / Reads', 'impressions', num], ['CTR', 'ctr', v => pct(v)],
         ['Conversions', 'conversions', num], ['Revenue', 'revenue', inr], ['Lift', 'lift', v => pct(v, 1)], ['ROAS', 'roas', roas]];
       $('estimateGrid').innerHTML = tiles.map(([label, key, fmt]) => `<div class="tile"><span>${esc(label)}</span><b>${esc(fmt(est.expected[key]))}</b><small>${esc(fmt(est.low[key]))} – ${esc(fmt(est.high[key]))}</small></div>`).join('');
       const unspent = Number(est.expected.unspent || 0);
@@ -1357,7 +1348,7 @@
       const show = c.status === 'launched';
       $('analysisSection').hidden = !show;
       if (!show) { Object.keys(anCharts).forEach(k => anChart(k, null)); return; }
-      $('trackingNote').textContent = `${campaignTitle(c)} · Started ${String(c.launched_at || '').slice(0, 10)} · ${c.duration_days || '—'} days from ${c.start_date || '—'} · ${inr(c.budget_inr)} budget`
+      $('trackingNote').textContent = `${campaignTitle(c)} · started ${String(c.launched_at || '').slice(0, 10)} · ${c.duration_days || '—'} days from ${c.start_date || '—'} · ${inr(c.budget_inr)} budget`
         + (c.budget_recommended ? ` (recommended ${inr(c.budget_recommended)})` : '') + '. Nothing is delivered to customers; all figures are simulated.';
       renderImpactTiles(c);
       loadAnalysis(c.campaign_id);
@@ -1443,7 +1434,7 @@
       anChart('anSkus', skus.length ? {
         type: 'bar',
         data: { labels: skus.map(s => String((s.attributes || {}).name || s.original_filename || 'SKU').slice(0, 24)),
-          datasets: [{ label: 'Avg PIN fit', data: skus.map(s => Math.round((s.pin_fit || 0) * 100)), backgroundColor: '#6B3A55', borderRadius: 4 }] },
+          datasets: [{ label: 'Avg PIN Fit', data: skus.map(s => Math.round((s.pin_fit || 0) * 100)), backgroundColor: '#6B3A55', borderRadius: 4 }] },
         options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
           scales: { x: { min: 0, max: 100, ticks: { font: { size: 9 } } }, y: { ticks: { font: { size: 10 } } } } },
       } : null);
@@ -1467,7 +1458,7 @@
         ['Schedule', `${$('campaignStart').value || '—'} · ${days} days`],
         ['Est. ROAS', est ? roas(est.roas) + ' (sim)' : '—'],
         ['Frequency', $('fCap').selectedOptions[0].text],
-        ['Quiet hours', $('fQuiet').checked ? 'On' : 'Off'],
+        ['Quiet Hours', $('fQuiet').checked ? 'On' : 'Off'],
       ].map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('');
     }
     function renderAll() {
@@ -1495,10 +1486,10 @@
       $('sbStatus').textContent = c ? statusLabel(c.status) : 'Sample';
       $('sbHint').textContent = c
         ? 'All details filled? Start it now. Running is simulated: nothing is sent to customers.'
-        : 'This is a sample. Rank your SKUs in Ads Lab and choose Set up 1P campaign to create a real one.';
+        : 'This is a sample. Rank your SKUs in Ads Lab and choose Set Up 1P Campaign to create a real one.';
       $('launchBtn2').innerHTML = c
-        ? '<i class="fa-solid fa-rocket"></i> Create &amp; start campaign'
-        : '<i class="fa-solid fa-ranking-star"></i> Rank your SKUs in Ads Lab to launch';
+        ? '<i class="fa-solid fa-rocket"></i> Create &amp; Start Campaign'
+        : '<i class="fa-solid fa-ranking-star"></i> Rank Your SKUs in Ads Lab to Launch';
     }
     function setLaunching(on) {
       ['launchBtn', 'launchBtn2'].forEach(id => { $(id).disabled = on; });
@@ -1538,7 +1529,7 @@
       mark('fCode', 'eCode', !code || /^[A-Za-z0-9_-]{3,15}$/.test(code) ? '' : 'Use 3–15 letters, numbers, - or _ (no spaces).');
       const url = $('fUrl').value.trim();
       let urlErr = '';
-      if (url) { try { if (!/^https?:$/.test(new URL(url).protocol)) urlErr = 'Link must start with http:// or https://'; } catch (_) { urlErr = 'Enter a full link, e.g. https://yourstore.com/sale'; } }
+      if (url) { try { if (!/^https?:$/.test(new URL(url).protocol)) urlErr = 'Link must start with http:// or https://.'; } catch (_) { urlErr = 'Enter a full link, e.g. https://yourstore.com/sale'; } }
       mark('fUrl', 'eUrl', urlErr);
       const b = body.budget_inr;
       mark('campaignBudget', 'eBudget', !(Number.isFinite(b) && b > 0) ? 'Enter a budget (or use the recommended budget).'
@@ -1560,7 +1551,7 @@
     function checked() {
       const body = configBody(), errs = validate(body);
       showErrs(errs);
-      if (errs.length) { toast('Fix the highlighted fields first', 'fa-triangle-exclamation'); document.querySelector('.in.err')?.focus(); return null; }
+      if (errs.length) { toast('Fix the highlighted fields first.', 'fa-triangle-exclamation'); document.querySelector('.in.err')?.focus(); return null; }
       return body;
     }
     $('form').addEventListener('input', (e) => {

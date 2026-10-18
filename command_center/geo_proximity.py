@@ -257,7 +257,7 @@ def locate_brand_stores(
     brand = (brand or "").strip()
     if not brand:
         return {"brand": None, "city": city, "status": "unavailable", "stores": [], "sources": [],
-                "detail": "no brand selected"}
+                "detail": "No brand selected."}
     bkey = brand_key(brand)
     key = (bkey, city.lower())
     with _mem_lock:

@@ -404,13 +404,13 @@ def run_chat(
     if not message:
         return JSONResponse(
             status_code=400,
-            content={"detail": "message is required", "request_id": request_id},
+            content={"detail": "Message is required", "request_id": request_id},
         )
     if len(message) > CHAT_MAX_MESSAGE_CHARS:
         return JSONResponse(
             status_code=400,
             content={
-                "detail": f"message too long (max {CHAT_MAX_MESSAGE_CHARS} chars)",
+                "detail": f"Message is too long (max {CHAT_MAX_MESSAGE_CHARS} characters)",
                 "request_id": request_id,
             },
         )

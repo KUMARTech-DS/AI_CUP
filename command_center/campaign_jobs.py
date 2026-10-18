@@ -468,18 +468,18 @@ def _load_job_for(sess: Optional[dict[str, Any]], job_id: str) -> dict[str, Any]
     try:
         jid = str(uuid.UUID(str(job_id).strip()))
     except (ValueError, AttributeError):
-        raise ServiceError("not_found", "job not found", 404) from None
+        raise ServiceError("not_found", "Job not found", 404) from None
     try:
         job = fetch_job(jid)
     except Exception as exc:
         log.exception("job lookup failed id=%s", jid)
         raise ServiceError("unavailable", "Job lookup failed", 503) from exc
     if not job:
-        raise ServiceError("not_found", "job not found", 404)
+        raise ServiceError("not_found", "Job not found", 404)
     try:
         svc.check_access({"brand_name": job["brand_name"]}, sess)
     except ServiceError:
-        raise ServiceError("not_found", "job not found", 404) from None
+        raise ServiceError("not_found", "Job not found", 404) from None
     return job
 
 

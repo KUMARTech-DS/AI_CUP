@@ -95,12 +95,12 @@ def known_brands() -> list[str]:
 
 def require_campaign_role(sess: Optional[dict[str, Any]]) -> str:
     if not sess:
-        raise ServiceError("auth", "Not authenticated — sign in again", 401)
+        raise ServiceError("auth", "You are not signed in. Please sign in again.", 401)
     role = str(sess.get("role") or "")
     if role not in {"brand", "admin"}:
         raise ServiceError("not_allowed", "Only brand or admin can manage campaigns", 403)
     if role == "brand" and not str(sess.get("brand_name") or "").strip():
-        raise ServiceError("not_allowed", "Brand session missing brand_name", 403)
+        raise ServiceError("not_allowed", "This brand account has no brand name assigned", 403)
     return role
 
 
@@ -125,14 +125,14 @@ def load_campaign(sess: Optional[dict[str, Any]], campaign_id: str) -> dict[str,
     try:
         cid = str(uuid.UUID(str(campaign_id).strip()))
     except (ValueError, AttributeError):
-        raise ServiceError("not_found", "campaign not found", 404) from None
+        raise ServiceError("not_found", "Campaign not found", 404) from None
     try:
         campaign = brand_camp.get_campaign(cid)
     except Exception as exc:
         log.exception("campaign lookup failed id=%s", cid)
         raise ServiceError("unavailable", "Campaign lookup failed", 503) from exc
     if not campaign:
-        raise ServiceError("not_found", "campaign not found", 404)
+        raise ServiceError("not_found", "Campaign not found", 404)
     check_access(campaign, sess)
     return campaign
 
@@ -257,8 +257,8 @@ def configure(
     if campaign.get("status") not in CONFIGURABLE_STATUSES:
         raise ServiceError(
             "invalid_input",
-            f"Campaign must be ranked before configuring (status={campaign.get('status')})",
-            400,
+            f"Campaign must be ranked before it can be configured (status={campaign.get('status')})",
+            409,
         )
     audience = campaign.get("est_audience")
     if audience is None:
@@ -335,7 +335,7 @@ def export_3p(sess: Optional[dict[str, Any]], campaign_id: str) -> dict[str, Any
         raise ServiceError(
             "invalid_input",
             f"Only ranked campaigns can be exported (status={campaign.get('status')})",
-            400,
+            409,
         )
     try:
         brand_camp.mark_exported(campaign["campaign_id"])
@@ -374,8 +374,8 @@ def launch(sess: Optional[dict[str, Any]], campaign_id: str) -> dict[str, Any]:
     if campaign.get("status") != "configured":
         raise ServiceError(
             "invalid_input",
-            f"Campaign must be configured before launch (status={campaign.get('status')})",
-            400,
+            f"Campaign must be configured before it can launch (status={campaign.get('status')})",
+            409,
         )
     try:
         impact = brand_camp.finalize_synthetic_impact(campaign["campaign_id"])
@@ -394,12 +394,12 @@ def launch(sess: Optional[dict[str, Any]], campaign_id: str) -> dict[str, Any]:
 def discard(sess: Optional[dict[str, Any]], campaign_id: str) -> dict[str, Any]:
     campaign = load_campaign(sess, campaign_id)
     if campaign.get("status") == "processing":
-        raise ServiceError("invalid_input", "Wait for the ranking job to finish before ignoring this campaign", 400)
+        raise ServiceError("invalid_input", "Wait for the ranking job to finish before ignoring this campaign", 409)
     if campaign.get("status") in {"started", "launched"}:
         raise ServiceError(
             "invalid_input",
-            f"Cannot ignore a {campaign.get('status')} campaign in v1 — contact admin",
-            400,
+            f"A {campaign.get('status')} campaign can't be ignored. Contact an admin.",
+            409,
         )
     try:
         brand_camp.set_campaign_status(campaign["campaign_id"], "ignored")
@@ -465,11 +465,11 @@ def resolve_brand(sess: Optional[dict[str, Any]], requested: Optional[str]) -> s
     if sess and sess.get("role") == "brand":
         forced = str(sess.get("brand_name") or "").strip()
         if not forced:
-            raise ServiceError("not_allowed", "Brand session missing brand_name", 403)
+            raise ServiceError("not_allowed", "This brand account has no brand name assigned", 403)
         return forced
     brand = (requested or "").strip()
     if not brand:
-        raise ServiceError("invalid_input", "brand_name is required", 400)
+        raise ServiceError("invalid_input", "Brand name is required", 400)
     return brand
 
 
@@ -497,10 +497,10 @@ def validate_submission(
     brand = resolve_brand(sess, brand_name)
     pins = [str(p).strip() for p in pin_codes if str(p).strip()][:50]
     if not pins:
-        raise ServiceError("invalid_input", "pin_codes required (one or more)", 400)
+        raise ServiceError("invalid_input", "Select at least one PIN code", 400)
     usable = [img for img in images if img.content_type and img.content_type.startswith("image/")]
     if not usable:
-        raise ServiceError("invalid_input", "files required", 400)
+        raise ServiceError("invalid_input", "At least one image file is required", 400)
     for img in usable:
         if len(img.data) > max_image_bytes:
             raise ServiceError(
@@ -536,11 +536,11 @@ def require_pipeline_env() -> tuple[str, str, str]:
     similarity_url = (os.getenv("SIMILARITY_URL") or "").rstrip("/")
     bucket = os.getenv("GCS_IMAGE_BUCKET") or ""
     if not extraction_url:
-        raise ServiceError("unavailable", "EXTRACTION_URL not set", 503)
+        raise ServiceError("unavailable", "Campaign processing is not configured (EXTRACTION_URL)", 503)
     if not similarity_url:
-        raise ServiceError("unavailable", "SIMILARITY_URL not set", 503)
+        raise ServiceError("unavailable", "Campaign processing is not configured (SIMILARITY_URL)", 503)
     if not bucket:
-        raise ServiceError("unavailable", "GCS_IMAGE_BUCKET not set", 503)
+        raise ServiceError("unavailable", "Campaign processing is not configured (GCS_IMAGE_BUCKET)", 503)
     _require_db()
     return extraction_url, similarity_url, bucket
 

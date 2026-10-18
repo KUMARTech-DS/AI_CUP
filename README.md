@@ -46,7 +46,8 @@ Demo brand login: any listed brand · password `brand123`.
 ## Tests
 
 ```bash
-PYTHONPATH=. python3 -m pytest tests/ -q
+PYTHONPATH=. python3 -m pytest tests/ -q   # includes the frontend suite when Node 20+ is installed
+node --test tests/frontend/                 # frontend only (web/ pages, no npm install needed)
 python3 scripts/run_integrity_report.py
 ```
 

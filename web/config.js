@@ -2,7 +2,8 @@
 // Local split (UI :8088 + API :8090): leave default below, or:
 //   localStorage.setItem('DASHBOARD_API', 'http://127.0.0.1:8090')
 (function () {
-  const stored = localStorage.getItem('DASHBOARD_API');
+  let stored = null;
+  try { stored = localStorage.getItem('DASHBOARD_API'); } catch (_) { /* storage blocked: use the defaults below */ }
   if (stored !== null) {
     window.DASHBOARD_API = stored;
     return;
